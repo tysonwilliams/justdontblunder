@@ -63,6 +63,15 @@ export function createDailySession(date = new Date(), count = 7): DrillSession {
   };
 }
 
+/** Every drill, in a fixed order, so All is the whole bank and numbers stay put. */
+export function createAllSession(): DrillSession {
+  return {
+    id: 'all',
+    positions: [...ALL],
+    startedAt: new Date().toISOString(),
+  };
+}
+
 export function createReviewSession(ids: string[]): DrillSession {
   const byId = new Map(ALL.map((drill) => [drill.id, drill]));
   const positions = ids.flatMap((id) => {
@@ -76,12 +85,10 @@ export function createReviewSession(ids: string[]): DrillSession {
   };
 }
 
-export function createThemeSession(theme: DrillTheme, count = 5): DrillSession {
-  const filtered = ALL.filter((d) => d.theme === theme);
-  const seeded = shuffleWithSeed(filtered, Date.now() % 100000);
+export function createThemeSession(theme: DrillTheme): DrillSession {
   return {
-    id: `theme-${theme}-${Date.now()}`,
-    positions: seeded.slice(0, Math.min(count, seeded.length)),
+    id: `theme-${theme}`,
+    positions: ALL.filter((drill) => drill.theme === theme),
     startedAt: new Date().toISOString(),
   };
 }

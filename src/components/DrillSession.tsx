@@ -9,7 +9,7 @@ import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import {
-  createDailySession,
+  createAllSession,
   createReviewSession,
   createThemeSession,
   isCorrectDrillMove,
@@ -35,7 +35,7 @@ const SETS: { id: SessionSet; label: string }[] = [
 ];
 
 function sessionFor(set: SessionSet): DrillSessionData {
-  if (set === 'daily') return createDailySession();
+  if (set === 'daily') return createAllSession();
   return createThemeSession(set);
 }
 
@@ -59,7 +59,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
   const missedIds = useProgressStore((s) => s.missedIds);
 
   const [setId, setSetId] = useState<SessionSet>('daily');
-  const [session, setSession] = useState<DrillSessionData>(() => createDailySession());
+  const [session, setSession] = useState<DrillSessionData>(() => createAllSession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
   const [highlights, setHighlights] = useState<Square[]>([]);

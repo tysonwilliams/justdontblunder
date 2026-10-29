@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { detectPatterns, findHangingPieces } from '@/src/engine/patterns';
 import { isBlunder } from '@/src/engine/stockfish';
-import { createReviewSession, getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
+import {
+  createAllSession,
+  createReviewSession,
+  createThemeSession,
+  getAllDrills,
+  isCorrectDrillMove,
+} from '@/src/logic/drills';
 import { missesForDate } from '@/src/store/progress';
 
 function mateMoves(fen: string): string[] {
@@ -120,6 +126,20 @@ describe('beginner fixtures', () => {
         expect(mates.length, `${drill.id} has no mate-in-1 threat`).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('All and each pattern include every drill of that set, in order', () => {
+    const all = createAllSession();
+    expect(all.positions.map((drill) => drill.id)).toEqual(getAllDrills().map((drill) => drill.id));
+    expect(all.positions.length).toBeGreaterThan(7);
+    for (const theme of ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const) {
+      const set = createThemeSession(theme);
+      const expected = getAllDrills().filter((drill) => drill.theme === theme);
+      expect(set.positions.map((drill) => drill.id)).toEqual(expected.map((drill) => drill.id));
+      expect(set.positions.length).toBe(expected.length);
+    }
+    const matePrompts = createThemeSession('missed_mate').positions.map((drill) => drill.prompt);
+    expect(matePrompts.filter((prompt) => prompt.includes('Qxf7'))).toHaveLength(1);
   });
 
   it('builds a review from the ids missed today', () => {
