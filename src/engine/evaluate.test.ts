@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { detectPatterns, findHangingPieces } from '@/src/engine/patterns';
 import { isBlunder } from '@/src/engine/stockfish';
-import { getAllDrills } from '@/src/logic/drills';
+import { getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
 
 function mateMoves(fen: string): string[] {
   const game = new Chess(fen);
@@ -121,12 +121,15 @@ describe('beginner fixtures', () => {
     }
   });
 
-  it('hanging queen on h5 rejects squares the knight or pawns still hit', () => {
+  it('hanging queen on h5 accepts Qxe5 even if that move was left off the list', () => {
     const drill = getAllDrills().find((item) => item.id === 'hang-q-01');
-    expect(drill?.solution).toContain('h5e5');
-    expect(drill?.solution).not.toContain('h5g4');
-    expect(drill?.solution).not.toContain('h5g6');
-    expect(drill?.solution).not.toContain('h5h6');
+    expect(drill).toBeTruthy();
+    if (!drill) return;
+    expect(isCorrectDrillMove(drill, 'h5', 'e5')).toBe(true);
+    expect(isCorrectDrillMove({ ...drill, solution: [] }, 'h5', 'e5')).toBe(true);
+    expect(isCorrectDrillMove(drill, 'h5', 'g4')).toBe(false);
+    expect(isCorrectDrillMove(drill, 'h5', 'g6')).toBe(false);
+    expect(isCorrectDrillMove(drill, 'h5', 'h6')).toBe(false);
   });
 
   it("fool's mate drill only accepts moves that stop Qh4#", () => {

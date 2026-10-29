@@ -1,7 +1,7 @@
 import type { Square } from 'chess.js';
-import { Chess } from 'chess.js';
 
 import beginnerBlunders from '@/src/data/beginner-blunders.json';
+import { moveRemovesDanger } from '@/src/logic/danger';
 
 export type DrillTheme =
   | 'hanging'
@@ -73,16 +73,13 @@ export function createThemeSession(theme: DrillTheme, count = 5): DrillSession {
   };
 }
 
-/** Accept UCI solutions (e2e4 / e7e8q). */
+/** A move counts when it actually removes the threat, not only when it is prelisted. */
 export function isCorrectDrillMove(drill: DrillPosition, from: Square, to: Square): boolean {
   const uci = `${from}${to}`;
-  if (drill.solution.some((sol) => sol.startsWith(uci))) return true;
-
-  const game = new Chess(drill.fen);
-  const move = game.move({ from, to, promotion: 'q' });
-  if (!move) return false;
-
-  return drill.solution.some((sol) => sol.slice(0, 4) === uci);
+  if (drill.theme === 'pin') {
+    return drill.solution.some((sol) => sol.startsWith(uci));
+  }
+  return moveRemovesDanger(drill, from, to);
 }
 
 export function themeLabel(theme: DrillTheme): string {
