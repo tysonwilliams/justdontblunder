@@ -71,4 +71,36 @@ describe('beginner fixtures', () => {
       expect(anyLegal, `${drill.id} has no legal solution from FEN`).toBe(true);
     }
   });
+
+  it('every drill is immediate danger (hang / fork / absolute pin / mate-in-1)', () => {
+    const drills = getAllDrills();
+    for (const drill of drills) {
+      const game = new Chess(drill.fen);
+      const opp = drill.sideToMove === 'w' ? 'b' : 'w';
+      const square = drill.atRiskSquare;
+      const piece = game.get(square);
+      expect(piece, drill.id).toBeTruthy();
+
+      if (drill.theme === 'hanging') {
+        expect(game.isAttacked(square, opp), `${drill.id} not attacked`).toBe(true);
+      } else if (drill.theme === 'fork') {
+        // At-risk unit must be attacked now (fork is live this move).
+        expect(game.isAttacked(square, opp), `${drill.id} fork target not attacked`).toBe(
+          true,
+        );
+      } else if (drill.theme === 'pin') {
+        expect(game.isAttacked(square, opp), `${drill.id} pin not under attack`).toBe(true);
+      } else if (drill.theme === 'back_rank' || drill.theme === 'missed_mate') {
+        const parts = drill.fen.split(' ');
+        parts[1] = opp;
+        const probe = new Chess(parts.join(' '));
+        const mates = probe.moves({ verbose: true }).filter((m) => {
+          const g = new Chess(probe.fen());
+          g.move(m);
+          return g.isCheckmate();
+        });
+        expect(mates.length, `${drill.id} has no mate-in-1 threat`).toBeGreaterThan(0);
+      }
+    }
+  });
 });
