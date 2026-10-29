@@ -7,7 +7,7 @@ A Chessreps-style trainer for new and intermediate players. Build the pre-move h
 - Interactive board (tap + drag, legal moves only)
 - Instant blunder feedback with square highlights
 - Pre-move habit checklist
-- Daily drill sessions from ~40 immediate-danger positions (hanging pieces, live forks, absolute pins, mate-in-1)
+- Daily drill sessions from full-board positions with immediate danger (hanging pieces, live forks, absolute pins, mate-in-1)
 - Local streaks and progress (no account)
 
 ## Run locally

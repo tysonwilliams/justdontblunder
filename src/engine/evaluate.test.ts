@@ -39,9 +39,9 @@ describe('pattern detectors', () => {
 });
 
 describe('beginner fixtures', () => {
-  it('has at least 40 save-your-piece drills with required fields', () => {
+  it('has at least 30 full-board save-your-piece drills with required fields', () => {
     const drills = getAllDrills();
-    expect(drills.length).toBeGreaterThanOrEqual(40);
+    expect(drills.length).toBeGreaterThanOrEqual(30);
     for (const drill of drills) {
       expect(drill.id).toBeTruthy();
       expect(drill.fen.split(' ').length).toBeGreaterThanOrEqual(4);
@@ -49,6 +49,11 @@ describe('beginner fixtures', () => {
       expect(drill.solution.length).toBeGreaterThan(0);
       expect(drill.note.length).toBeGreaterThan(5);
       expect(typeof drill.expectedDropCp).toBe('number');
+      const pieceCount = drill.fen
+        .split(' ')[0]
+        .replace(/\d/g, '')
+        .replace(/\//g, '').length;
+      expect(pieceCount, `${drill.id} too sparse (${pieceCount})`).toBeGreaterThanOrEqual(24);
       const game = new Chess(drill.fen);
       expect(game.turn()).toBe(drill.sideToMove);
       const atRisk = game.get(drill.atRiskSquare);
