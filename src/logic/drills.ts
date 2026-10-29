@@ -15,6 +15,7 @@ export type DrillPosition = {
   fen: string;
   sideToMove: 'w' | 'b';
   theme: DrillTheme;
+  atRiskSquare: Square;
   prompt: string;
   solution: string[];
   note: string;
@@ -72,34 +73,30 @@ export function createThemeSession(theme: DrillTheme, count = 5): DrillSession {
   };
 }
 
-/** Accept either UCI (e2e4) or SAN if the move matches a solution UCI. */
+/** Accept UCI solutions (e2e4 / e7e8q). */
 export function isCorrectDrillMove(drill: DrillPosition, from: Square, to: Square): boolean {
   const uci = `${from}${to}`;
   if (drill.solution.some((sol) => sol.startsWith(uci))) return true;
 
-  // Also accept any legal move that captures the intended idea when solutions list multiple.
   const game = new Chess(drill.fen);
   const move = game.move({ from, to, promotion: 'q' });
   if (!move) return false;
 
-  return drill.solution.some((sol) => {
-    if (sol.length < 4) return false;
-    return sol.slice(0, 4) === uci;
-  });
+  return drill.solution.some((sol) => sol.slice(0, 4) === uci);
 }
 
 export function themeLabel(theme: DrillTheme): string {
   switch (theme) {
     case 'hanging':
-      return 'Hanging pieces';
+      return 'Save hanging pieces';
     case 'fork':
-      return 'Forks';
+      return 'Break the fork';
     case 'pin':
-      return 'Pins';
+      return 'Unpin / escape';
     case 'back_rank':
-      return 'Back rank';
+      return 'Guard the back rank';
     case 'missed_mate':
-      return 'Mate threats';
+      return 'Stop mate on you';
     default: {
       const _exhaustive: never = theme;
       return _exhaustive;
@@ -109,11 +106,11 @@ export function themeLabel(theme: DrillTheme): string {
 
 export function tipsOfTheDay(): string {
   const tips = [
-    'Before every move: Checks, Captures, Threats, Hanging?',
-    'If a piece has zero defenders, it is probably dinner.',
-    'Queen tours early often hang something behind them.',
-    'Luft (h3/h6/g3/g6) saves back-rank mates.',
-    'Knights fork kings and queens from awkward angles — scan them.',
+    'Before every move: scan YOUR pieces for hanging stuff.',
+    'If one of your pieces has zero defenders, move it or protect it.',
+    'Early queen trips often leave something of yours hanging behind.',
+    'Luft (h3/h6/g3/g6) keeps back-rank mates off your king.',
+    'When you’re forked, save the higher piece first — usually the queen.',
   ];
   const idx = hashDay(new Date().toISOString().slice(0, 10)) % tips.length;
   return tips[idx]!;

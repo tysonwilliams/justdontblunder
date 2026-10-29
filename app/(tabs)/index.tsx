@@ -22,7 +22,7 @@ export default function HomeScreen() {
       ]}>
       <Text style={styles.brand}>Just Don't Blunder</Text>
       <Text style={styles.tagline}>
-        Build the habit that stops hanging pieces — before the engine scolds you.
+        Train your eyes on YOUR pieces — spot what is hanging and save it before you blunder.
       </Text>
 
       <View style={styles.heroBlock}>
@@ -33,7 +33,7 @@ export default function HomeScreen() {
       <Link href="/train" asChild>
         <Pressable style={styles.primaryCta}>
           <Text style={styles.primaryCtaText}>Start daily drills</Text>
-          <Text style={styles.primaryCtaSub}>5–10 minutes · beginner blunders</Text>
+          <Text style={styles.primaryCtaSub}>5–10 minutes · save your hanging pieces</Text>
         </Pressable>
       </Link>
 

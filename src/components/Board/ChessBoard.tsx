@@ -36,6 +36,8 @@ type Props = {
   orientation?: 'white' | 'black';
   interactive?: boolean;
   highlightSquares?: Square[];
+  /** Softer amber attention (e.g. your hanging piece to save). */
+  attentionSquares?: Square[];
   lastMove?: { from: Square; to: Square } | null;
   onMove?: (event: BoardMoveEvent) => boolean | void;
   onPositionChange?: (snap: GameSnapshot) => void;
@@ -52,6 +54,7 @@ export function ChessBoard({
   orientation = 'white',
   interactive = true,
   highlightSquares = [],
+  attentionSquares = [],
   lastMove = null,
   onMove,
   onPositionChange,
@@ -207,12 +210,14 @@ export function ChessBoard({
                 const isSelected = selected === square;
                 const isLegal = legal.includes(square);
                 const isHighlight = highlightSquares.includes(square);
+                const isAttention = attentionSquares.includes(square);
                 const isLast =
                   lastMove != null && (lastMove.from === square || lastMove.to === square);
                 const hideForDrag = dragSquare === square;
 
                 let bg: string = isDark ? colors.boardDark : colors.boardLight;
                 if (isLast) bg = colors.boardLastMove;
+                if (isAttention) bg = colors.boardAttention;
                 if (isSelected) bg = colors.boardSelected;
                 if (isHighlight) bg = colors.boardBlunder;
 

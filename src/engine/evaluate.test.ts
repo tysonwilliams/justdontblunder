@@ -39,15 +39,21 @@ describe('pattern detectors', () => {
 });
 
 describe('beginner fixtures', () => {
-  it('has at least 40 drill positions with required fields', () => {
+  it('has at least 40 save-your-piece drills with required fields', () => {
     const drills = getAllDrills();
     expect(drills.length).toBeGreaterThanOrEqual(40);
     for (const drill of drills) {
       expect(drill.id).toBeTruthy();
       expect(drill.fen.split(' ').length).toBeGreaterThanOrEqual(4);
+      expect(drill.atRiskSquare).toMatch(/^[a-h][1-8]$/);
       expect(drill.solution.length).toBeGreaterThan(0);
       expect(drill.note.length).toBeGreaterThan(5);
       expect(typeof drill.expectedDropCp).toBe('number');
+      const game = new Chess(drill.fen);
+      expect(game.turn()).toBe(drill.sideToMove);
+      const atRisk = game.get(drill.atRiskSquare);
+      expect(atRisk, `${drill.id} missing atRisk piece`).toBeTruthy();
+      expect(atRisk?.color).toBe(drill.sideToMove);
     }
   });
 

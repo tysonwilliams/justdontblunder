@@ -18,6 +18,7 @@ export const colors = {
   boardSelected: 'rgba(61, 220, 151, 0.42)',
   boardLegal: 'rgba(242, 245, 249, 0.28)',
   boardLastMove: 'rgba(245, 197, 66, 0.34)',
+  boardAttention: 'rgba(245, 197, 66, 0.48)',
   boardBlunder: 'rgba(255, 92, 92, 0.55)',
   whitePiece: '#FFF6E8',
   whitePieceStroke: '#1A2230',

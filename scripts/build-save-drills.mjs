@@ -1,0 +1,565 @@
+import { Chess } from 'chess.js';
+import fs from 'node:fs';
+
+/** @typedef {{ id: string, fen: string, sideToMove: 'w'|'b', theme: string, atRiskSquare: string, prompt: string, solution: string[], note: string, expectedDropCp: number }} Drill */
+
+/** @type {Drill[]} */
+const drills = [
+  // --- Hanging: save your piece ---
+  {
+    id: 'hang-q-01',
+    fen: 'rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3',
+    sideToMove: 'w',
+    theme: 'hanging',
+    atRiskSquare: 'h5',
+    prompt: 'Your queen is hanging — get her to safety.',
+    solution: ['h5e2', 'h5f3', 'h5g4', 'h5g5', 'h5g6', 'h5h3', 'h5h4', 'h5h6', 'h5f5', 'h5d1'],
+    note: 'Nf6 attacks your queen. Retreat her before you drop her.',
+    expectedDropCp: 900,
+  },
+  {
+    id: 'hang-q-02',
+    fen: 'rnb1kbnr/ppp1pppp/8/3q4/8/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 3',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'd5',
+    prompt: 'Your queen is loose in the center — save her.',
+    solution: ['d5a5', 'd5d6', 'd5d7', 'd5d8', 'd5e6', 'd5f5', 'd5g5', 'd5h5', 'd5c6', 'd5c5', 'd5c4', 'd5b5'],
+    note: 'Nc3 attacks the queen. Slide her off d5.',
+    expectedDropCp: 900,
+  },
+  {
+    id: 'hang-q-03',
+    fen: 'rnb1kb1r/pppp1ppp/5n2/4p3/3PP2q/5N2/PPP2PPP/RNBQKB1R w KQkq - 1 4',
+    sideToMove: 'w',
+    theme: 'hanging',
+    atRiskSquare: 'f3',
+    prompt: 'Your knight is hanging to the queen — fix it.',
+    solution: ['f3h4', 'f3g5', 'f3g1', 'f3d2', 'f3e5'],
+    note: 'Qh4 attacks Nf3. Capture the queen or move the knight.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'hang-q-04',
+    fen: 'r1b1kbnr/pppp1ppp/2n5/4p3/4P2q/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
+    sideToMove: 'w',
+    theme: 'hanging',
+    atRiskSquare: 'f3',
+    prompt: 'Your knight is en prise — don’t leave it.',
+    solution: ['f3h4', 'f3g5', 'f3g1', 'f3d2', 'f3d4'],
+    note: 'The queen on h4 hits your knight. Take her or tuck the knight away.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'hang-q-05',
+    fen: 'rnb1kbnr/pppp1ppp/8/4p3/3PP2q/2N5/PPP2PPP/R1BQKBNR w KQkq - 1 3',
+    sideToMove: 'w',
+    theme: 'hanging',
+    atRiskSquare: 'd4',
+    prompt: 'Your center pawn is hanging — decide carefully.',
+    solution: ['d4e5', 'd4d5', 'g1f3', 'd1e2', 'd1d2', 'd1d3', 'c1e3'],
+    note: 'Qh4 eyes d4 (and more). Defend the center or push past.',
+    expectedDropCp: 100,
+  },
+  {
+    id: 'hang-r-01',
+    fen: '4k3/8/8/8/8/8/4r3/4K3 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'e2',
+    prompt: 'Your rook is next to the enemy king — save it.',
+    solution: ['e2e3', 'e2e4', 'e2e5', 'e2e6', 'e2e7', 'e2e8', 'e2a2', 'e2b2', 'e2c2', 'e2d2', 'e2f2', 'e2g2', 'e2h2', 'e2e1'],
+    note: 'White’s king attacks the rook. Move it somewhere safe.',
+    expectedDropCp: 500,
+  },
+  {
+    id: 'hang-r-02',
+    fen: '4k3/8/8/3r4/8/8/8/3RK3 w - - 0 1',
+    sideToMove: 'w',
+    theme: 'hanging',
+    atRiskSquare: 'd1',
+    prompt: 'Your rook is hanging on the open file — react.',
+    solution: ['d1d5', 'd1d2', 'd1d3', 'd1d4', 'd1c1', 'd1b1', 'd1a1', 'd1e1', 'd1f1', 'd1g1', 'd1h1'],
+    note: 'Black’s rook attacks yours. Trade on d5 or step off the file.',
+    expectedDropCp: 500,
+  },
+  {
+    id: 'hang-r-03',
+    fen: 'r3k3/8/8/8/8/8/8/R3K3 w - - 0 1',
+    sideToMove: 'w',
+    theme: 'hanging',
+    atRiskSquare: 'a1',
+    prompt: 'Rooks face off — yours is unprotected. Handle it.',
+    solution: ['a1a8', 'a1a2', 'a1a3', 'a1a4', 'a1a5', 'a1a6', 'a1a7', 'a1b1', 'a1c1', 'a1d1'],
+    note: 'Trade on a8 or move your rook so it isn’t hanging.',
+    expectedDropCp: 500,
+  },
+  {
+    id: 'hang-n-01',
+    fen: 'r1bqkb1r/pppp1ppp/2n5/4p3/4n3/3P1N2/PPP2PPP/RNBQKB1R b KQkq - 0 4',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'e4',
+    prompt: 'Your knight on e4 is hanging — save it.',
+    solution: ['e4f6', 'e4c5', 'e4c3', 'e4d6', 'e4g5', 'e4g3', 'e4f2', 'e4d2', 'd7d5'],
+    note: 'White threatens dxe4. Retreat the knight or support it with d5.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'hang-n-02',
+    fen: 'rnbqkb1r/ppp2ppp/3p1n2/4P3/8/5N2/PPPP1PPP/RNBQKB1R b KQkq - 0 4',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'f6',
+    prompt: 'A pawn attacks your knight — don’t freeze.',
+    solution: ['f6d7', 'f6d5', 'f6e4', 'f6g4', 'f6g8', 'f6h5', 'd6e5'],
+    note: 'exf6 is coming. Move the knight or take on e5.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'hang-n-03',
+    fen: 'r1bqkbnr/pppp1ppp/2n5/4N3/4P3/8/PPPP1PPP/RNBQKB1R b KQkq - 0 3',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'c6',
+    prompt: 'Your knight is hanging to theirs — react.',
+    solution: ['c6e5', 'c6b8', 'c6e7', 'c6a5', 'c6b4', 'c6d4', 'd7d6', 'd7d5'],
+    note: 'Ne5 attacks Nc6. Capture it, move yours, or play d6.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'hang-b-01',
+    fen: 'rnbqk1nr/pppp1ppp/8/4p3/1bB1P3/2P5/PP1P1PPP/RNBQK1NR b KQkq - 0 3',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'b4',
+    prompt: 'Your bishop is attacked by a pawn — save it.',
+    solution: ['b4a5', 'b4c5', 'b4e7', 'b4d6', 'b4a3', 'b4c3'],
+    note: 'c3 hits the bishop. Retreat before cxb4.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'hang-b-02',
+    fen: 'rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 4',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'c5',
+    prompt: 'Scan your bishop — is anything about to take it?',
+    solution: ['c5b6', 'c5b4', 'c5d4', 'c5e7', 'c5d6', 'c5a3', 'd7d6', 'e8g8'],
+    note: 'In these Italian setups the bishop can get kicked. Have a retreat square ready (or castle).',
+    expectedDropCp: 80,
+  },
+  {
+    id: 'hang-p-01',
+    fen: 'rnbqkbnr/ppp1pppp/8/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'd5',
+    prompt: 'Your center pawn is under fire — resolve the tension.',
+    solution: ['d5e4', 'd5d4', 'e7e6', 'c7c6', 'c7c5', 'g8f6'],
+    note: 'White’s e-pawn attacks d5. Capture, push, or support it.',
+    expectedDropCp: 100,
+  },
+  {
+    id: 'hang-p-02',
+    fen: 'rnbqkbnr/pppp1ppp/8/4p3/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2',
+    sideToMove: 'b',
+    theme: 'hanging',
+    atRiskSquare: 'e5',
+    prompt: 'Your e-pawn is hanging — don’t ignore it.',
+    solution: ['e5d4', 'e5e4', 'd7d6', 'b8c6', 'g8f6'],
+    note: 'dxe5 is a real threat. Capture on d4 or defend e5.',
+    expectedDropCp: 100,
+  },
+
+  // --- Fork: you are forked — save the right piece ---
+  {
+    id: 'fork-01',
+    fen: '4k3/8/8/3n4/8/4K3/8/7R w - - 0 1',
+    sideToMove: 'w',
+    theme: 'fork',
+    atRiskSquare: 'e3',
+    prompt: 'Knight fork on king and rook — which do you save?',
+    solution: ['e3d2', 'e3d3', 'e3d4', 'e3e2', 'e3e4', 'e3f2', 'e3f3', 'e3f4', 'h1h5', 'h1d1', 'h1a1', 'h1b1', 'h1c1', 'h1e1', 'h1f1', 'h1g1', 'h1h2', 'h1h3', 'h1h4', 'h1h6', 'h1h7', 'h1h8'],
+    note: 'The knight on d5 forks king and rook. Move the king or the rook off the fork.',
+    expectedDropCp: 500,
+  },
+  {
+    id: 'fork-02',
+    fen: '4k3/8/2n5/8/8/8/4R3/4K3 w - - 0 1',
+    sideToMove: 'w',
+    theme: 'fork',
+    atRiskSquare: 'e2',
+    prompt: 'You’re forked — get the rook out (or the king).',
+    solution: ['e2e3', 'e2e4', 'e2e5', 'e2e6', 'e2e7', 'e2e8', 'e2a2', 'e2b2', 'e2c2', 'e2d2', 'e2f2', 'e2g2', 'e2h2', 'e1d1', 'e1d2', 'e1f1', 'e1f2'],
+    note: 'Nc6 forks king and rook. Step one of them off the fork squares.',
+    expectedDropCp: 500,
+  },
+  {
+    id: 'fork-03',
+    fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p1N1/2B1P3/8/PPPP1PPP/RNBQK2R b KQkq - 5 4',
+    sideToMove: 'b',
+    theme: 'fork',
+    atRiskSquare: 'f7',
+    prompt: 'f7 is the soft spot — stop the double attack.',
+    solution: ['d8e7', 'h7h6', 'd7d5'],
+    note: 'Ng5 and Bc4 both eye f7. Defend with Qe7 or kick Ng5 with h6.',
+    expectedDropCp: 400,
+  },
+  {
+    id: 'fork-04',
+    fen: 'rnbqk2r/pppp1ppp/5n2/2b1N3/2B1P3/8/PPPP1PPP/RNBQK2R b KQkq - 0 4',
+    sideToMove: 'b',
+    theme: 'fork',
+    atRiskSquare: 'f7',
+    prompt: 'White’s knight crashed toward f7 — defend your king wing.',
+    solution: ['d8e7', 'e8f8', 'e8g8', 'd7d5', 'b8c6', 'e8e7'],
+    note: 'Ne5 hits f7 ideas with the bishop. Castle, Qe7, or challenge the center.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'fork-05',
+    fen: '2rqk2r/pp1b1ppp/2n1pn2/3pN3/3P1B2/2NB4/PPP2PPP/R2QK2R b KQ - 0 10',
+    sideToMove: 'b',
+    theme: 'fork',
+    atRiskSquare: 'c6',
+    prompt: 'A knight sits on e5 — check what it forks in your camp.',
+    solution: ['c6e5', 'c6a5', 'c6b4', 'c6b8', 'c6e7', 'f6d7', 'f6e4', 'd7e8', 'd8c7'],
+    note: 'Ne5 pressures c6/f7/d7 complexes. Trade it off or step the hanging unit away.',
+    expectedDropCp: 150,
+  },
+  {
+    id: 'fork-06',
+    fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p1N1/2B1P3/3P4/PPP2PPP/RNBQK2R b KQkq - 2 5',
+    sideToMove: 'b',
+    theme: 'fork',
+    atRiskSquare: 'f7',
+    prompt: 'Classic Italian pressure — save f7 before it collapses.',
+    solution: ['d8e7', 'e8g8', 'h7h6', 'd7d5'],
+    note: 'Ng5 looks at f7 again. Castle, Qe7, or h6.',
+    expectedDropCp: 300,
+  },
+  {
+    id: 'fork-07',
+    fen: '4k3/8/8/8/3n4/8/2Q1K3/8 w - - 0 1',
+    sideToMove: 'w',
+    theme: 'fork',
+    atRiskSquare: 'c2',
+    prompt: 'Knight forks king and queen — save the queen.',
+    solution: ['c2c1', 'c2c3', 'c2c4', 'c2c5', 'c2c6', 'c2c7', 'c2c8', 'c2a2', 'c2b2', 'c2d2', 'c2e2', 'c2b1', 'c2b3', 'c2d1', 'c2d3', 'c2a4', 'c2d2', 'e2d1', 'e2d2', 'e2d3', 'e2e1', 'e2e3', 'e2f1', 'e2f2', 'e2f3'],
+    note: 'Nd4 forks king + queen. Move the queen (or the king) immediately.',
+    expectedDropCp: 900,
+  },
+  {
+    id: 'fork-08',
+    fen: 'rnb1kb1r/ppp1pppp/5n2/3q4/8/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 3 4',
+    sideToMove: 'b',
+    theme: 'fork',
+    atRiskSquare: 'd5',
+    prompt: 'Two white knights stare at your queen — relocate.',
+    solution: ['d5a5', 'd5d6', 'd5d7', 'd5d8', 'd5e6', 'd5f5', 'd5g5', 'd5h5', 'd5c6', 'd5c5', 'd5c4', 'd5b5', 'd5e4'],
+    note: 'Your queen is a fork magnet on d5. Park her somewhere safer.',
+    expectedDropCp: 800,
+  },
+
+  // --- Pin: break the pin / step out ---
+  {
+    id: 'pin-01',
+    fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p1B1/2B1P3/3P1N2/PPP2PPP/RN1QK2R b KQkq - 0 5',
+    sideToMove: 'b',
+    theme: 'pin',
+    atRiskSquare: 'f6',
+    prompt: 'Your knight is pinned to the queen — break it.',
+    solution: ['h7h6', 'd8e7', 'e8g8', 'd7d6', 'a7a6', 'b7b6'],
+    note: 'Bg5 pins Nf6. Kick with h6, unpin with Qe7, or castle first.',
+    expectedDropCp: 80,
+  },
+  {
+    id: 'pin-02',
+    fen: 'rnbqk2r/ppp1bppp/4pn2/3p2B1/2PP4/2N2N2/PP2PPPP/R2QKB1R b KQkq - 3 5',
+    sideToMove: 'b',
+    theme: 'pin',
+    atRiskSquare: 'f6',
+    prompt: 'Pinned knight again — don’t leave the queen soft.',
+    solution: ['h7h6', 'e8g8', 'c7c6', 'b8d7', 'd8d6'],
+    note: 'Bg5 pins against the queen. h6 or castle are clean beginner answers.',
+    expectedDropCp: 60,
+  },
+  {
+    id: 'pin-03',
+    fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 3 6',
+    // white not pinned - skip fix: black to move pinned
+    fen: 'r1bq1rk1/pppp1ppp/2n2n2/2b1p1B1/2B1P3/2NP1N2/PPP2PPP/R2QK2R b KQ - 1 7',
+    sideToMove: 'b',
+    theme: 'pin',
+    atRiskSquare: 'f6',
+    prompt: 'Even after castling the pin remains — loosen it.',
+    solution: ['h7h6', 'd8e7', 'd8e8', 'a7a6', 'd7d6'],
+    note: 'Ask the bishop a question with h6, or unpin the queen.',
+    expectedDropCp: 50,
+  },
+  {
+    id: 'pin-04',
+    fen: 'rnbqkb1r/ppp2ppp/4pn2/3p2B1/2PP4/2N5/PP2PPPP/R2QKBNR b KQkq - 1 4',
+    sideToMove: 'b',
+    theme: 'pin',
+    atRiskSquare: 'f6',
+    prompt: 'Queen’s Gambit pin — handle your knight.',
+    solution: ['f8e7', 'h7h6', 'c7c6', 'b8d7', 'd8d6'],
+    note: 'Develop Be7 to break the pin, or kick with h6.',
+    expectedDropCp: 50,
+  },
+  {
+    id: 'pin-05',
+    fen: '4r1k1/8/8/8/8/4N3/4K3/8 w - - 0 1',
+    sideToMove: 'w',
+    theme: 'pin',
+    atRiskSquare: 'e3',
+    prompt: 'Your knight is pinned to the king — don’t move it blindly.',
+    solution: ['e2d1', 'e2d2', 'e2d3', 'e2e1', 'e2f1', 'e2f2', 'e2f3'],
+    note: 'The rook pins the knight to the king. Step the king off the e-file first.',
+    expectedDropCp: 200,
+  },
+  {
+    id: 'pin-06',
+    fen: '6k1/5n1p/6p1/8/8/8/1B3PPP/6K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'pin',
+    atRiskSquare: 'f7',
+    prompt: 'Your knight is pinned to the king — unpin carefully.',
+    solution: ['g8f8', 'g8h8', 'g8g7', 'h7h5', 'h7h6', 'g6g5'],
+    note: 'Bb2 pins the knight. Step the king off the diagonal before moving the knight.',
+    expectedDropCp: 200,
+  },
+  {
+    id: 'pin-07',
+    fen: 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3',
+    sideToMove: 'b',
+    theme: 'pin',
+    atRiskSquare: 'c6',
+    prompt: 'Your knight is pinned to the king — break the pin.',
+    solution: ['a7a6', 'd7d6', 'g8e7', 'g8f6', 'd8e7', 'a7a5'],
+    note: 'Bb5 pins Nc6. Play a6, d6, or develop while preparing to break it.',
+    expectedDropCp: 40,
+  },
+  {
+    id: 'pin-08',
+    fen: 'r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 4 4',
+    sideToMove: 'b',
+    theme: 'pin',
+    atRiskSquare: 'c6',
+    prompt: 'Ruy Lopez pin — don’t ignore your c6-knight.',
+    solution: ['a7a6', 'd7d6', 'f8c5', 'f8e7', 'd8e7'],
+    note: 'Challenge the bishop with a6 or shore up the pinned knight.',
+    expectedDropCp: 40,
+  },
+
+  // --- Back rank: make luft / meet the threat ---
+  {
+    id: 'back-01',
+    fen: '3r2k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'back_rank',
+    atRiskSquare: 'g8',
+    prompt: 'Your back rank is soft — make luft or contest the file.',
+    solution: ['g7g6', 'h7h6', 'h7h5', 'd8d1', 'd8e8', 'd8f8', 'f7f6'],
+    note: 'White’s rook eyes e8. Create an escape square or trade rooks.',
+    expectedDropCp: 500,
+  },
+  {
+    id: 'back-02',
+    fen: '6k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'back_rank',
+    atRiskSquare: 'g8',
+    prompt: 'Back-rank mate is one move away — breathe.',
+    solution: ['g7g6', 'h7h6', 'h7h5', 'f7f6', 'f7f5', 'g8f8', 'g8h8'],
+    note: 'Make luft (g6/h6) or step the king before Re8#.',
+    expectedDropCp: 10000,
+  },
+  {
+    id: 'back-03',
+    fen: 'r5k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'back_rank',
+    atRiskSquare: 'g8',
+    prompt: 'You have a rook — still watch the back rank.',
+    solution: ['g7g6', 'h7h6', 'a8e8', 'a8d8', 'a8f8', 'f7f6'],
+    note: 'Contest the e-file or create an escape square.',
+    expectedDropCp: 400,
+  },
+  {
+    id: 'back-04',
+    fen: '3r2k1/5p1p/6p1/8/8/8/5PPP/4R1K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'back_rank',
+    atRiskSquare: 'g8',
+    prompt: 'You already have luft — still meet the rook.',
+    solution: ['d8d1', 'd8e8', 'd8f8', 'd8d2', 'd8d3', 'd8d4', 'd8d5', 'd8d6', 'd8d7', 'g8g7', 'g8f8', 'g8h8'],
+    note: 'With g6 played you’re safer, but trading or contesting the file is still smart.',
+    expectedDropCp: 100,
+  },
+  {
+    id: 'back-05',
+    fen: '6k1/3r1ppp/8/8/8/8/5PPP/R5K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'back_rank',
+    atRiskSquare: 'g8',
+    prompt: 'White’s rook can swing to the 8th — prepare.',
+    solution: ['g7g6', 'h7h6', 'd7d1', 'd7d8', 'd7a7', 'f7f6'],
+    note: 'Make luft or keep your rook active on the back rank.',
+    expectedDropCp: 400,
+  },
+  {
+    id: 'back-06',
+    fen: '3r2k1/5ppp/8/8/8/5n2/5PPP/4R1K1 w - - 0 1',
+    sideToMove: 'w',
+    theme: 'back_rank',
+    atRiskSquare: 'e1',
+    prompt: 'Your rook is hanging to a knight — and the back rank matters.',
+    solution: ['e1e8', 'e1d1', 'e1f1', 'e1e2', 'e1e3', 'e1e4', 'e1e5', 'e1e6', 'e1e7', 'g1f1', 'g1h1'],
+    note: 'Nf3 attacks Re1. Move the rook (or use it to check) before you lose it.',
+    expectedDropCp: 500,
+  },
+
+  // --- Mate threats on YOU: stop mate ---
+  {
+    id: 'mate-01',
+    fen: 'r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4',
+    sideToMove: 'b',
+    theme: 'missed_mate',
+    atRiskSquare: 'e8',
+    prompt: 'You’re in check from the queen — escape if you can.',
+    solution: ['e8d8'],
+    // Actually Qxf7 is checkmate in scholar - no escape. Change position to before mate / defendable.
+    fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3',
+    prompt: 'Scholar’s mate is threatened — stop Qxf7.',
+    solution: ['g7g6', 'd8e7', 'g8?'.replace('?', ''), 'f6?'],
+    note: 'Defend f7 with Qe7 or g6 (or develop Nf6 if not already).',
+    expectedDropCp: 900,
+  },
+];
+
+// Fix mate-01 properly and add more mate defenses
+drills.splice(drills.findIndex((d) => d.id === 'mate-01'));
+drills.push(
+  {
+    id: 'mate-01',
+    fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3',
+    sideToMove: 'b',
+    theme: 'missed_mate',
+    atRiskSquare: 'f7',
+    prompt: 'Scholar’s mate is threatened — stop Qxf7.',
+    solution: ['g7g6', 'd8e7'],
+    note: 'Qe7 or g6 defends f7. Don’t let Qxf7# land.',
+    expectedDropCp: 900,
+  },
+  {
+    id: 'mate-02',
+    fen: 'rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR w KQkq - 0 2',
+    sideToMove: 'w',
+    theme: 'missed_mate',
+    atRiskSquare: 'e1',
+    prompt: 'You weakened the king diagonal — don’t get Fool’s-mated.',
+    solution: ['f3f4', 'g4g5', 'e2e3', 'e2e4', 'b1c3', 'g1h3', 'd2d3', 'd2d4', 'c2c3', 'c2c4', 'a2a3', 'a2a4', 'b2b3', 'b2b4', 'h2h3', 'h2h4', 'd1e2'],
+    note: 'Black threatens Qh4#. Block the diagonal or undo the damage — don’t leave the king naked.',
+    expectedDropCp: 10000,
+  },
+  {
+    id: 'mate-03',
+    fen: 'rnbqk1nr/pppp1ppp/8/2b1p3/4P3/5P2/PPPP2PP/RNBQKBNR w KQkq - 1 3',
+    sideToMove: 'w',
+    theme: 'missed_mate',
+    atRiskSquare: 'e1',
+    prompt: 'The a7–g1 diagonal is open toward your king — careful.',
+    solution: ['f3f4', 'c2c3', 'd2d4', 'g1e2', 'd1e2', 'b1c3', 'f1c4', 'f1b5', 'f1e2', 'g2g3', 'd2d3'],
+    note: 'Black’s bishop eyes soft squares. Close lines and develop before you’re punished.',
+    expectedDropCp: 200,
+  },
+  {
+    id: 'mate-04',
+    fen: '6k1/5ppp/8/8/8/8/4QPPP/6K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'missed_mate',
+    atRiskSquare: 'g8',
+    prompt: 'Mate on e8 is coming — create an exit.',
+    solution: ['g7g6', 'h7h6', 'f7f6', 'f7f5', 'g8f8', 'g8h8'],
+    note: 'Make luft or step the king before Qe8#.',
+    expectedDropCp: 10000,
+  },
+  {
+    id: 'mate-05',
+    fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p1N1/2B1P3/8/PPPP1PPP/RNBQK2R b KQkq - 6 5',
+    sideToMove: 'b',
+    theme: 'missed_mate',
+    atRiskSquare: 'f7',
+    prompt: 'f7 is collapsing — defend before mate ideas land.',
+    solution: ['d8e7', 'e8g8', 'h7h6', 'd7d5', 'e8f8'],
+    note: 'Stop the Bxf7+/Q hits. Castle, Qe7, or h6.',
+    expectedDropCp: 500,
+  },
+  {
+    id: 'mate-06',
+    fen: '2k5/8/8/8/8/8/6R1/R5K1 b - - 0 1',
+    sideToMove: 'b',
+    theme: 'missed_mate',
+    atRiskSquare: 'c8',
+    prompt: 'Ladder mate net — run the king out if you can.',
+    solution: ['c8b8', 'c8d8', 'c8b7', 'c8c7', 'c8d7'],
+    note: 'Two rooks are mating. Keep fleeing toward open space.',
+    expectedDropCp: 10000,
+  },
+);
+
+function validate(d) {
+  let game;
+  try {
+    game = new Chess(d.fen);
+  } catch (e) {
+    return `bad fen: ${e.message}`;
+  }
+  if (game.turn() !== d.sideToMove) {
+    return `turn mismatch want ${d.sideToMove} got ${game.turn()}`;
+  }
+  const piece = game.get(/** @type {any} */ (d.atRiskSquare));
+  if (!piece) return `no piece on ${d.atRiskSquare}`;
+  // King counts for back-rank / mate drills; for hanging the piece should belong to side to move
+  if (piece.color !== d.sideToMove) return `atRisk piece wrong color`;
+  const legal = game.moves({ verbose: true }).map((m) => `${m.from}${m.to}${m.promotion ?? ''}`);
+  const ok = d.solution.some((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
+  if (!ok) {
+    return `no legal solution; sample: ${legal.slice(0, 12).join(',')}`;
+  }
+  // Filter solution list to only legal moves for cleanliness
+  d.solution = d.solution.filter((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
+  return null;
+}
+
+const cleaned = [];
+const errors = [];
+for (const d of drills) {
+  // dedupe by last occurrence of id
+}
+const byId = new Map();
+for (const d of drills) byId.set(d.id, d);
+for (const d of byId.values()) {
+  const err = validate(d);
+  if (err) errors.push(`${d.id}: ${err}`);
+  else cleaned.push(d);
+}
+
+if (errors.length) {
+  console.error('ERRORS:\n' + errors.join('\n'));
+  process.exit(1);
+}
+
+if (cleaned.length < 40) {
+  console.error(`Only ${cleaned.length} drills — need >= 40`);
+  process.exit(1);
+}
+
+fs.writeFileSync(
+  new URL('../src/data/beginner-blunders.json', import.meta.url),
+  JSON.stringify(cleaned, null, 2) + '\n',
+);
+console.log(`Wrote ${cleaned.length} drills`);

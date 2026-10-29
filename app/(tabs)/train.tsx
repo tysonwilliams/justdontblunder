@@ -58,7 +58,7 @@ export default function TrainScreen() {
     setScore((s) => ({ correct: s.correct + (ok ? 1 : 0), total: s.total + 1 }));
     markDrillResult(ok);
     setRound(ok ? 'correct' : 'miss');
-    setHighlights(ok ? [event.to] : [event.from, event.to]);
+    setHighlights(ok ? [event.to] : [event.from, event.to, drill.atRiskSquare]);
     return true;
   };
 
@@ -100,14 +100,19 @@ export default function TrainScreen() {
         fen={drill.fen}
         orientation={orientation}
         interactive={round === 'playing'}
-        highlightSquares={highlights}
+        attentionSquares={round === 'playing' ? [drill.atRiskSquare] : []}
+        highlightSquares={round === 'playing' ? [] : highlights}
         onMove={onMove}
       />
+
+      {round === 'playing' ? (
+        <Text style={styles.hint}>Soft highlight = your piece under fire. Save it.</Text>
+      ) : null}
 
       <BlunderOverlay
         visible={round !== 'playing'}
         tone={round === 'correct' ? 'success' : 'danger'}
-        title={round === 'correct' ? 'Nice save!' : 'Not that one'}
+        title={round === 'correct' ? 'Nice save!' : 'Still hanging'}
         message={drill.note}
         onDismiss={next}
       />
@@ -117,6 +122,7 @@ export default function TrainScreen() {
           style={styles.ghost}
           onPress={() => {
             setRound('miss');
+            setHighlights([drill.atRiskSquare]);
             markDrillResult(false);
             setScore((s) => ({ ...s, total: s.total + 1 }));
           }}>
@@ -149,6 +155,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     color: colors.text,
     fontSize: 24,
+  },
+  hint: {
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
   },
   sub: {
     fontFamily: fonts.body,
