@@ -12,11 +12,26 @@ export type ProgressState = {
   practiceMoves: number;
   habitTutorialDone: boolean;
   recordStreak: number;
+  bestPuzzleStreak: number;
+  missedDate: string | null;
+  missedIds: string[];
   markDrillResult: (correct: boolean) => void;
+  recordMiss: (drillId: string) => void;
+  clearMiss: (drillId: string) => void;
+  recordPuzzleRun: (length: number) => void;
   markPracticeMove: (avoidedBlunder: boolean, madeBlunder: boolean) => void;
   completeHabitTutorial: () => void;
   resetProgress: () => void;
 };
+
+export function missesForDate(
+  missedDate: string | null,
+  missedIds: string[],
+  today = todayKey(),
+): string[] {
+  if (missedDate !== today) return [];
+  return missedIds;
+}
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -54,6 +69,9 @@ export const useProgressStore = create<ProgressState>()(
       practiceMoves: 0,
       habitTutorialDone: false,
       recordStreak: 0,
+      bestPuzzleStreak: 0,
+      missedDate: null,
+      missedIds: [],
       markDrillResult: (correct) =>
         set((state) => {
           const streak = bumpStreak(state.lastDrillDate, state.dailyStreak);
@@ -66,6 +84,25 @@ export const useProgressStore = create<ProgressState>()(
             recordStreak: Math.max(state.recordStreak, streak.dailyStreak),
           };
         }),
+      recordMiss: (drillId) =>
+        set((state) => {
+          const today = todayKey();
+          const current = state.missedDate === today ? state.missedIds : [];
+          if (current.includes(drillId)) {
+            return { missedDate: today, missedIds: current };
+          }
+          return { missedDate: today, missedIds: [...current, drillId] };
+        }),
+      clearMiss: (drillId) =>
+        set((state) => {
+          const today = todayKey();
+          if (state.missedDate !== today) return { missedDate: today, missedIds: [] };
+          return { missedIds: state.missedIds.filter((id) => id !== drillId) };
+        }),
+      recordPuzzleRun: (length) =>
+        set((state) => ({
+          bestPuzzleStreak: Math.max(state.bestPuzzleStreak, length),
+        })),
       markPracticeMove: (avoidedBlunder, madeBlunder) =>
         set((state) => ({
           practiceMoves: state.practiceMoves + 1,
@@ -84,11 +121,24 @@ export const useProgressStore = create<ProgressState>()(
           practiceMoves: 0,
           habitTutorialDone: false,
           recordStreak: 0,
+          bestPuzzleStreak: 0,
+          missedDate: null,
+          missedIds: [],
         }),
     }),
     {
       name: 'jdb-progress-v1',
       storage: createJSONStorage(() => AsyncStorage),
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<ProgressState>;
+        return {
+          ...current,
+          ...saved,
+          bestPuzzleStreak: saved.bestPuzzleStreak ?? 0,
+          missedDate: saved.missedDate ?? null,
+          missedIds: saved.missedIds ?? [],
+        };
+      },
     },
   ),
 );

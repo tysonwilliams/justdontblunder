@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { detectPatterns, findHangingPieces } from '@/src/engine/patterns';
 import { isBlunder } from '@/src/engine/stockfish';
-import { getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
+import { createReviewSession, getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
+import { missesForDate } from '@/src/store/progress';
 
 function mateMoves(fen: string): string[] {
   const game = new Chess(fen);
@@ -119,6 +120,16 @@ describe('beginner fixtures', () => {
         expect(mates.length, `${drill.id} has no mate-in-1 threat`).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('builds a review from the ids missed today', () => {
+    expect(missesForDate('2026-10-28', ['hang-q-01'], '2026-10-29')).toEqual([]);
+    expect(missesForDate('2026-10-29', ['hang-q-01', 'mate-03'], '2026-10-29')).toEqual([
+      'hang-q-01',
+      'mate-03',
+    ]);
+    const session = createReviewSession(['hang-q-01', 'missing', 'mate-03']);
+    expect(session.positions.map((drill) => drill.id)).toEqual(['hang-q-01', 'mate-03']);
   });
 
   it('hanging queen on h5 accepts Qxe5 even if that move was left off the list', () => {

@@ -63,6 +63,19 @@ export function createDailySession(date = new Date(), count = 7): DrillSession {
   };
 }
 
+export function createReviewSession(ids: string[]): DrillSession {
+  const byId = new Map(ALL.map((drill) => [drill.id, drill]));
+  const positions = ids.flatMap((id) => {
+    const drill = byId.get(id);
+    return drill ? [drill] : [];
+  });
+  return {
+    id: `review-${ids.join('-')}`,
+    positions,
+    startedAt: new Date().toISOString(),
+  };
+}
+
 export function createThemeSession(theme: DrillTheme, count = 5): DrillSession {
   const filtered = ALL.filter((d) => d.theme === theme);
   const seeded = shuffleWithSeed(filtered, Date.now() % 100000);

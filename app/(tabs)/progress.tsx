@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
@@ -5,16 +6,20 @@ import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
-import { useProgressStore } from '@/src/store/progress';
+import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
 export default function ProgressScreen() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 520;
   const [confirmReset, setConfirmReset] = useState(false);
   const {
     dailyStreak,
     recordStreak,
+    bestPuzzleStreak,
+    missedDate,
+    missedIds,
     drillsCompleted,
     drillsCorrect,
     blundersAvoided,
@@ -24,6 +29,7 @@ export default function ProgressScreen() {
   } = useProgressStore();
 
   const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
+  const missCount = missesForDate(missedDate, missedIds).length;
 
   return (
     <Screen maxWidth={760}>
@@ -39,8 +45,18 @@ export default function ProgressScreen() {
         <Stat label="Saves" value={String(blundersAvoided)} wide={!compact} />
         <Stat label="Blunders" value={String(blundersMade)} wide={!compact} />
         <Stat label="Practice moves" value={String(practiceMoves)} wide={!compact} />
-        <Stat label="Best streak" value={String(recordStreak)} wide={!compact} />
+        <Stat label="Best day streak" value={String(recordStreak)} wide={!compact} />
+        <Stat label="Best run" value={String(bestPuzzleStreak)} wide={!compact} />
       </View>
+
+      <Button
+        label={missCount > 0 ? `Review today's misses (${missCount})` : 'No misses today'}
+        variant={missCount > 0 ? 'primary' : 'secondary'}
+        onPress={() => {
+          if (missCount === 0) return;
+          router.push('/train?review=1');
+        }}
+      />
 
       <Button label="Reset local progress" variant="secondary" onPress={() => setConfirmReset(true)} />
 
