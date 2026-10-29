@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ import {
 import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
-type RoundState = 'playing' | 'correct' | 'miss';
+type RoundState = 'playing' | 'correct' | 'retry' | 'revealed';
 
 export default function TrainScreen() {
   const insets = useSafeAreaInsets();
@@ -25,6 +25,8 @@ export default function TrainScreen() {
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
   const [highlights, setHighlights] = useState<Square[]>([]);
+  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
+  const [displayFen, setDisplayFen] = useState<string | null>(null);
   const [boardKey, setBoardKey] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0 });
 
@@ -36,29 +38,56 @@ export default function TrainScreen() {
     [drill?.sideToMove],
   );
 
+  useEffect(() => {
+    if (!drill) return;
+    setDisplayFen(drill.fen);
+    setRound('playing');
+    setHighlights([]);
+    setLastMove(null);
+  }, [drill?.id, drill?.fen]);
+
   const restart = () => {
     setSession(createDailySession());
     setIndex(0);
     setRound('playing');
     setHighlights([]);
+    setLastMove(null);
+    setDisplayFen(null);
     setScore({ correct: 0, total: 0 });
     setBoardKey((k) => k + 1);
   };
 
   const next = () => {
-    setRound('playing');
-    setHighlights([]);
     setIndex((i) => i + 1);
+    setBoardKey((k) => k + 1);
+  };
+
+  const tryAgain = () => {
+    if (!drill) return;
+    setDisplayFen(drill.fen);
+    setLastMove(null);
+    setHighlights([]);
+    setRound('playing');
     setBoardKey((k) => k + 1);
   };
 
   const onMove = (event: BoardMoveEvent) => {
     if (!drill || round !== 'playing') return false;
+
+    // Always show the piece on its destination.
+    setDisplayFen(event.afterFen);
+    setLastMove({ from: event.from, to: event.to });
+
     const ok = isCorrectDrillMove(drill, event.from, event.to);
-    setScore((s) => ({ correct: s.correct + (ok ? 1 : 0), total: s.total + 1 }));
-    markDrillResult(ok);
-    setRound(ok ? 'correct' : 'miss');
-    setHighlights(ok ? [event.to] : [event.from, event.to, drill.atRiskSquare]);
+    if (ok) {
+      setScore((s) => ({ correct: s.correct + 1, total: s.total + 1 }));
+      markDrillResult(true);
+      setRound('correct');
+      setHighlights([event.to]);
+    } else {
+      setRound('retry');
+      setHighlights([event.from, event.to, drill.atRiskSquare]);
+    }
     return true;
   };
 
@@ -81,6 +110,8 @@ export default function TrainScreen() {
 
   if (!drill) return null;
 
+  const boardFen = displayFen ?? drill.fen;
+
   return (
     <ScrollView
       style={styles.screen}
@@ -97,9 +128,10 @@ export default function TrainScreen() {
 
       <ChessBoard
         key={boardKey}
-        fen={drill.fen}
+        fen={boardFen}
         orientation={orientation}
         interactive={round === 'playing'}
+        lastMove={lastMove}
         attentionSquares={
           round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []
         }
@@ -112,10 +144,29 @@ export default function TrainScreen() {
       ) : null}
 
       <BlunderOverlay
-        visible={round !== 'playing'}
-        tone={round === 'correct' ? 'success' : 'danger'}
-        title={round === 'correct' ? 'Nice save!' : 'Still hanging'}
+        visible={round === 'correct'}
+        tone="success"
+        title="Nice save!"
         message={drill.note}
+        actionLabel="Got it"
+        onDismiss={next}
+      />
+
+      <BlunderOverlay
+        visible={round === 'retry'}
+        tone="danger"
+        title="Not quite"
+        message="That doesn't save your piece. Look again and try another move."
+        actionLabel="Try again"
+        onDismiss={tryAgain}
+      />
+
+      <BlunderOverlay
+        visible={round === 'revealed'}
+        tone="warn"
+        title="Here's the idea"
+        message={drill.note}
+        actionLabel="Got it"
         onDismiss={next}
       />
 
@@ -123,18 +174,26 @@ export default function TrainScreen() {
         <Pressable
           style={styles.ghost}
           onPress={() => {
-            setRound('miss');
+            setRound('revealed');
             setHighlights([drill.atRiskSquare]);
             markDrillResult(false);
             setScore((s) => ({ ...s, total: s.total + 1 }));
           }}>
           <Text style={styles.ghostText}>Show idea</Text>
         </Pressable>
-      ) : (
+      ) : null}
+
+      {round === 'correct' || round === 'revealed' ? (
         <Pressable style={styles.primary} onPress={next}>
           <Text style={styles.primaryText}>Next position</Text>
         </Pressable>
-      )}
+      ) : null}
+
+      {round === 'retry' ? (
+        <Pressable style={styles.primary} onPress={tryAgain}>
+          <Text style={styles.primaryText}>Try again</Text>
+        </Pressable>
+      ) : null}
     </ScrollView>
   );
 }

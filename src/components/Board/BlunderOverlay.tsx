@@ -16,6 +16,7 @@ type Props = {
   message: string;
   tone?: 'danger' | 'success' | 'warn';
   hint?: string;
+  actionLabel?: string;
   onDismiss?: () => void;
 };
 
@@ -25,6 +26,7 @@ export function BlunderOverlay({
   message,
   tone = 'danger',
   hint,
+  actionLabel = 'Got it',
   onDismiss,
 }: Props) {
   const scale = useSharedValue(0.9);
@@ -66,7 +68,7 @@ export function BlunderOverlay({
         </View>
         {onDismiss ? (
           <Pressable onPress={onDismiss} hitSlop={12} style={styles.dismiss}>
-            <Text style={styles.dismissText}>Got it</Text>
+            <Text style={styles.dismissText}>{actionLabel}</Text>
           </Pressable>
         ) : null}
       </View>
