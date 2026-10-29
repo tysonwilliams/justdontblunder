@@ -1,0 +1,422 @@
+[
+  {
+    "id": "hang-q-01",
+    "fen": "rnb1kbnr/pppp1ppp/8/4p3/4P2q/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Black's queen is loose. Can you grab it?",
+    "solution": ["f3h4"],
+    "note": "The queen on h4 is hanging — take it with the knight.",
+    "expectedDropCp": 900
+  },
+  {
+    "id": "hang-r-01",
+    "fen": "r3kbnr/ppp1pppp/2n5/3q4/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Something valuable is unprotected. Spot it.",
+    "solution": ["c3d5"],
+    "note": "The queen on d5 is unprotected — knight takes.",
+    "expectedDropCp": 800
+  },
+  {
+    "id": "hang-b-01",
+    "fen": "rnbqk1nr/pppp1ppp/8/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+    "sideToMove": "b",
+    "theme": "hanging",
+    "prompt": "White left a piece loose. What's hanging?",
+    "solution": ["c5f2"],
+    "note": "Bishop takes on f2 — the king and rook don't cover it well enough for free.",
+    "expectedDropCp": 200
+  },
+  {
+    "id": "hang-n-01",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Scholar pressure — crash through on f7.",
+    "solution": ["c4f7", "f3f7"],
+    "note": "Bxf7+ or Qxf7 are the classic beginner crashing ideas on f7.",
+    "expectedDropCp": 500
+  },
+  {
+    "id": "hang-p-01",
+    "fen": "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Central pawn hang? Capture if it's free.",
+    "solution": ["e4d5"],
+    "note": "exd5 wins a center pawn.",
+    "expectedDropCp": 100
+  },
+  {
+    "id": "fork-n-01",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+    "sideToMove": "w",
+    "theme": "fork",
+    "prompt": "Classic beginner fork. Hit two birds.",
+    "solution": ["c4f7"],
+    "note": "Bishop to f7 checks the king and eyes the rook/queen patterns — scholar-style pressure.",
+    "expectedDropCp": 400
+  },
+  {
+    "id": "fork-n-02",
+    "fen": "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+    "sideToMove": "w",
+    "theme": "fork",
+    "prompt": "Develop and threaten. Find a strong knight jump later — here take space with Nxe5 if tactically sound.",
+    "solution": ["f3e5"],
+    "note": "Knight takes e5 — if Black is careless the knight can fork next.",
+    "expectedDropCp": 100
+  },
+  {
+    "id": "fork-n-03",
+    "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+    "sideToMove": "w",
+    "theme": "fork",
+    "prompt": "Develop toward the center. Best developing move?",
+    "solution": ["f1c4", "f1b5"],
+    "note": "Develop a bishop; set up future forks and pins.",
+    "expectedDropCp": 50
+  },
+  {
+    "id": "fork-n-04",
+    "fen": "2rqk2r/pp1bbppp/2n1pn2/3p4/3P1B2/2NBPN2/PP3PPP/R2QK2R w KQ - 4 10",
+    "sideToMove": "w",
+    "theme": "fork",
+    "prompt": "Knights love outposts. Jump into a juicy square.",
+    "solution": ["f3e5", "c3b5"],
+    "note": "Knight into e5 or b5 creates dual threats.",
+    "expectedDropCp": 150
+  },
+  {
+    "id": "fork-q-01",
+    "fen": "rnb1kbnr/ppp1pppp/8/3q4/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 4",
+    "sideToMove": "w",
+    "theme": "fork",
+    "prompt": "Queen is centralized and soft. Kick or take?",
+    "solution": ["c3d5"],
+    "note": "Knight takes the queen — free lunch.",
+    "expectedDropCp": 900
+  },
+  {
+    "id": "pin-b-01",
+    "fen": "r1bqkbnr/ppp2ppp/2np4/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+    "sideToMove": "w",
+    "theme": "pin",
+    "prompt": "Pin the knight to the queen.",
+    "solution": ["c1g5"],
+    "note": "Bg5 pins the knight — a classic developing pin once d3 is played.",
+    "expectedDropCp": 50
+  },
+  {
+    "id": "pin-b-02",
+    "fen": "rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    "sideToMove": "w",
+    "theme": "pin",
+    "prompt": "Castle or pin? Find the pin on the knight.",
+    "solution": ["c1g5", "e1g1"],
+    "note": "Bg5 pins Nf6 to the queen.",
+    "expectedDropCp": 40
+  },
+  {
+    "id": "pin-r-01",
+    "fen": "r3kbnr/ppp1pppp/2n5/3q4/3P4/2N2Q2/PPP2PPP/R1B1KBNR b KQkq - 1 5",
+    "sideToMove": "b",
+    "theme": "pin",
+    "prompt": "Your queen is under fire. Don't hang it — retreat safely.",
+    "solution": ["d5a5", "d5d6", "d5d8"],
+    "note": "Move the queen off the loose square.",
+    "expectedDropCp": 800
+  },
+  {
+    "id": "pin-n-01",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 5",
+    "sideToMove": "w",
+    "theme": "pin",
+    "prompt": "Pin Black's knight before they castle.",
+    "solution": ["c1g5", "e1g1"],
+    "note": "Bg5 is the natural pin; castling is also solid.",
+    "expectedDropCp": 40
+  },
+  {
+    "id": "back-01",
+    "fen": "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "back_rank",
+    "prompt": "Back-rank mate. Finish it.",
+    "solution": ["e1e8"],
+    "note": "Re8# — classic back-rank mate.",
+    "expectedDropCp": 10000
+  },
+  {
+    "id": "back-02",
+    "fen": "3r2k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1",
+    "sideToMove": "b",
+    "theme": "back_rank",
+    "prompt": "Your back rank is soft. Create luft or trade.",
+    "solution": ["g7g6", "h7h6", "d8d1"],
+    "note": "Make an escape square or challenge the rook.",
+    "expectedDropCp": 500
+  },
+  {
+    "id": "back-03",
+    "fen": "6k1/3r1ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "back_rank",
+    "prompt": "Exploit the back rank.",
+    "solution": ["a1a8"],
+    "note": "Ra8# if the rook is undefended — check the geometry.",
+    "expectedDropCp": 10000
+  },
+  {
+    "id": "back-04",
+    "fen": "r5k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "back_rank",
+    "prompt": "Is there a back-rank shot?",
+    "solution": ["e1e8"],
+    "note": "Re8+ forces issues on the back rank.",
+    "expectedDropCp": 500
+  },
+  {
+    "id": "mate1-01",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+    "sideToMove": "w",
+    "theme": "missed_mate",
+    "prompt": "Scholar's mate is on. Finish it.",
+    "solution": ["h5f7"],
+    "note": "Qxf7# ends the game immediately — classic scholar's mate.",
+    "expectedDropCp": 10000
+  },
+  {
+    "id": "mate1-02",
+    "fen": "6k1/5ppp/8/8/8/8/4QPPP/6K1 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "missed_mate",
+    "prompt": "Mate in one. Find it.",
+    "solution": ["e2e8"],
+    "note": "Queen to e8 is checkmate on the open back rank.",
+    "expectedDropCp": 10000
+  },
+  {
+    "id": "mate1-03",
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+    "sideToMove": "b",
+    "theme": "missed_mate",
+    "prompt": "Punish the weakened king diagonal.",
+    "solution": ["d8h4"],
+    "note": "Qh4# — Fool's mate pattern.",
+    "expectedDropCp": 10000
+  },
+  {
+    "id": "mate1-04",
+    "fen": "2k5/8/8/8/8/8/6R1/R5K1 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "missed_mate",
+    "prompt": "Two rooks vs lonely king — mate now.",
+    "solution": ["a1a8", "g2g8"],
+    "note": "Ladder mate on the 8th rank.",
+    "expectedDropCp": 10000
+  },
+  {
+    "id": "hang-q-02",
+    "fen": "rnb1kbnr/pppppppp/8/8/4P2q/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Early queen excursion. Kick it or develop.",
+    "solution": ["d1e2", "b1c3", "g1f3", "d2d4"],
+    "note": "Don't panic — develop and the queen will lose tempi.",
+    "expectedDropCp": 50
+  },
+  {
+    "id": "hang-r-02",
+    "fen": "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "King and rook endgame basics — capture the hanging rook?",
+    "solution": ["e1e2"],
+    "note": "King takes the unprotected rook.",
+    "expectedDropCp": 500
+  },
+  {
+    "id": "hang-b-02",
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/2B5/8/PPPPPPPP/RNBQK1NR b KQkq - 1 2",
+    "sideToMove": "b",
+    "theme": "hanging",
+    "prompt": "Is the bishop on c4 hanging? Decide.",
+    "solution": ["b8c6", "g8f6", "d7d5"],
+    "note": "It's defended by ideas later; develop instead of grabbing ghosts.",
+    "expectedDropCp": 0
+  },
+  {
+    "id": "fork-p-01",
+    "fen": "rnbqkbnr/ppp1pppp/8/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2",
+    "sideToMove": "b",
+    "theme": "fork",
+    "prompt": "Center tension. Capture or push?",
+    "solution": ["d5e4", "e7e6", "c7c5"],
+    "note": "Resolve the center thoughtfully.",
+    "expectedDropCp": 30
+  },
+  {
+    "id": "fork-n-05",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 4",
+    "sideToMove": "b",
+    "theme": "fork",
+    "prompt": "White pushed d4. Capture correctly.",
+    "solution": ["e5d4", "d7d6", "f6e4"],
+    "note": "exd4 is the standard reply.",
+    "expectedDropCp": 40
+  },
+  {
+    "id": "pin-b-03",
+    "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5",
+    "sideToMove": "w",
+    "theme": "pin",
+    "prompt": "Italian Game — pin or castle?",
+    "solution": ["c1g5", "e1g1", "c2c3"],
+    "note": "Bg5 pin or castle are both fine beginner plans.",
+    "expectedDropCp": 30
+  },
+  {
+    "id": "hang-n-02",
+    "fen": "r1bqkb1r/pppp1ppp/2n5/4p3/4n3/3P1N2/PPP2PPP/RNBQKB1R w KQkq - 0 5",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Black's knight sat on e4. Is it safe?",
+    "solution": ["d3e4", "f3e5"],
+    "note": "dxe4 wins the knight if unsupported.",
+    "expectedDropCp": 300
+  },
+  {
+    "id": "hang-q-03",
+    "fen": "rnb1kbnr/pppp1ppp/8/4p3/3PP2q/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Queen checks from h4. Block or capture ideas?",
+    "solution": ["d1e2", "b1c3", "g1f3"],
+    "note": "Block with a piece; don't hang material answering the check.",
+    "expectedDropCp": 50
+  },
+  {
+    "id": "fork-n-06",
+    "fen": "r2qkb1r/pppb1ppp/2n1pn2/3p4/3P1B2/2N1PN2/PP3PPP/R2QKB1R w KQkq - 2 8",
+    "sideToMove": "w",
+    "theme": "fork",
+    "prompt": "Find a forceful knight leap.",
+    "solution": ["c3b5", "f3e5"],
+    "note": "Nb5 or Ne5 creates dual threats on c7/d7 complexes.",
+    "expectedDropCp": 120
+  },
+  {
+    "id": "back-05",
+    "fen": "3r2k1/5p1p/6p1/8/8/8/5PPP/4R1K1 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "back_rank",
+    "prompt": "Black made luft. Is back-rank still on?",
+    "solution": ["e1e8", "e1d1"],
+    "note": "With g6 played, e8 is not mate — trade or improve instead.",
+    "expectedDropCp": 0
+  },
+  {
+    "id": "hang-r-03",
+    "fen": "r3k2r/ppp2ppp/2n5/3q4/3P4/2N5/PPP2PPP/R2QKBNR w KQkq - 0 8",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Centralized queen again. Capture if free.",
+    "solution": ["c3d5", "d1d5"],
+    "note": "Take the queen if it's hanging.",
+    "expectedDropCp": 900
+  },
+  {
+    "id": "pin-b-04",
+    "fen": "rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 0 4",
+    "sideToMove": "w",
+    "theme": "pin",
+    "prompt": "Queen's Gambit structure — develop with a pin idea.",
+    "solution": ["c1g5", "b1c3", "e2e3"],
+    "note": "Bg5 pins Nf6 in many QG lines.",
+    "expectedDropCp": 30
+  },
+  {
+    "id": "mate1-05",
+    "fen": "4k3/8/8/8/8/8/4Q3/4K3 w - - 0 1",
+    "sideToMove": "w",
+    "theme": "missed_mate",
+    "prompt": "Queen and king vs king — force mate ideas.",
+    "solution": ["e2e5", "e2a6", "e2h5", "e2b5"],
+    "note": "Shrink the box; don't stalemate.",
+    "expectedDropCp": 200
+  },
+  {
+    "id": "hang-p-02",
+    "fen": "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Symmetrical center. Develop before grabbing.",
+    "solution": ["c2c4", "g1f3", "b1c3", "e2e4"],
+    "note": "c4 challenges the d5 pawn the right way.",
+    "expectedDropCp": 20
+  },
+  {
+    "id": "fork-n-07",
+    "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R b KQkq - 0 5",
+    "sideToMove": "b",
+    "theme": "fork",
+    "prompt": "Castle or hit the center?",
+    "solution": ["e8g8", "d7d6", "d7d5"],
+    "note": "Castle is safest; don't leave the king in the center.",
+    "expectedDropCp": 40
+  },
+  {
+    "id": "hang-q-04",
+    "fen": "rnb1kb1r/pppp1ppp/5n2/4p3/3PP2q/5N2/PPP2PPP/RNBQKB1R w KQkq - 1 4",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "prompt": "Queen on h4 looks scary. Is it hanging?",
+    "solution": ["f3h4", "b1c3", "f1e2"],
+    "note": "Nxh4 wins the queen if unprotected.",
+    "expectedDropCp": 900
+  },
+  {
+    "id": "back-06",
+    "fen": "6k1/5ppp/8/8/8/5n2/5PPP/4R1K1 b - - 0 1",
+    "sideToMove": "b",
+    "theme": "back_rank",
+    "prompt": "White threatens the back rank. Defend.",
+    "solution": ["f3e1", "g8f8", "g7g6", "h7h6"],
+    "note": "Take the rook or make luft.",
+    "expectedDropCp": 500
+  },
+  {
+    "id": "fork-n-08",
+    "fen": "rnbqkb1r/ppp2ppp/4pn2/3p4/3P4/2N2N2/PPP1PPPP/R1BQKB1R w KQkq - 0 4",
+    "sideToMove": "w",
+    "theme": "fork",
+    "prompt": "Continue developing toward an outpost.",
+    "solution": ["c1g5", "e2e3", "c1f4"],
+    "note": "Develop bishops; look for Ne5 later.",
+    "expectedDropCp": 30
+  },
+  {
+    "id": "hang-b-03",
+    "fen": "rnbqk2r/pppp1ppp/5n2/2b5/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4",
+    "sideToMove": "b",
+    "theme": "hanging",
+    "prompt": "Both bishops eye f2/f7. Castle first?",
+    "solution": ["e8g8", "d7d6", "b8c6"],
+    "note": "Castle before tactics get wild.",
+    "expectedDropCp": 40
+  },
+  {
+    "id": "mate1-06",
+    "fen": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3",
+    "sideToMove": "b",
+    "theme": "missed_mate",
+    "prompt": "Scholar's mate threat on f7. Stop it.",
+    "solution": ["g8f6", "d8e7", "g7g6"],
+    "note": "Nf6 or Qe7 defends f7.",
+    "expectedDropCp": 900
+  }
+]
