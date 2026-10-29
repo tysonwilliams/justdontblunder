@@ -39,6 +39,17 @@ export default function ProgressScreen() {
 
       <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
 
+      <View style={styles.badges}>
+        {badgeList(dailyStreak, recordStreak, bestPuzzleStreak, blundersAvoided).map((badge) => (
+          <View
+            key={badge.title}
+            style={[styles.badge, badge.earned ? styles.badgeOn : styles.badgeOff]}>
+            <Text style={[styles.badgeTitle, !badge.earned && styles.badgeTitleOff]}>{badge.title}</Text>
+            <Text style={styles.badgeDetail}>{badge.detail}</Text>
+          </View>
+        ))}
+      </View>
+
       <View style={styles.grid}>
         <Stat label="Drills done" value={String(drillsCompleted)} wide={!compact} />
         <Stat label="Accuracy" value={`${accuracy}%`} wide={!compact} />
@@ -54,7 +65,7 @@ export default function ProgressScreen() {
         variant={missCount > 0 ? 'primary' : 'secondary'}
         onPress={() => {
           if (missCount === 0) return;
-          router.push('/train?review=1');
+          router.push('/learn?review=1');
         }}
       />
 
@@ -77,6 +88,22 @@ export default function ProgressScreen() {
       </Dialog>
     </Screen>
   );
+}
+
+function badgeList(
+  dailyStreak: number,
+  recordStreak: number,
+  bestPuzzleStreak: number,
+  saves: number,
+): { title: string; detail: string; earned: boolean }[] {
+  const days = Math.max(dailyStreak, recordStreak);
+  return [
+    { title: 'First save', detail: 'Save a piece', earned: saves >= 1 },
+    { title: 'On a roll', detail: '3-day streak', earned: days >= 3 },
+    { title: 'Week', detail: '7-day streak', earned: days >= 7 },
+    { title: 'Hot run', detail: '5 in a row', earned: bestPuzzleStreak >= 5 },
+    { title: 'Flawless', detail: '10 in a row', earned: bestPuzzleStreak >= 10 },
+  ];
 }
 
 function Stat({ label, value, wide }: { label: string; value: string; wide: boolean }) {
@@ -107,6 +134,41 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 15,
     marginBottom: spacing.xs,
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  badge: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: 108,
+  },
+  badgeOn: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  badgeOff: {
+    borderColor: colors.border,
+    backgroundColor: colors.bgElevated,
+    opacity: 0.45,
+  },
+  badgeTitle: {
+    fontFamily: fonts.bodyExtra,
+    color: colors.text,
+    fontSize: 14,
+  },
+  badgeTitleOff: {
+    color: colors.textMuted,
+  },
+  badgeDetail: {
+    marginTop: 2,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    fontSize: 12,
   },
   grid: {
     flexDirection: 'row',

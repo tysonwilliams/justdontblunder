@@ -40,7 +40,7 @@ Native iOS/Android use the same UI; Stockfish falls back to a stub until a nativ
 ## Project layout
 
 ```
-app/(tabs)/          Home, Train, Practice, Progress
+app/(tabs)/          Home, Learn, Drills, Practice, Progress
 src/components/      Board, habit checklist, streak badge
 src/engine/          Stockfish wrapper, eval merge, patterns
 src/logic/           chess.js helpers, drills

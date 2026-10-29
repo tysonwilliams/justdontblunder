@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { Square } from 'chess.js';
@@ -15,18 +15,18 @@ import {
   isCorrectDrillMove,
   themeLabel,
   type DrillPosition,
-  type DrillSession,
+  type DrillSession as DrillSessionData,
   type DrillTheme,
 } from '@/src/logic/drills';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
-type TrainMode = 'learn' | 'streak';
-type TrainSet = 'daily' | DrillTheme;
+type SessionMode = 'learn' | 'streak';
+type SessionSet = 'daily' | DrillTheme;
 
-const SETS: { id: TrainSet; label: string }[] = [
-  { id: 'daily', label: 'Daily' },
+const SETS: { id: SessionSet; label: string }[] = [
+  { id: 'daily', label: 'All' },
   { id: 'hanging', label: 'Hanging' },
   { id: 'fork', label: 'Fork' },
   { id: 'pin', label: 'Pin' },
@@ -34,17 +34,21 @@ const SETS: { id: TrainSet; label: string }[] = [
   { id: 'missed_mate', label: 'Mate' },
 ];
 
-function sessionFor(set: TrainSet): DrillSession {
+function sessionFor(set: SessionSet): DrillSessionData {
   if (set === 'daily') return createDailySession();
   return createThemeSession(set);
 }
 
-export default function TrainScreen() {
+type Props = {
+  mode: SessionMode;
+  reviewing?: boolean;
+};
+
+export function DrillSession({ mode, reviewing = false }: Props) {
   const { width } = useWindowDimensions();
   const wide = boardStageIsWide(width);
   const router = useRouter();
-  const params = useLocalSearchParams<{ review?: string }>();
-  const reviewing = params.review === '1';
+  const learn = mode === 'learn';
 
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
@@ -54,9 +58,8 @@ export default function TrainScreen() {
   const missedDate = useProgressStore((s) => s.missedDate);
   const missedIds = useProgressStore((s) => s.missedIds);
 
-  const [setId, setSetId] = useState<TrainSet>('daily');
-  const [mode, setMode] = useState<TrainMode>('learn');
-  const [session, setSession] = useState<DrillSession>(() => createDailySession());
+  const [setId, setSetId] = useState<SessionSet>('daily');
+  const [session, setSession] = useState<DrillSessionData>(() => createDailySession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
   const [highlights, setHighlights] = useState<Square[]>([]);
@@ -68,7 +71,6 @@ export default function TrainScreen() {
   const runRecorded = useRef(false);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
 
-  const learn = mode === 'learn';
   const drill: DrillPosition | undefined = session.positions[index];
   const done = index >= session.positions.length;
 
@@ -85,9 +87,8 @@ export default function TrainScreen() {
     setBoardKey((k) => k + 1);
   };
 
-  const begin = (nextSession: DrillSession, nextMode: TrainMode) => {
+  const begin = (nextSession: DrillSessionData) => {
     runRecorded.current = false;
-    setMode(nextMode);
     setSession(nextSession);
     setIndex(0);
     setScore({ correct: 0, total: 0 });
@@ -109,7 +110,7 @@ export default function TrainScreen() {
     }
     if (!hydrated || reviewStarted.current) return;
     reviewStarted.current = true;
-    begin(createReviewSession(missesForDate(missedDate, missedIds)), 'learn');
+    begin(createReviewSession(missesForDate(missedDate, missedIds)));
   }, [reviewing, hydrated, missedDate, missedIds]);
 
   useEffect(() => {
@@ -126,22 +127,16 @@ export default function TrainScreen() {
     recordPuzzleRun(score.correct);
   }, [done, mode, recordPuzzleRun, score.correct]);
 
-  const chooseSet = (next: TrainSet) => {
+  const chooseSet = (next: SessionSet) => {
     if (reviewing) {
       router.setParams({ review: '' });
     }
     setSetId(next);
-    begin(sessionFor(next), mode === 'streak' && !reviewing ? 'streak' : 'learn');
-  };
-
-  const chooseMode = (next: TrainMode) => {
-    if (reviewing) return;
-    setMode(next);
-    begin(sessionFor(setId), next);
+    begin(sessionFor(next));
   };
 
   const restart = () => {
-    begin(reviewing ? createReviewSession(missesForDate(missedDate, missedIds)) : sessionFor(setId), mode);
+    begin(reviewing ? createReviewSession(missesForDate(missedDate, missedIds)) : sessionFor(setId));
   };
 
   const next = () => {
@@ -195,24 +190,14 @@ export default function TrainScreen() {
     return true;
   };
 
-  const endStreak = () => {
-    begin(sessionFor(setId), 'streak');
-  };
-
   if (done) {
     const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
     const emptyReview = reviewing && session.positions.length === 0;
     return (
       <Screen maxWidth={wide ? 980 : 560}>
-        <SetBar
-          setId={setId}
-          mode={mode}
-          reviewing={reviewing}
-          onSet={chooseSet}
-          onMode={chooseMode}
-        />
+        <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
         <View style={styles.doneCard}>
-          <Text style={styles.eyebrow}>{mode === 'streak' ? 'Streak' : 'Session'}</Text>
+          <Text style={styles.eyebrow}>{mode === 'streak' ? 'Drills' : 'Learn'}</Text>
           <Text style={styles.heading}>
             {emptyReview ? 'Nothing to review' : mode === 'streak' ? 'Clean run' : "That's the set"}
           </Text>
@@ -230,7 +215,7 @@ export default function TrainScreen() {
               </Text>
             </>
           )}
-          <Button label={mode === 'streak' ? 'Run again' : 'Train again'} onPress={restart} />
+          <Button label={mode === 'streak' ? 'Run again' : 'Learn again'} onPress={restart} />
         </View>
       </Screen>
     );
@@ -243,13 +228,7 @@ export default function TrainScreen() {
 
   return (
     <Screen maxWidth={wide ? 980 : 560}>
-      <SetBar
-        setId={setId}
-        mode={mode}
-        reviewing={reviewing}
-        onSet={chooseSet}
-        onMode={chooseMode}
-      />
+      <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
       <View style={styles.metaRow}>
         <Text style={styles.chip}>
           {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
@@ -332,7 +311,7 @@ export default function TrainScreen() {
                 title="Streak over"
                 message={`${score.correct} in a row. ${drill.note}`}
                 actionLabel="Done"
-                onDismiss={endStreak}
+                onDismiss={() => begin(sessionFor(setId))}
               />
             </>
           )
@@ -344,58 +323,35 @@ export default function TrainScreen() {
 
 function SetBar({
   setId,
-  mode,
   reviewing,
   onSet,
-  onMode,
 }: {
-  setId: TrainSet;
-  mode: TrainMode;
+  setId: SessionSet;
   reviewing: boolean;
-  onSet: (set: TrainSet) => void;
-  onMode: (mode: TrainMode) => void;
+  onSet: (set: SessionSet) => void;
 }) {
   if (reviewing) {
     return <Text style={styles.reviewLabel}>Reviewing today's misses</Text>;
   }
   return (
-    <View style={styles.picker}>
-      <View style={styles.chips}>
-        {SETS.map((set) => {
-          const on = set.id === setId;
-          return (
-            <Pressable
-              key={set.id}
-              accessibilityRole="button"
-              onPress={() => onSet(set.id)}
-              style={[styles.pick, on && styles.pickOn]}>
-              <Text style={[styles.pickText, on && styles.pickTextOn]}>{set.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <View style={styles.chips}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onMode('learn')}
-          style={[styles.pick, mode === 'learn' && styles.pickOn]}>
-          <Text style={[styles.pickText, mode === 'learn' && styles.pickTextOn]}>Learn</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onMode('streak')}
-          style={[styles.pick, mode === 'streak' && styles.pickOn]}>
-          <Text style={[styles.pickText, mode === 'streak' && styles.pickTextOn]}>Streak</Text>
-        </Pressable>
-      </View>
+    <View style={styles.chips}>
+      {SETS.map((set) => {
+        const on = set.id === setId;
+        return (
+          <Pressable
+            key={set.id}
+            accessibilityRole="button"
+            onPress={() => onSet(set.id)}
+            style={[styles.pick, on && styles.pickOn]}>
+            <Text style={[styles.pickText, on && styles.pickTextOn]}>{set.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  picker: {
-    gap: spacing.sm,
-  },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',

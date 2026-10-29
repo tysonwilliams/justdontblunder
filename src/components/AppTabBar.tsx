@@ -1,12 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 
-import { IconBoard, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
+import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
 import { colors, fonts } from '@/src/theme';
 
 const ICONS = {
   index: IconHome,
-  train: IconTrain,
+  learn: IconTrain,
+  drills: IconDrill,
   practice: IconBoard,
   progress: IconProgress,
 } as const;

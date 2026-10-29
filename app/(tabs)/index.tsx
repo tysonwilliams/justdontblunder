@@ -30,9 +30,9 @@ export default function HomeScreen() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => router.push('/train')}
+        onPress={() => router.push('/learn')}
         style={({ pressed }) => [styles.primary, pressed && styles.primaryOn]}>
-        <Text style={styles.primaryText}>Start daily drills</Text>
+        <Text style={styles.primaryText}>Start learning</Text>
         <Text style={styles.primarySub}>About 5 minutes · save the piece under fire</Text>
       </Pressable>
 

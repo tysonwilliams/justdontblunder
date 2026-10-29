@@ -31,6 +31,19 @@ export function IconTrain({ color, size = 22 }: IconProps) {
   );
 }
 
+export function IconDrill({ color, size = 22 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M13 3 6 13h5l-1 8 8-12h-5l0-6Z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function IconBoard({ color, size = 22 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

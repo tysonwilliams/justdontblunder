@@ -19,7 +19,8 @@ export default function TabLayout() {
         tabBarPosition: wide ? 'top' : 'bottom',
       }}>
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="train" options={{ title: 'Train' }} />
+      <Tabs.Screen name="learn" options={{ title: 'Learn' }} />
+      <Tabs.Screen name="drills" options={{ title: 'Drills' }} />
       <Tabs.Screen name="practice" options={{ title: 'Practice' }} />
       <Tabs.Screen name="progress" options={{ title: 'Progress' }} />
     </Tabs>
