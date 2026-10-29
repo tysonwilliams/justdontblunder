@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
@@ -17,7 +17,7 @@ const ITEMS: { key: HabitKey; label: string; hint: string }[] = [
   { key: 'checks', label: 'Checks', hint: 'Can they check you?' },
   { key: 'captures', label: 'Captures', hint: 'What can they take?' },
   { key: 'threats', label: 'Threats', hint: 'Forks, pins, mates?' },
-  { key: 'hanging', label: 'Hanging?', hint: 'Did you leave anything loose?' },
+  { key: 'hanging', label: 'Hanging?', hint: 'Anything of yours loose?' },
 ];
 
 type Props = {
@@ -31,6 +31,8 @@ export function habitsComplete(value: HabitState): boolean {
 }
 
 export function HabitChecklist({ value, onChange, required = false }: Props) {
+  const { width } = useWindowDimensions();
+  const stacked = width < 460;
   const done = habitsComplete(value);
 
   return (
@@ -38,7 +40,7 @@ export function HabitChecklist({ value, onChange, required = false }: Props) {
       <View style={styles.header}>
         <Text style={styles.title}>Before you move</Text>
         <Text style={[styles.badge, done && styles.badgeDone]}>
-          {done ? 'Ready' : required ? 'Check all' : 'Quick scan'}
+          {done ? 'Ready' : required ? 'Check all four' : 'Quick scan'}
         </Text>
       </View>
       <View style={styles.grid}>
@@ -47,11 +49,20 @@ export function HabitChecklist({ value, onChange, required = false }: Props) {
           return (
             <Pressable
               key={item.key}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
               onPress={() => onChange({ ...value, [item.key]: !on })}
-              style={[styles.chip, on && styles.chipOn]}>
-              <Text style={[styles.chipMark, on && styles.chipMarkOn]}>{on ? '✓' : '○'}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.chipLabel, on && styles.chipLabelOn]}>{item.label}</Text>
+              style={(state) => [
+                styles.chip,
+                stacked ? styles.chipFull : styles.chipHalf,
+                on && styles.chipOn,
+                state.pressed && styles.chipPressed,
+              ]}>
+              <View style={[styles.box, on && styles.boxOn]}>
+                <Text style={[styles.boxMark, on && styles.boxMarkOn]}>{on ? '✓' : ''}</Text>
+              </View>
+              <View style={styles.copy}>
+                <Text style={styles.chipLabel}>{item.label}</Text>
                 <Text style={styles.chipHint}>{item.hint}</Text>
               </View>
             </Pressable>
@@ -70,6 +81,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: spacing.sm,
   },
   title: {
     fontFamily: fonts.bodyBold,
@@ -80,7 +92,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 12,
     color: colors.warn,
-    backgroundColor: 'rgba(245,197,66,0.14)',
+    backgroundColor: colors.warnSoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: radii.pill,
@@ -91,6 +103,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successSoft,
   },
   grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   chip: {
@@ -102,28 +116,53 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radii.md,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    cursor: 'pointer',
+  },
+  chipHalf: {
+    width: '48%',
+    flexGrow: 1,
+    minWidth: 160,
+  },
+  chipFull: {
+    width: '100%',
   },
   chipOn: {
     borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
   },
-  chipMark: {
-    fontFamily: fonts.bodyExtra,
-    fontSize: 16,
-    color: colors.textDim,
-    width: 22,
+  chipPressed: {
+    opacity: 0.85,
   },
-  chipMarkOn: {
-    color: colors.accent,
+  box: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxOn: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  boxMark: {
+    fontFamily: fonts.bodyExtra,
+    fontSize: 13,
+    color: colors.accentText,
+    lineHeight: 16,
+  },
+  boxMarkOn: {
+    color: colors.accentText,
+  },
+  copy: {
+    flex: 1,
   },
   chipLabel: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
     fontSize: 14,
-  },
-  chipLabelOn: {
-    color: colors.accent,
   },
   chipHint: {
     fontFamily: fonts.body,

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
+import { Button } from '@/src/components/ui/Button';
+import { Screen } from '@/src/components/ui/Screen';
 import {
   createDailySession,
   isCorrectDrillMove,
@@ -18,7 +19,6 @@ import { colors, fonts, radii, spacing } from '@/src/theme';
 type RoundState = 'playing' | 'correct' | 'retry' | 'revealed';
 
 export default function TrainScreen() {
-  const insets = useSafeAreaInsets();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
 
   const [session, setSession] = useState<DrillSession>(() => createDailySession());
@@ -74,7 +74,6 @@ export default function TrainScreen() {
   const onMove = (event: BoardMoveEvent) => {
     if (!drill || round !== 'playing') return false;
 
-    // Always show the piece on its destination.
     setDisplayFen(event.afterFen);
     setLastMove({ from: event.from, to: event.to });
 
@@ -94,37 +93,37 @@ export default function TrainScreen() {
   if (done) {
     const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
     return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}>
-        <Text style={styles.heading}>Session complete</Text>
-        <Text style={styles.sub}>
-          {score.correct}/{score.total} correct · {pct}%
-        </Text>
-        <Pressable style={styles.primary} onPress={restart}>
-          <Text style={styles.primaryText}>Train again</Text>
-        </Pressable>
-      </ScrollView>
+      <Screen>
+        <View style={styles.doneCard}>
+          <Text style={styles.eyebrow}>Session</Text>
+          <Text style={styles.heading}>That's the set</Text>
+          <Text style={styles.score}>
+            {score.correct}/{score.total}
+          </Text>
+          <Text style={styles.sub}>{pct}% saved on the first try</Text>
+          <Button label="Train again" onPress={restart} />
+        </View>
+      </Screen>
     );
   }
 
   if (!drill) return null;
 
   const boardFen = displayFen ?? drill.fen;
+  const progress = (index + (round === 'playing' ? 0 : 1)) / session.positions.length;
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl },
-      ]}>
-      <View style={styles.top}>
-        <Text style={styles.kicker}>
-          Drill {index + 1}/{session.positions.length} · {themeLabel(drill.theme)}
+    <Screen maxWidth={560}>
+      <View style={styles.metaRow}>
+        <Text style={styles.chip}>{themeLabel(drill.theme)}</Text>
+        <Text style={styles.count}>
+          {index + 1} / {session.positions.length}
         </Text>
-        <Text style={styles.heading}>{drill.prompt}</Text>
       </View>
+      <View style={styles.track}>
+        <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
+      </View>
+      <Text style={styles.heading}>{drill.prompt}</Text>
 
       <ChessBoard
         key={boardKey}
@@ -132,23 +131,33 @@ export default function TrainScreen() {
         orientation={orientation}
         interactive={round === 'playing'}
         lastMove={lastMove}
-        attentionSquares={
-          round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []
-        }
+        attentionSquares={round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []}
         highlightSquares={round === 'playing' ? [] : highlights}
         onMove={onMove}
       />
 
       {round === 'playing' ? (
-        <Text style={styles.hint}>Soft highlight = your piece under fire. Save it.</Text>
+        <>
+          <Text style={styles.hint}>The marked square is yours and under fire. Save it.</Text>
+          <Button
+            label="Show the idea"
+            variant="secondary"
+            onPress={() => {
+              setRound('revealed');
+              setHighlights([drill.atRiskSquare]);
+              markDrillResult(false);
+              setScore((s) => ({ ...s, total: s.total + 1 }));
+            }}
+          />
+        </>
       ) : null}
 
       <BlunderOverlay
         visible={round === 'correct'}
         tone="success"
-        title="Nice save!"
+        title="Nice save"
         message={drill.note}
-        actionLabel="Got it"
+        actionLabel="Next"
         onDismiss={next}
       />
 
@@ -166,85 +175,86 @@ export default function TrainScreen() {
         tone="warn"
         title="Here's the idea"
         message={drill.note}
-        actionLabel="Got it"
+        actionLabel="Next"
         onDismiss={next}
       />
-
-      {round === 'playing' ? (
-        <Pressable
-          style={styles.ghost}
-          onPress={() => {
-            setRound('revealed');
-            setHighlights([drill.atRiskSquare]);
-            markDrillResult(false);
-            setScore((s) => ({ ...s, total: s.total + 1 }));
-          }}>
-          <Text style={styles.ghostText}>Show idea</Text>
-        </Pressable>
-      ) : null}
-
-      {round === 'correct' || round === 'revealed' ? (
-        <Pressable style={styles.primary} onPress={next}>
-          <Text style={styles.primaryText}>Next position</Text>
-        </Pressable>
-      ) : null}
-
-      {round === 'retry' ? (
-        <Pressable style={styles.primary} onPress={tryAgain}>
-          <Text style={styles.primaryText}>Try again</Text>
-        </Pressable>
-      ) : null}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.md,
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  top: { gap: 6 },
-  kicker: {
+  chip: {
     fontFamily: fonts.bodyBold,
     color: colors.accent,
-    fontSize: 13,
+    fontSize: 12,
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    backgroundColor: colors.accentSoft,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+  },
+  count: {
+    fontFamily: fonts.bodyBold,
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  track: {
+    height: 4,
+    borderRadius: 99,
+    backgroundColor: colors.bgSoft,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: 4,
+    backgroundColor: colors.accent,
   },
   heading: {
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 24,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.4,
   },
   hint: {
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
+  },
+  doneCard: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    alignItems: 'stretch',
+  },
+  eyebrow: {
+    fontFamily: fonts.bodyBold,
+    color: colors.accent,
+    fontSize: 12,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+  },
+  score: {
+    fontFamily: fonts.display,
+    color: colors.text,
+    fontSize: 56,
+    letterSpacing: -1,
   },
   sub: {
     fontFamily: fonts.body,
     color: colors.textMuted,
     fontSize: 16,
-  },
-  primary: {
-    backgroundColor: colors.accent,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  primaryText: {
-    fontFamily: fonts.bodyExtra,
-    color: '#042016',
-    fontSize: 16,
-  },
-  ghost: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  ghostText: {
-    fontFamily: fonts.bodyBold,
-    color: colors.textMuted,
+    marginBottom: spacing.sm,
   },
 });

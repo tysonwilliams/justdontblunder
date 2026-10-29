@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
@@ -11,13 +10,14 @@ import {
   habitsComplete,
   type HabitState,
 } from '@/src/components/HabitChecklist';
+import { Button } from '@/src/components/ui/Button';
+import { Screen } from '@/src/components/ui/Screen';
 import { quickPatternFeedback, type MoveFeedback } from '@/src/engine/evaluate';
 import { createGame } from '@/src/logic/game';
 import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
 export default function PracticeScreen() {
-  const insets = useSafeAreaInsets();
   const habitTutorialDone = useProgressStore((s) => s.habitTutorialDone);
   const completeHabitTutorial = useProgressStore((s) => s.completeHabitTutorial);
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
@@ -46,7 +46,7 @@ export default function PracticeScreen() {
 
   const onMove = (event: BoardMoveEvent) => {
     if (requireHabits && !habitsComplete(habits)) {
-      setGateMessage('Tap the Checks / Captures / Threats / Hanging checklist first.');
+      setGateMessage('Tap Checks, Captures, Threats, and Hanging before the move counts.');
       setPending(event);
       return false;
     }
@@ -81,15 +81,11 @@ export default function PracticeScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl },
-      ]}>
-      <Text style={styles.heading}>Practice sandbox</Text>
+    <Screen maxWidth={560}>
+      <Text style={styles.eyebrow}>Sandbox</Text>
+      <Text style={styles.heading}>Practice board</Text>
       <Text style={styles.sub}>
-        Move both sides. Run the habit checklist, then see if anything is hanging.
+        Move both sides. Run the habit checklist, then see if anything you own is hanging.
       </Text>
 
       <ChessBoard
@@ -102,13 +98,13 @@ export default function PracticeScreen() {
 
       <HabitChecklist value={habits} onChange={setHabits} required={requireHabits} />
 
-      {gateMessage ? <Text style={styles.gate}>{gateMessage}</Text> : null}
-
-      {pending ? (
-        <Pressable style={styles.primary} onPress={confirmPending}>
-          <Text style={styles.primaryText}>Confirm move {pending.san}</Text>
-        </Pressable>
+      {gateMessage ? (
+        <View style={styles.gate}>
+          <Text style={styles.gateText}>{gateMessage}</Text>
+        </View>
       ) : null}
+
+      {pending ? <Button label={`Confirm ${pending.san}`} onPress={confirmPending} /> : null}
 
       <BlunderOverlay
         visible={Boolean(feedback)}
@@ -116,6 +112,7 @@ export default function PracticeScreen() {
         title={feedback?.title ?? ''}
         message={feedback?.message ?? ''}
         hint={feedback?.bestMoveHint}
+        actionLabel="Continue"
         onDismiss={() => {
           setFeedback(null);
           setHighlights([]);
@@ -123,34 +120,35 @@ export default function PracticeScreen() {
       />
 
       <View style={styles.actions}>
-        <Pressable style={styles.ghost} onPress={resetBoard}>
-          <Text style={styles.ghostText}>Reset board</Text>
-        </Pressable>
+        <Button label="Reset board" variant="secondary" onPress={resetBoard} />
         {!habitTutorialDone ? (
-          <Pressable
-            style={styles.ghost}
+          <Button
+            label="Skip checklist gate"
+            variant="ghost"
             onPress={() => {
               completeHabitTutorial();
               setGateMessage(null);
-            }}>
-            <Text style={styles.ghostText}>Skip checklist gate</Text>
-          </Pressable>
+            }}
+          />
         ) : null}
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.md,
+  eyebrow: {
+    fontFamily: fonts.bodyBold,
+    color: colors.accent,
+    fontSize: 12,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
   },
   heading: {
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 24,
+    fontSize: 28,
+    letterSpacing: -0.4,
   },
   sub: {
     fontFamily: fonts.body,
@@ -159,31 +157,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   gate: {
+    backgroundColor: colors.warnSoft,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+  },
+  gateText: {
     fontFamily: fonts.bodyBold,
     color: colors.warn,
-    fontSize: 13,
-  },
-  primary: {
-    backgroundColor: colors.accent,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  primaryText: {
-    fontFamily: fonts.bodyExtra,
-    color: '#042016',
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
   },
   actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  ghost: {
-    paddingVertical: 10,
-  },
-  ghostText: {
-    fontFamily: fonts.bodyBold,
-    color: colors.textMuted,
+    gap: spacing.xs,
   },
 });

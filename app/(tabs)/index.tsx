@@ -1,141 +1,155 @@
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { StreakBadge } from '@/src/components/StreakBadge';
+import { Screen } from '@/src/components/ui/Screen';
 import { tipsOfTheDay } from '@/src/logic/drills';
 import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const stacked = width < 640;
   const streak = useProgressStore((s) => s.dailyStreak);
   const drillsCompleted = useProgressStore((s) => s.drillsCompleted);
   const blundersAvoided = useProgressStore((s) => s.blundersAvoided);
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.xl },
-      ]}>
+    <Screen maxWidth={760}>
+      <Text style={styles.eyebrow}>Daily trainer</Text>
       <Text style={styles.brand}>Just Don't Blunder</Text>
       <Text style={styles.tagline}>
-        Train your eyes on YOUR pieces — spot what is hanging and save it before you blunder.
+        Train your eyes on your own pieces. Spot what is hanging and save it before the point is gone.
       </Text>
 
-      <View style={styles.heroBlock}>
+      <View style={styles.hero}>
         <StreakBadge streak={streak} celebrate={streak > 0} />
         <Text style={styles.tip}>{tipsOfTheDay()}</Text>
       </View>
 
-      <Link href="/train" asChild>
-        <Pressable style={styles.primaryCta}>
-          <Text style={styles.primaryCtaText}>Start daily drills</Text>
-          <Text style={styles.primaryCtaSub}>5–10 minutes · save your hanging pieces</Text>
-        </Pressable>
-      </Link>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/train')}
+        style={({ pressed }) => [styles.primary, pressed && styles.primaryOn]}>
+        <Text style={styles.primaryText}>Start daily drills</Text>
+        <Text style={styles.primarySub}>About 5 minutes · save the piece under fire</Text>
+      </Pressable>
 
-      <View style={styles.row}>
-        <Link href="/practice" asChild>
-          <Pressable style={styles.secondaryCta}>
-            <Text style={styles.secondaryTitle}>Practice board</Text>
-            <Text style={styles.secondarySub}>Checklist + instant feedback</Text>
-          </Pressable>
-        </Link>
-        <Link href="/progress" asChild>
-          <Pressable style={styles.secondaryCta}>
-            <Text style={styles.secondaryTitle}>Your progress</Text>
-            <Text style={styles.secondarySub}>
-              {drillsCompleted} drills · {blundersAvoided} saves
-            </Text>
-          </Pressable>
-        </Link>
+      <View style={[styles.row, stacked && styles.rowStacked]}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/practice')}
+          style={({ pressed }) => [styles.card, pressed && styles.cardOn]}>
+          <Text style={styles.cardTitle}>Practice board</Text>
+          <Text style={styles.cardSub}>
+            Run the checklist, then move. Instant feedback if something hangs.
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/progress')}
+          style={({ pressed }) => [styles.card, pressed && styles.cardOn]}>
+          <Text style={styles.cardTitle}>Your progress</Text>
+          <Text style={styles.cardSub}>
+            {drillsCompleted} drills · {blundersAvoided} saves
+          </Text>
+        </Pressable>
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
+  eyebrow: {
+    fontFamily: fonts.bodyBold,
+    color: colors.accent,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   brand: {
     fontFamily: fonts.display,
-    fontSize: 36,
+    fontSize: 40,
+    lineHeight: 44,
     color: colors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
   tagline: {
     fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 26,
     color: colors.textMuted,
-    maxWidth: 420,
+    maxWidth: 520,
+    marginBottom: spacing.xs,
   },
-  heroBlock: {
-    marginTop: spacing.sm,
+  hero: {
     backgroundColor: colors.bgElevated,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     padding: spacing.lg,
     gap: spacing.md,
     alignItems: 'flex-start',
   },
   tip: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     color: colors.text,
   },
-  primaryCta: {
+  primary: {
     backgroundColor: colors.accent,
     borderRadius: radii.md,
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: spacing.lg,
+    cursor: 'pointer',
   },
-  primaryCtaText: {
+  primaryOn: {
+    backgroundColor: colors.accentPressed,
+  },
+  primaryText: {
     fontFamily: fonts.bodyExtra,
     fontSize: 18,
-    color: '#042016',
+    color: colors.accentText,
   },
-  primaryCtaSub: {
-    marginTop: 4,
+  primarySub: {
+    marginTop: 3,
     fontFamily: fonts.body,
     fontSize: 13,
-    color: 'rgba(4,32,22,0.75)',
+    color: 'rgba(20, 33, 12, 0.72)',
   },
   row: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  secondaryCta: {
+  rowStacked: {
+    flexDirection: 'column',
+  },
+  card: {
     flex: 1,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: colors.bgElevated,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     padding: spacing.md,
-    minHeight: 96,
+    minHeight: 108,
     justifyContent: 'center',
+    cursor: 'pointer',
   },
-  secondaryTitle: {
+  cardOn: {
+    backgroundColor: colors.bgSoft,
+  },
+  cardTitle: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 15,
+    fontSize: 16,
   },
-  secondarySub: {
-    marginTop: 4,
+  cardSub: {
+    marginTop: 6,
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 18,
   },
 });

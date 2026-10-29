@@ -307,17 +307,17 @@ const styles = StyleSheet.create({
   },
   turn: {
     fontFamily: fonts.bodyBold,
-    color: colors.textMuted,
+    color: colors.boardMeta,
     fontSize: 14,
   },
   board: {
     borderRadius: radii.sm,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.boardFrame,
     aspectRatio: 1,
     width: '100%',
-    backgroundColor: colors.bgSoft,
+    backgroundColor: colors.boardFrameBg,
   },
   row: {
     flexDirection: 'row',

@@ -1,20 +1,17 @@
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { Button } from '@/src/components/ui/Button';
+import { Dialog } from '@/src/components/ui/Dialog';
+import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
+import { colors, fonts } from '@/src/theme';
+
+type Tone = 'danger' | 'success' | 'warn';
 
 type Props = {
   visible: boolean;
   title: string;
   message: string;
-  tone?: 'danger' | 'success' | 'warn';
+  tone?: Tone;
   hint?: string;
   actionLabel?: string;
   onDismiss?: () => void;
@@ -29,93 +26,99 @@ export function BlunderOverlay({
   actionLabel = 'Got it',
   onDismiss,
 }: Props) {
-  const scale = useSharedValue(0.9);
-  const opacity = useSharedValue(0);
-
-  useEffect(() => {
-    if (visible) {
-      opacity.value = withTiming(1, { duration: 180 });
-      scale.value = withSequence(withSpring(1.04), withSpring(1));
-    } else {
-      opacity.value = withTiming(0, { duration: 120 });
-      scale.value = withTiming(0.94, { duration: 120 });
-    }
-  }, [visible, opacity, scale]);
-
-  const anim = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
-
-  if (!visible) return null;
-
-  const accent =
-    tone === 'success' ? colors.success : tone === 'warn' ? colors.warn : colors.danger;
-  const soft =
-    tone === 'success'
-      ? colors.successSoft
-      : tone === 'warn'
-        ? 'rgba(245,197,66,0.16)'
-        : colors.dangerSoft;
+  const toneColor = toneColors(tone);
 
   return (
-    <Animated.View style={[styles.card, { borderColor: accent, backgroundColor: soft }, anim]}>
-      <View style={styles.row}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: accent }]}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-          {hint ? <Text style={styles.hint}>Try: {hint}</Text> : null}
-        </View>
-        {onDismiss ? (
-          <Pressable onPress={onDismiss} hitSlop={12} style={styles.dismiss}>
-            <Text style={styles.dismissText}>{actionLabel}</Text>
-          </Pressable>
-        ) : null}
+    <Dialog visible={visible}>
+      <View style={[styles.badge, { backgroundColor: toneColor.soft }]}>
+        <ToneIcon tone={tone} color={toneColor.accent} />
       </View>
-    </Animated.View>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.message}>{message}</Text>
+      {hint ? (
+        <View style={styles.hintBox}>
+          <Text style={styles.hintLabel}>Try</Text>
+          <Text style={styles.hint}>{hint}</Text>
+        </View>
+      ) : null}
+      {onDismiss ? <Button label={actionLabel} onPress={onDismiss} /> : null}
+    </Dialog>
   );
 }
 
+function ToneIcon({ tone, color }: { tone: Tone; color: string }) {
+  switch (tone) {
+    case 'success':
+      return <IconCheck color={color} />;
+    case 'warn':
+      return <IconInfo color={color} />;
+    case 'danger':
+      return <IconX color={color} />;
+    default: {
+      const _exhaustive: never = tone;
+      return _exhaustive;
+    }
+  }
+}
+
+function toneColors(tone: Tone): { accent: string; soft: string } {
+  switch (tone) {
+    case 'success':
+      return { accent: colors.success, soft: colors.successSoft };
+    case 'warn':
+      return { accent: colors.warn, soft: colors.warnSoft };
+    case 'danger':
+      return { accent: colors.danger, soft: colors.dangerSoft };
+    default: {
+      const _exhaustive: never = tone;
+      return _exhaustive;
+    }
+  }
+}
+
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1.5,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  row: {
-    flexDirection: 'row',
+  badge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   title: {
-    fontFamily: fonts.bodyExtra,
-    fontSize: 16,
-    marginBottom: 2,
+    fontFamily: fonts.display,
+    fontSize: 26,
+    color: colors.text,
+    textAlign: 'center',
+    letterSpacing: -0.4,
   },
   message: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 23,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  hintBox: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.bg,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 6,
+    gap: 2,
+  },
+  hintLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textDim,
   },
   hint: {
-    marginTop: 4,
     fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  dismiss: {
-    backgroundColor: colors.bgElevated,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dismissText: {
-    fontFamily: fonts.bodyBold,
+    fontSize: 14,
     color: colors.text,
-    fontSize: 13,
   },
 });

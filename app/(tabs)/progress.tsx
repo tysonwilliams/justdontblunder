@@ -1,12 +1,17 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { StreakBadge } from '@/src/components/StreakBadge';
+import { Button } from '@/src/components/ui/Button';
+import { Dialog } from '@/src/components/ui/Dialog';
+import { Screen } from '@/src/components/ui/Screen';
 import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
 export default function ProgressScreen() {
-  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
+  const [confirmReset, setConfirmReset] = useState(false);
   const {
     dailyStreak,
     recordStreak,
@@ -18,40 +23,49 @@ export default function ProgressScreen() {
     resetProgress,
   } = useProgressStore();
 
-  const accuracy =
-    drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
+  const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl },
-      ]}>
+    <Screen maxWidth={760}>
+      <Text style={styles.eyebrow}>This device</Text>
       <Text style={styles.heading}>Progress</Text>
-      <Text style={styles.sub}>Local only — no account required.</Text>
+      <Text style={styles.sub}>Stored locally. No account.</Text>
 
       <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
 
       <View style={styles.grid}>
-        <Stat label="Drills done" value={String(drillsCompleted)} />
-        <Stat label="Drill accuracy" value={`${accuracy}%`} />
-        <Stat label="Blunders avoided" value={String(blundersAvoided)} />
-        <Stat label="Blunders made" value={String(blundersMade)} />
-        <Stat label="Practice moves" value={String(practiceMoves)} />
-        <Stat label="Best streak" value={String(recordStreak)} />
+        <Stat label="Drills done" value={String(drillsCompleted)} wide={!compact} />
+        <Stat label="Accuracy" value={`${accuracy}%`} wide={!compact} />
+        <Stat label="Saves" value={String(blundersAvoided)} wide={!compact} />
+        <Stat label="Blunders" value={String(blundersMade)} wide={!compact} />
+        <Stat label="Practice moves" value={String(practiceMoves)} wide={!compact} />
+        <Stat label="Best streak" value={String(recordStreak)} wide={!compact} />
       </View>
 
-      <Pressable style={styles.reset} onPress={resetProgress}>
-        <Text style={styles.resetText}>Reset local progress</Text>
-      </Pressable>
-    </ScrollView>
+      <Button label="Reset local progress" variant="secondary" onPress={() => setConfirmReset(true)} />
+
+      <Dialog visible={confirmReset}>
+        <Text style={styles.dialogTitle}>Reset progress?</Text>
+        <Text style={styles.dialogBody}>
+          Streaks, drill results, and practice counts on this device will go back to zero.
+        </Text>
+        <Button
+          label="Reset"
+          variant="danger"
+          onPress={() => {
+            resetProgress();
+            setConfirmReset(false);
+          }}
+        />
+        <Button label="Cancel" variant="ghost" onPress={() => setConfirmReset(false)} />
+      </Dialog>
+    </Screen>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, wide }: { label: string; value: string; wide: boolean }) {
   return (
-    <View style={styles.stat}>
+    <View style={[styles.stat, wide ? styles.statWide : styles.statFull]}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -59,21 +73,24 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    alignItems: 'stretch',
+  eyebrow: {
+    fontFamily: fonts.bodyBold,
+    color: colors.accent,
+    fontSize: 12,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
   },
   heading: {
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 28,
+    fontSize: 32,
+    letterSpacing: -0.5,
   },
   sub: {
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 14,
+    fontSize: 15,
+    marginBottom: spacing.xs,
   },
   grid: {
     flexDirection: 'row',
@@ -81,17 +98,27 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   stat: {
-    width: '47%',
     backgroundColor: colors.bgElevated,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  statWide: {
+    width: '31%',
+    flexGrow: 1,
+    minWidth: 140,
+  },
+  statFull: {
+    width: '47%',
+    flexGrow: 1,
   },
   statValue: {
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 28,
+    fontSize: 30,
+    letterSpacing: -0.5,
   },
   statLabel: {
     marginTop: 4,
@@ -99,13 +126,19 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
   },
-  reset: {
-    marginTop: spacing.md,
-    alignItems: 'center',
-    paddingVertical: 12,
+  dialogTitle: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.text,
+    textAlign: 'center',
+    letterSpacing: -0.3,
   },
-  resetText: {
-    fontFamily: fonts.bodyBold,
-    color: colors.danger,
+  dialogBody: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
 });
