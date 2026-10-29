@@ -1,10 +1,10 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, type ColorValue } from 'react-native';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { colors, fonts } from '@/src/theme';
 
-function TabGlyph({ label, color }: { label: string; color: string }) {
+function TabGlyph({ label, color }: { label: string; color: ColorValue }) {
   return (
     <Text style={{ color, fontSize: 16, fontFamily: fonts.bodyExtra, lineHeight: 20 }}>
       {label}
