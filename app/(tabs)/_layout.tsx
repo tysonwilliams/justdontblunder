@@ -39,28 +39,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <TabGlyph label="⌂" color={color} />,
+          tabBarIcon: ({ color }) => <TabGlyph label="H" color={color} />,
         }}
       />
       <Tabs.Screen
         name="train"
         options={{
           title: 'Train',
-          tabBarIcon: ({ color }) => <TabGlyph label="⚡" color={color} />,
+          tabBarIcon: ({ color }) => <TabGlyph label="T" color={color} />,
         }}
       />
       <Tabs.Screen
         name="practice"
         options={{
           title: 'Practice',
-          tabBarIcon: ({ color }) => <TabGlyph label="♟" color={color} />,
+          tabBarIcon: ({ color }) => <TabGlyph label="B" color={color} />,
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => <TabGlyph label="▣" color={color} />,
+          tabBarIcon: ({ color }) => <TabGlyph label="P" color={color} />,
         }}
       />
     </Tabs>
