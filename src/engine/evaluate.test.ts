@@ -5,6 +5,18 @@ import { detectPatterns, findHangingPieces } from '@/src/engine/patterns';
 import { isBlunder } from '@/src/engine/stockfish';
 import { getAllDrills } from '@/src/logic/drills';
 
+function mateMoves(fen: string): string[] {
+  const game = new Chess(fen);
+  return game
+    .moves({ verbose: true })
+    .filter((move) => {
+      const next = new Chess(game.fen());
+      next.move(move);
+      return next.isCheckmate();
+    })
+    .map((move) => move.san);
+}
+
 describe('isBlunder', () => {
   it('classifies small drops as ok', () => {
     expect(isBlunder(20, 40).severity).toBe('ok');
@@ -106,6 +118,31 @@ describe('beginner fixtures', () => {
         });
         expect(mates.length, `${drill.id} has no mate-in-1 threat`).toBeGreaterThan(0);
       }
+    }
+  });
+
+  it('hanging queen on h5 rejects squares the knight or pawns still hit', () => {
+    const drill = getAllDrills().find((item) => item.id === 'hang-q-01');
+    expect(drill?.solution).toContain('h5e5');
+    expect(drill?.solution).not.toContain('h5g4');
+    expect(drill?.solution).not.toContain('h5g6');
+    expect(drill?.solution).not.toContain('h5h6');
+  });
+
+  it("fool's mate drill only accepts moves that stop Qh4#", () => {
+    const drill = getAllDrills().find((item) => item.id === 'mate-03');
+    expect(drill).toBeTruthy();
+    if (!drill) return;
+    for (const bad of ['f3f4', 'b1c3', 'c2c3', 'c2c4']) {
+      expect(drill.solution, bad).not.toContain(bad);
+    }
+    for (const good of ['g4g5', 'h2h4', 'e1f2', 'g1h3']) {
+      expect(drill.solution, good).toContain(good);
+    }
+    for (const sol of drill.solution) {
+      const game = new Chess(drill.fen);
+      game.move({ from: sol.slice(0, 2), to: sol.slice(2, 4) });
+      expect(mateMoves(game.fen()), sol).toEqual([]);
     }
   });
 });

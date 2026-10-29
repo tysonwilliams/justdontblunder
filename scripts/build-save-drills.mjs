@@ -29,23 +29,57 @@ function withTurn(fen, turn) {
   return parts.join(' ');
 }
 
+function aligned(a, b, c) {
+  const af = FILES.indexOf(a[0]);
+  const ar = RANKS.indexOf(a[1]);
+  const bf = FILES.indexOf(b[0]);
+  const br = RANKS.indexOf(b[1]);
+  const cf = FILES.indexOf(c[0]);
+  const cr = RANKS.indexOf(c[1]);
+  return (bf - af) * (cr - ar) === (br - ar) * (cf - af);
+}
+
+/** Slider that pins `square` to its own king, if any. */
+function pinSource(game, square, color) {
+  const kingSq = findKing(game, color);
+  if (!kingSq || kingSq === square) return null;
+  const opp = color === 'w' ? 'b' : 'w';
+  const kf = FILES.indexOf(kingSq[0]);
+  const kr = RANKS.indexOf(kingSq[1]);
+  const sf = FILES.indexOf(square[0]);
+  const sr = RANKS.indexOf(square[1]);
+  const board = game.board();
+  for (let r = 0; r < 8; r += 1) {
+    for (let f = 0; f < 8; f += 1) {
+      const p = board[r]?.[f];
+      if (!p || p.color !== opp || !['b', 'r', 'q'].includes(p.type)) continue;
+      const from = sq(f, 7 - r);
+      const ar = 7 - r;
+      if (!rawAttacks(game, from, square)) continue;
+      if (between(f, ar, sf, sr, kf, kr)) return from;
+    }
+  }
+  return null;
+}
+
+/**
+ * Pieces that can capture on `square`.
+ * Ignores "the attacker is in check right now" so a spite check does not
+ * count as saving a hanging piece. Still respects absolute pins.
+ */
 function attackersOf(game, square, by) {
   const board = game.board();
   const out = [];
-  let probe;
-  try {
-    probe = new Chess(withTurn(game.fen(), by));
-  } catch {
-    return out;
-  }
+  const kingSq = findKing(game, by);
   for (let r = 0; r < 8; r += 1) {
     for (let f = 0; f < 8; f += 1) {
       const p = board[r]?.[f];
       if (!p || p.color !== by) continue;
       const from = sq(f, 7 - r);
-      if (probe.moves({ square: from, verbose: true }).some((m) => m.to === square)) {
-        out.push({ from, type: p.type, val: VAL[p.type] });
-      }
+      if (!rawAttacks(game, from, square)) continue;
+      const pinner = pinSource(game, from, by);
+      if (pinner && kingSq && square !== pinner && !aligned(from, square, kingSq)) continue;
+      out.push({ from, type: p.type, val: VAL[p.type] });
     }
   }
   return out;
@@ -209,6 +243,47 @@ function opponentThreatensMateInOne(fen, side) {
   return false;
 }
 
+function squareAfterMove(after, move, risk, side, type) {
+  if (move.from === risk) {
+    const landed = after.get(move.to);
+    if (landed?.color === side && landed.type === type) return move.to;
+    return null;
+  }
+  const stayed = after.get(risk);
+  if (stayed?.color === side && stayed.type === type) return risk;
+  return null;
+}
+
+/** Legal moves that actually remove the immediate danger. */
+function movesThatSave(d) {
+  const before = new Chess(d.fen);
+  const piece = before.get(d.atRiskSquare);
+  const saved = [];
+  for (const move of before.moves({ verbose: true })) {
+    const after = new Chess(d.fen);
+    const played = after.move(move);
+    if (!played || after.isCheckmate()) continue;
+
+    if (d.theme === 'hanging' || d.theme === 'fork') {
+      const square = squareAfterMove(after, played, d.atRiskSquare, d.sideToMove, piece.type);
+      if (!square) continue;
+      const stillDanger =
+        d.theme === 'hanging'
+          ? isTrulyHanging(after, square, d.sideToMove)
+          : isLiveForkOn(after, square, d.sideToMove);
+      if (!stillDanger) saved.push(`${played.from}${played.to}${played.promotion ?? ''}`);
+      continue;
+    }
+
+    if (d.theme === 'back_rank' || d.theme === 'missed_mate') {
+      if (!opponentThreatensMateInOne(after.fen(), d.sideToMove)) {
+        saved.push(`${played.from}${played.to}${played.promotion ?? ''}`);
+      }
+    }
+  }
+  return saved;
+}
+
 function validate(d) {
   let game;
   try {
@@ -223,7 +298,18 @@ function validate(d) {
   if (piece.color !== d.sideToMove) return `wrong color`;
 
   const legal = game.moves({ verbose: true }).map((m) => `${m.from}${m.to}${m.promotion ?? ''}`);
-  d.solution = d.solution.filter((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
+  if (d.theme === 'hanging' || d.theme === 'fork' || d.theme === 'back_rank' || d.theme === 'missed_mate') {
+    const before = new Set(d.solution);
+    d.solution = movesThatSave(d);
+    const after = new Set(d.solution);
+    const added = [...after].filter((m) => !before.has(m));
+    const removed = [...before].filter((m) => !after.has(m) && legal.some((u) => u.startsWith(m.slice(0, 4))));
+    if (added.length || removed.length) {
+      console.log(`${d.id} +[${added.join(' ')}] -[${removed.join(' ')}]`);
+    }
+  } else {
+    d.solution = d.solution.filter((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
+  }
   if (!d.solution.length) return `no legal solution`;
 
   if (d.theme === 'hanging' && !isTrulyHanging(game, d.atRiskSquare, d.sideToMove)) {
@@ -255,7 +341,7 @@ const drills = [
     atRiskSquare: 'h5',
     prompt: 'Your queen is hanging — get her to safety.',
     solution: ['h5e2', 'h5f3', 'h5g4', 'h5g5', 'h5g6', 'h5h3', 'h5h4', 'h5h6', 'h5f5', 'h5d1'],
-    note: 'Nf6 attacks your unprotected queen. Retreat her now.',
+    note: 'Nf6 attacks the queen. Move her to a square that piece does not hit — g4, g6, and h6 are still hanging.',
     expectedDropCp: 900,
   },
   {
@@ -684,7 +770,7 @@ const drills = [
     atRiskSquare: 'e1',
     prompt: 'Fool’s mate is threatened — don’t get mated next move.',
     solution: ['f3f4', 'g4g5', 'e2e3', 'e2e4', 'b1c3', 'g1h3', 'd2d3', 'd2d4', 'c2c3', 'c2c4', 'd1e2'],
-    note: 'Black threatens Qh4#. Block the diagonal or undo the damage.',
+    note: 'Qh4# is the threat. g5 or h4 stops the queen landing there, and the king can also step out. Pushing the f-pawn does not.',
     expectedDropCp: 10000,
   },
   {
