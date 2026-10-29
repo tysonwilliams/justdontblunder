@@ -100,7 +100,9 @@ export default function TrainScreen() {
         fen={drill.fen}
         orientation={orientation}
         interactive={round === 'playing'}
-        attentionSquares={round === 'playing' ? [drill.atRiskSquare] : []}
+        attentionSquares={
+          round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []
+        }
         highlightSquares={round === 'playing' ? [] : highlights}
         onMove={onMove}
       />
