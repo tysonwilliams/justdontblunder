@@ -239,8 +239,18 @@ export function ChessBoard({
                           styles.legalDot,
                           piece ? styles.legalCapture : null,
                           {
-                            width: squareSize * (piece ? 0.86 : 0.28),
-                            height: squareSize * (piece ? 0.86 : 0.28),
+                            width: squareSize * (piece ? 0.9 : 0.32),
+                            height: squareSize * (piece ? 0.9 : 0.32),
+                            backgroundColor: piece
+                              ? 'transparent'
+                              : isDark
+                                ? colors.boardLegalOnDark
+                                : colors.boardLegalOnLight,
+                            borderColor: piece
+                              ? isDark
+                                ? colors.boardCaptureOnDark
+                                : colors.boardCaptureOnLight
+                              : 'transparent',
                           },
                         ]}
                       />
@@ -329,13 +339,11 @@ const styles = StyleSheet.create({
   legalDot: {
     position: 'absolute',
     borderRadius: 999,
-    backgroundColor: colors.boardLegal,
     zIndex: 1,
   },
   legalCapture: {
     backgroundColor: 'transparent',
-    borderWidth: 3,
-    borderColor: 'rgba(255,92,92,0.55)',
+    borderWidth: 4,
   },
   coord: {
     position: 'absolute',
