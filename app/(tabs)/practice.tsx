@@ -1,137 +1,127 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
-import {
-  EMPTY_HABITS,
-  HabitChecklist,
-  habitsComplete,
-  type HabitState,
-} from '@/src/components/HabitChecklist';
+import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import { quickPatternFeedback, type MoveFeedback } from '@/src/engine/evaluate';
 import { createGame } from '@/src/logic/game';
+import { chooseBlackReply } from '@/src/logic/reply';
 import { useProgressStore } from '@/src/store/progress';
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors, fonts, spacing } from '@/src/theme';
+
+const REPLY_DELAY_MS = 420;
 
 export default function PracticeScreen() {
-  const habitTutorialDone = useProgressStore((s) => s.habitTutorialDone);
-  const completeHabitTutorial = useProgressStore((s) => s.completeHabitTutorial);
+  const { width } = useWindowDimensions();
+  const wide = boardStageIsWide(width);
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
 
   const [fen, setFen] = useState(() => createGame().fen());
   const [boardKey, setBoardKey] = useState(0);
-  const [habits, setHabits] = useState<HabitState>(EMPTY_HABITS);
-  const [pending, setPending] = useState<BoardMoveEvent | null>(null);
   const [feedback, setFeedback] = useState<MoveFeedback | null>(null);
+  const [replySan, setReplySan] = useState<string | null>(null);
+  const [thinking, setThinking] = useState(false);
   const [highlights, setHighlights] = useState<Square[]>([]);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
-  const [gateMessage, setGateMessage] = useState<string | null>(null);
+  const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const requireHabits = !habitTutorialDone;
+  useEffect(() => {
+    return () => {
+      if (replyTimer.current) clearTimeout(replyTimer.current);
+    };
+  }, []);
 
   const resetBoard = () => {
+    if (replyTimer.current) clearTimeout(replyTimer.current);
     setFen(createGame().fen());
     setBoardKey((k) => k + 1);
-    setHabits(EMPTY_HABITS);
-    setPending(null);
     setFeedback(null);
+    setReplySan(null);
+    setThinking(false);
     setHighlights([]);
     setLastMove(null);
-    setGateMessage(null);
   };
 
   const onMove = (event: BoardMoveEvent) => {
-    if (requireHabits && !habitsComplete(habits)) {
-      setGateMessage('Tap Checks, Captures, Threats, and Hanging before the move counts.');
-      setPending(event);
-      return false;
-    }
-    applyMove(event);
+    if (thinking) return false;
+    const result = quickPatternFeedback(event.afterFen, 'w');
+    setFen(event.afterFen);
+    setLastMove({ from: event.from, to: event.to });
+    setFeedback(result);
+    setReplySan(null);
+    setHighlights(result.squares);
+    markPracticeMove(result.ok, !result.ok);
+    setThinking(true);
+    if (replyTimer.current) clearTimeout(replyTimer.current);
+    replyTimer.current = setTimeout(() => {
+      const reply = chooseBlackReply(event.afterFen);
+      if (reply) {
+        setFen(reply.fen);
+        setLastMove({ from: reply.from, to: reply.to });
+        setReplySan(reply.san);
+      }
+      setThinking(false);
+    }, REPLY_DELAY_MS);
     return true;
   };
 
-  const applyMove = (event: BoardMoveEvent) => {
-    setGateMessage(null);
-    setFen(event.afterFen);
-    setLastMove({ from: event.from, to: event.to });
-    const mover = event.beforeFen.includes(' w ') ? 'w' : 'b';
-    const result = quickPatternFeedback(event.afterFen, mover);
-    setFeedback(result);
-    setHighlights(result.squares);
-    markPracticeMove(result.ok, !result.ok);
-    if (!habitTutorialDone) {
-      completeHabitTutorial();
-    }
-    setHabits(EMPTY_HABITS);
-    setPending(null);
-  };
-
-  const confirmPending = () => {
-    if (!pending) return;
-    if (requireHabits && !habitsComplete(habits)) {
-      setGateMessage('Still missing a checklist item — take ten seconds.');
-      return;
-    }
-    applyMove(pending);
-    setBoardKey((k) => k + 1);
-  };
+  const panelMessage = feedback
+    ? replySan
+      ? `${feedback.message} Black played ${replySan}.`
+      : thinking
+        ? `${feedback.message} Black is moving.`
+        : feedback.message
+    : '';
 
   return (
-    <Screen maxWidth={560}>
-      <Text style={styles.eyebrow}>Sandbox</Text>
-      <Text style={styles.heading}>Practice board</Text>
+    <Screen maxWidth={wide ? 980 : 560}>
+      <Text style={styles.eyebrow}>Practice</Text>
+      <Text style={styles.heading}>Your game</Text>
       <Text style={styles.sub}>
-        Move both sides. Run the habit checklist, then see if anything you own is hanging.
+        You play White. Black answers. If you leave a piece loose, they take it.
       </Text>
 
-      <ChessBoard
-        key={boardKey}
-        fen={fen}
-        highlightSquares={highlights}
-        lastMove={lastMove}
-        onMove={onMove}
-      />
-
-      <HabitChecklist value={habits} onChange={setHabits} required={requireHabits} />
-
-      {gateMessage ? (
-        <View style={styles.gate}>
-          <Text style={styles.gateText}>{gateMessage}</Text>
-        </View>
-      ) : null}
-
-      {pending ? <Button label={`Confirm ${pending.san}`} onPress={confirmPending} /> : null}
-
-      <BlunderOverlay
-        visible={Boolean(feedback)}
-        tone={feedback?.ok ? 'success' : 'danger'}
-        title={feedback?.title ?? ''}
-        message={feedback?.message ?? ''}
-        hint={feedback?.bestMoveHint}
-        actionLabel="Continue"
-        onDismiss={() => {
-          setFeedback(null);
-          setHighlights([]);
-        }}
-      />
-
-      <View style={styles.actions}>
-        <Button label="Reset board" variant="secondary" onPress={resetBoard} />
-        {!habitTutorialDone ? (
-          <Button
-            label="Skip checklist gate"
-            variant="ghost"
-            onPress={() => {
-              completeHabitTutorial();
-              setGateMessage(null);
-            }}
+      <BoardStage
+        board={
+          <ChessBoard
+            key={boardKey}
+            fen={fen}
+            orientation="white"
+            interactive={!thinking && fen.includes(' w ')}
+            highlightSquares={highlights}
+            lastMove={lastMove}
+            onMove={onMove}
           />
-        ) : null}
-      </View>
+        }
+        aside={
+          <View style={styles.guide}>
+            {feedback ? (
+              <BlunderOverlay
+                visible
+                tone={feedback.ok ? 'success' : 'danger'}
+                title={feedback.title}
+                message={panelMessage}
+                hint={feedback.bestMoveHint}
+                actionLabel="Continue"
+                onDismiss={() => {
+                  setFeedback(null);
+                  setHighlights([]);
+                  setReplySan(null);
+                }}
+              />
+            ) : (
+              <Text style={styles.reminder}>
+                Glance for checks, captures, threats, and loose pieces.
+              </Text>
+            )}
+            <Button label="New game" variant="secondary" onPress={resetBoard} />
+          </View>
+        }
+      />
     </Screen>
   );
 }
@@ -156,19 +146,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
-  gate: {
-    backgroundColor: colors.warnSoft,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+  guide: {
+    gap: spacing.sm,
   },
-  gateText: {
-    fontFamily: fonts.bodyBold,
-    color: colors.warn,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  actions: {
-    gap: spacing.xs,
+  reminder: {
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

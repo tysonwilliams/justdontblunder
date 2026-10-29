@@ -1,9 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
-import { Dialog } from '@/src/components/ui/Dialog';
 import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
-import { colors, fonts } from '@/src/theme';
+import { colors, fonts, radii } from '@/src/theme';
 
 type Tone = 'danger' | 'success' | 'warn';
 
@@ -26,14 +25,17 @@ export function BlunderOverlay({
   actionLabel = 'Got it',
   onDismiss,
 }: Props) {
+  if (!visible) return null;
   const toneColor = toneColors(tone);
 
   return (
-    <Dialog visible={visible}>
-      <View style={[styles.badge, { backgroundColor: toneColor.soft }]}>
-        <ToneIcon tone={tone} color={toneColor.accent} />
+    <View style={[styles.card, { borderColor: toneColor.accent }]}>
+      <View style={styles.head}>
+        <View style={[styles.badge, { backgroundColor: toneColor.soft }]}>
+          <ToneIcon tone={tone} color={toneColor.accent} />
+        </View>
+        <Text style={styles.title}>{title}</Text>
       </View>
-      <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {hint ? (
         <View style={styles.hintBox}>
@@ -42,18 +44,18 @@ export function BlunderOverlay({
         </View>
       ) : null}
       {onDismiss ? <Button label={actionLabel} onPress={onDismiss} /> : null}
-    </Dialog>
+    </View>
   );
 }
 
 function ToneIcon({ tone, color }: { tone: Tone; color: string }) {
   switch (tone) {
     case 'success':
-      return <IconCheck color={color} />;
+      return <IconCheck color={color} size={22} />;
     case 'warn':
-      return <IconInfo color={color} />;
+      return <IconInfo color={color} size={22} />;
     case 'danger':
-      return <IconX color={color} />;
+      return <IconX color={color} size={22} />;
     default: {
       const _exhaustive: never = tone;
       return _exhaustive;
@@ -77,36 +79,43 @@ function toneColors(tone: Tone): { accent: string; soft: string } {
 }
 
 const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   badge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   title: {
+    flex: 1,
     fontFamily: fonts.display,
-    fontSize: 26,
+    fontSize: 22,
     color: colors.text,
-    textAlign: 'center',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   message: {
     fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 15,
+    lineHeight: 22,
     color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: 6,
   },
   hintBox: {
-    alignSelf: 'stretch',
     backgroundColor: colors.bg,
     borderRadius: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 6,
     gap: 2,
   },
   hintLabel: {

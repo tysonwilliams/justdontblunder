@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
+import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import {
@@ -19,6 +20,8 @@ import { colors, fonts, radii, spacing } from '@/src/theme';
 type RoundState = 'playing' | 'correct' | 'retry' | 'revealed';
 
 export default function TrainScreen() {
+  const { width } = useWindowDimensions();
+  const wide = boardStageIsWide(width);
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
 
   const [session, setSession] = useState<DrillSession>(() => createDailySession());
@@ -113,7 +116,7 @@ export default function TrainScreen() {
   const progress = (index + (round === 'playing' ? 0 : 1)) / session.positions.length;
 
   return (
-    <Screen maxWidth={560}>
+    <Screen maxWidth={wide ? 980 : 560}>
       <View style={styles.metaRow}>
         <Text style={styles.chip}>{themeLabel(drill.theme)}</Text>
         <Text style={styles.count}>
@@ -125,58 +128,63 @@ export default function TrainScreen() {
       </View>
       <Text style={styles.heading}>{drill.prompt}</Text>
 
-      <ChessBoard
-        key={boardKey}
-        fen={boardFen}
-        orientation={orientation}
-        interactive={round === 'playing'}
-        lastMove={lastMove}
-        attentionSquares={round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []}
-        highlightSquares={round === 'playing' ? [] : highlights}
-        onMove={onMove}
-      />
-
-      {round === 'playing' ? (
-        <>
-          <Text style={styles.hint}>The marked square is yours and under fire. Save it.</Text>
-          <Button
-            label="Show the idea"
-            variant="secondary"
-            onPress={() => {
-              setRound('revealed');
-              setHighlights([drill.atRiskSquare]);
-              markDrillResult(false);
-              setScore((s) => ({ ...s, total: s.total + 1 }));
-            }}
+      <BoardStage
+        board={
+          <ChessBoard
+            key={boardKey}
+            fen={boardFen}
+            orientation={orientation}
+            interactive={round === 'playing'}
+            lastMove={lastMove}
+            attentionSquares={round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []}
+            highlightSquares={round === 'playing' ? [] : highlights}
+            onMove={onMove}
           />
-        </>
-      ) : null}
-
-      <BlunderOverlay
-        visible={round === 'correct'}
-        tone="success"
-        title="Nice save"
-        message={drill.note}
-        actionLabel="Next"
-        onDismiss={next}
-      />
-
-      <BlunderOverlay
-        visible={round === 'retry'}
-        tone="danger"
-        title="Not quite"
-        message="That doesn't save your piece. Look again and try another move."
-        actionLabel="Try again"
-        onDismiss={tryAgain}
-      />
-
-      <BlunderOverlay
-        visible={round === 'revealed'}
-        tone="warn"
-        title="Here's the idea"
-        message={drill.note}
-        actionLabel="Next"
-        onDismiss={next}
+        }
+        aside={
+          round === 'playing' ? (
+            <View style={styles.guide}>
+              <Text style={styles.hint}>The marked square is yours and under fire. Save it.</Text>
+              <Button
+                label="Show the idea"
+                variant="secondary"
+                onPress={() => {
+                  setRound('revealed');
+                  setHighlights([drill.atRiskSquare]);
+                  markDrillResult(false);
+                  setScore((s) => ({ ...s, total: s.total + 1 }));
+                }}
+              />
+            </View>
+          ) : (
+            <>
+              <BlunderOverlay
+                visible={round === 'correct'}
+                tone="success"
+                title="Nice save"
+                message={drill.note}
+                actionLabel="Next"
+                onDismiss={next}
+              />
+              <BlunderOverlay
+                visible={round === 'retry'}
+                tone="danger"
+                title="Not quite"
+                message="That doesn't save your piece. Look again and try another move."
+                actionLabel="Try again"
+                onDismiss={tryAgain}
+              />
+              <BlunderOverlay
+                visible={round === 'revealed'}
+                tone="warn"
+                title="Here's the idea"
+                message={drill.note}
+                actionLabel="Next"
+                onDismiss={next}
+              />
+            </>
+          )
+        }
       />
     </Screen>
   );
@@ -222,12 +230,14 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     letterSpacing: -0.4,
   },
+  guide: {
+    gap: spacing.sm,
+  },
   hint: {
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
+    fontSize: 15,
+    lineHeight: 22,
   },
   doneCard: {
     backgroundColor: colors.bgElevated,

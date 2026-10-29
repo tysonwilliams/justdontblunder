@@ -41,10 +41,8 @@ export default function HomeScreen() {
           accessibilityRole="button"
           onPress={() => router.push('/practice')}
           style={({ pressed }) => [styles.card, pressed && styles.cardOn]}>
-          <Text style={styles.cardTitle}>Practice board</Text>
-          <Text style={styles.cardSub}>
-            Run the checklist, then move. Instant feedback if something hangs.
-          </Text>
+          <Text style={styles.cardTitle}>Practice</Text>
+          <Text style={styles.cardSub}>Play White. The app plays Black.</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
