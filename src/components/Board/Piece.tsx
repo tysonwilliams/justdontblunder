@@ -4,13 +4,14 @@ import { colors, fonts } from '@/src/theme';
 
 export type PieceCode = 'wK' | 'wQ' | 'wR' | 'wB' | 'wN' | 'wP' | 'bK' | 'bQ' | 'bR' | 'bB' | 'bN' | 'bP';
 
+// Use filled glyphs for both colors so white pieces stay solid on light squares.
 const GLYPHS: Record<PieceCode, string> = {
-  wK: '♔',
-  wQ: '♕',
-  wR: '♖',
-  wB: '♗',
-  wN: '♘',
-  wP: '♙',
+  wK: '♚',
+  wQ: '♛',
+  wR: '♜',
+  wB: '♝',
+  wN: '♞',
+  wP: '♟',
   bK: '♚',
   bQ: '♛',
   bR: '♜',
@@ -19,6 +20,18 @@ const GLYPHS: Record<PieceCode, string> = {
   bP: '♟',
 };
 
+/** Dark outline offsets so white pieces stay readable on light squares. */
+const STROKE_OFFSETS = [
+  [-1.5, 0],
+  [1.5, 0],
+  [0, -1.5],
+  [0, 1.5],
+  [-1.2, -1.2],
+  [1.2, -1.2],
+  [-1.2, 1.2],
+  [1.2, 1.2],
+] as const;
+
 type Props = {
   code: PieceCode;
   size: number;
@@ -26,18 +39,41 @@ type Props = {
 
 export function Piece({ code, size }: Props) {
   const isWhite = code.startsWith('w');
+  const fontSize = size * 0.72;
+  const glyph = GLYPHS[code];
+
   return (
     <View style={[styles.wrap, { width: size, height: size }]} pointerEvents="none">
+      {isWhite
+        ? STROKE_OFFSETS.map(([dx, dy], index) => (
+            <Text
+              key={index}
+              style={[
+                styles.glyph,
+                styles.strokeLayer,
+                {
+                  fontSize,
+                  color: colors.whitePieceStroke,
+                  transform: [{ translateX: dx }, { translateY: dy }],
+                },
+              ]}>
+              {glyph}
+            </Text>
+          ))
+        : null}
       <Text
         style={[
           styles.glyph,
+          styles.fillLayer,
           {
-            fontSize: size * 0.72,
+            fontSize,
             color: isWhite ? colors.whitePiece : colors.blackPiece,
-            textShadowColor: isWhite ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.25)',
+            textShadowColor: isWhite ? 'transparent' : 'rgba(255,255,255,0.35)',
+            textShadowRadius: isWhite ? 0 : 2,
+            textShadowOffset: isWhite ? { width: 0, height: 0 } : { width: 0, height: 1 },
           },
         ]}>
-        {GLYPHS[code]}
+        {glyph}
       </Text>
     </View>
   );
@@ -54,7 +90,12 @@ const styles = StyleSheet.create({
   },
   glyph: {
     fontFamily: fonts.display,
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textAlign: 'center',
+  },
+  strokeLayer: {
+    position: 'absolute',
+  },
+  fillLayer: {
+    position: 'absolute',
   },
 });
