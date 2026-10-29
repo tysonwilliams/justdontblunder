@@ -1,8 +1,16 @@
-import { SymbolView } from 'expo-symbols';
 import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { colors, fonts } from '@/src/theme';
+
+function TabGlyph({ label, color }: { label: string; color: string }) {
+  return (
+    <Text style={{ color, fontSize: 16, fontFamily: fonts.bodyExtra, lineHeight: 20 }}>
+      {label}
+    </Text>
+  );
+}
 
 export default function TabLayout() {
   return (
@@ -31,60 +39,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{ ios: 'house.fill', android: 'home', web: 'home' }}
-              tintColor={color}
-              size={24}
-            />
-          ),
+          tabBarIcon: ({ color }) => <TabGlyph label="⌂" color={color} />,
         }}
       />
       <Tabs.Screen
         name="train"
         options={{
           title: 'Train',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{ ios: 'bolt.fill', android: 'bolt', web: 'bolt' }}
-              tintColor={color}
-              size={24}
-            />
-          ),
+          tabBarIcon: ({ color }) => <TabGlyph label="⚡" color={color} />,
         }}
       />
       <Tabs.Screen
         name="practice"
         options={{
           title: 'Practice',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'checkerboard.rectangle',
-                android: 'grid_view',
-                web: 'grid_view',
-              }}
-              tintColor={color}
-              size={24}
-            />
-          ),
+          tabBarIcon: ({ color }) => <TabGlyph label="♟" color={color} />,
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chart.bar.fill',
-                android: 'bar_chart',
-                web: 'bar_chart',
-              }}
-              tintColor={color}
-              size={24}
-            />
-          ),
+          tabBarIcon: ({ color }) => <TabGlyph label="▣" color={color} />,
         }}
       />
     </Tabs>
