@@ -325,7 +325,7 @@ function validate(d) {
   if (piece.color !== d.sideToMove) return `wrong color`;
 
   const legal = game.moves({ verbose: true }).map((m) => `${m.from}${m.to}${m.promotion ?? ''}`);
-  // Acceptance is material safety plus the engine window in src/logic/drills.ts.
+  // Pass/fail is material safety minus the precomputed traps in src/logic/drills.ts.
   // This script only keeps a legal teaching move; refresh-acceptable.mts rewrites the full set.
   d.solution = d.solution.filter((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
   if (!d.solution.length) return `no legal solution`;
@@ -425,9 +425,9 @@ const drills = [
     sideToMove: 'w',
     theme: 'hanging',
     atRiskSquare: 'h5',
-    prompt: 'Your rook is hanging to the knight — save it.',
+    prompt: 'Your rook is hanging to the knight — make everything safe.',
     solution: ['h5h6', 'h5h7', 'h5h4', 'h5h3', 'h5g5', 'h5f5', 'h5e5', 'h5d5', 'h5c5', 'h5b5', 'h5a5'],
-    note: 'Nf6 attacks your unprotected rook. Get it off h5.',
+    note: 'Nf6 attacks your unprotected rook. Make everything safe — move the rook, defend it, or deal with the knight.',
     expectedDropCp: 500,
   },
   {
@@ -506,9 +506,9 @@ const drills = [
     sideToMove: 'b',
     theme: 'hanging',
     atRiskSquare: 'f5',
-    prompt: 'Your bishop is hanging — pull it back.',
+    prompt: 'Your bishop is hanging — make everything safe.',
     solution: ['f5e6', 'f5d7', 'f5g6', 'f5g4', 'f5h3', 'f5e4'],
-    note: 'The e-pawn attacks your bishop on f5. Pull the bishop back or trade it off.',
+    note: 'The e-pawn attacks your bishop on f5. Make everything safe — move the bishop, or deal with the pawn.',
     expectedDropCp: 300,
   },
 
@@ -545,7 +545,7 @@ const drills = [
     atRiskSquare: 'f3',
     prompt: 'Knight forks your knight and bishop — save material.',
     solution: ['f3d4', 'f3e5', 'f3g5', 'f3h4', 'f3g1', 'f3d2', 'e2d3', 'e2c4', 'e2b5', 'e2a6', 'e2f1', 'd1d4'],
-    note: 'Nd4 forks Nf3 and Be2. Capture the knight or move a forked piece.',
+    note: 'Nd4 forks Nf3 and Be2. Capture the knight or move a forked piece to safety.',
     expectedDropCp: 300,
   },
   {
@@ -554,12 +554,12 @@ const drills = [
     sideToMove: 'w',
     theme: 'fork',
     atRiskSquare: 'b3',
-    prompt: 'Knight forks your queen and knight — save the queen.',
+    prompt: 'A knight forks your queen and knight — make everything safe.',
     solution: [
       'b3a4', 'b3b4', 'b3b5', 'b3b6', 'b3b7', 'b3c4', 'b3d5', 'b3e6', 'b3f7',
       'b3c3', 'b3d3', 'b3e3', 'b3a3', 'f3d4', 'f3e5', 'f3g5', 'f3h4', 'f3g1', 'f3d2',
     ],
-    note: 'Nd4 forks Qb3 and Nf3. Move the queen (or take the knight).',
+    note: 'Nd4 forks Qb3 and Nf3. Make both pieces safe — take the knight, or move a piece only when the other one stays safe.',
     expectedDropCp: 900,
   },
   {
@@ -619,9 +619,9 @@ const drills = [
     sideToMove: 'b',
     theme: 'pin',
     atRiskSquare: 'e6',
-    prompt: 'A rook pins your knight to the king — block the file.',
+    prompt: 'A rook pins your knight to the king — make everything safe.',
     solution: ['d8e7', 'f8e7', 'g8e7', 'e8e7'],
-    note: 'Re1 pins Ne6 to the king. Block the file. Stepping the king to e7 stays on the file, so the knight is still pinned.',
+    note: 'Re1 pins Ne6 to the king. Make everything safe. Blocking the file is one way.',
     expectedDropCp: 40,
   },
   {
@@ -705,6 +705,164 @@ const drills = [
   },
 ];
 
+/**
+ * Two-move traps from the drill audit. Each move is safe on the one-move material
+ * rule (nothing hangs, no mate in 1) but a short tactic still wins material.
+ * Lines are Stockfish depth-12 refutations, checked by replaying them here.
+ * The app reads `traps` at runtime and does not search.
+ */
+const TRAPS = {
+  'hang-q-02': [
+    {
+      move: 'd5c6',
+      line: ['f1b5', 'c8f5', 'b5c6'],
+      explanation: 'Careful: after Qc6, Bb5 pins your queen to your king and you lose it.',
+    },
+  ],
+  'hang-n-01': [
+    {
+      move: 'f8b4',
+      line: ['c2c3', 'e4f2', 'e1f2'],
+      explanation: 'Careful: after Bb4+, c3 attacks that bishop, and your knight on e4 is lost for a pawn.',
+    },
+  ],
+  'hang-b-03': [
+    {
+      move: 'f5e6',
+      line: ['e4e5', 'f6g8', 'f3g5'],
+      explanation: 'Careful: after Be6, e5 kicks your knight and Ng5 attacks your bishop.',
+    },
+    {
+      move: 'f5c8',
+      line: ['e4d5', 'f6d5', 'c3d5'],
+      explanation: 'Careful: after Bc8, exd5 takes your pawn and Nxd5 takes the knight that recaptures.',
+    },
+  ],
+  'fork-01': [
+    {
+      move: 'f3g5',
+      line: ['d4e2'],
+      explanation: 'Careful: after Ng5, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'f3g1',
+      line: ['d4e2'],
+      explanation: 'Careful: after Ng1, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'f3d2',
+      line: ['d4e2'],
+      explanation: 'Careful: after Nd2, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'e2b5',
+      line: ['d4b5', 'c3b5'],
+      explanation: 'Careful: after Bb5, Nxb5 takes your bishop.',
+    },
+    {
+      move: 'g2g3',
+      line: ['d4e2', 'd1e2'],
+      explanation: 'Careful: after g3, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'h2h4',
+      line: ['d4e2', 'd1e2'],
+      explanation: 'Careful: after h4, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'a1b1',
+      line: ['d4e2', 'd1e2'],
+      explanation: 'Careful: after Rb1, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'c1d2',
+      line: ['d4e2', 'd1e2'],
+      explanation: 'Careful: after Bd2, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'd1d2',
+      line: ['d4e2', 'd2e2'],
+      explanation: 'Careful: after Qd2, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'd1d3',
+      line: ['d4e2', 'd3e2'],
+      explanation: 'Careful: after Qd3, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'e1d2',
+      line: ['f8b4', 'f3e5', 'd8e7', 'a2a3', 'f6e4', 'd2e1', 'b4c3'],
+      explanation: 'Careful: after Kd2, Bb4 pins your knight on c3 to your king and Bxc3 takes it.',
+    },
+    {
+      move: 'e1f1',
+      line: ['d4e2', 'd1e2'],
+      explanation: 'Careful: after Kf1, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'h1g1',
+      line: ['d4e2', 'd1e2'],
+      explanation: 'Careful: after Rg1, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+    {
+      move: 'h1f1',
+      line: ['d4e2', 'd1e2'],
+      explanation: 'Careful: after Rf1, Nxe2 takes your bishop. The knight on d4 was still forking it.',
+    },
+  ],
+  'fork-03': [
+    {
+      move: 'b3c3',
+      line: ['f8b4', 'f3d4', 'b4c3'],
+      explanation: 'Careful: after Qc3, Bb4 pins your queen to your king and you lose it.',
+    },
+  ],
+  'fork-06': [
+    {
+      move: 'c3e4',
+      line: ['d7d5', 'c4b3', 'd5e4'],
+      explanation: 'Careful: after Nxe4, d5 attacks that knight and dxe4 wins it back.',
+    },
+    {
+      move: 'd2e3',
+      line: ['e4c3'],
+      explanation: 'Careful: after Qe3, Nxc3 takes your knight. Moving the queen left it in the fork.',
+    },
+    {
+      move: 'd2e2',
+      line: ['e4c3'],
+      explanation: 'Careful: after Qe2, Nxc3 takes your knight. Moving the queen left it in the fork.',
+    },
+    {
+      move: 'd2d1',
+      line: ['e4c3'],
+      explanation: 'Careful: after Qd1, Nxc3 takes your knight. Moving the queen left it in the fork.',
+    },
+  ],
+  'back-02': [
+    {
+      move: 'f2d3',
+      line: ['d8b6', 'g1h1', 'e8e1'],
+      explanation: 'Careful: after Nd3, Qb6+ checks and Rxe1+ takes your rook.',
+    },
+  ],
+};
+
+function replayTrap(drill, trap) {
+  const game = new Chess(drill.fen);
+  const played = game.move({
+    from: trap.move.slice(0, 2),
+    to: trap.move.slice(2, 4),
+    promotion: 'q',
+  });
+  if (!played) return `${drill.id} ${trap.move} is illegal`;
+  for (const uci of trap.line) {
+    const next = game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || 'q' });
+    if (!next) return `${drill.id} ${trap.move} refutation ${uci} does not play`;
+  }
+  return null;
+}
+
 const kept = [];
 const rejected = [];
 for (const d of drills) {
@@ -735,6 +893,7 @@ try {
   previous = [];
 }
 const prevById = new Map(previous.map((drill) => [drill.id, drill]));
+let trapCount = 0;
 for (const drill of kept) {
   const old = prevById.get(drill.id);
   if (old && old.fen === drill.fen && Array.isArray(old.acceptable) && old.acceptable.length) {
@@ -743,6 +902,23 @@ for (const drill of kept) {
   } else {
     console.warn(`${drill.id}: fen changed — run scripts/refresh-acceptable.mts to rebuild the engine window`);
   }
+  drill.traps = TRAPS[drill.id] ?? [];
+  trapCount += drill.traps.length;
+  for (const trap of drill.traps) {
+    const err = replayTrap(drill, trap);
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    if ((drill.acceptable ?? []).some((sol) => sol.startsWith(trap.move))) {
+      console.error(`${drill.id} ${trap.move} is a trap but still sits in the teaching window`);
+      process.exit(1);
+    }
+  }
+}
+if (trapCount !== 24) {
+  console.error(`Expected 24 two-move traps, found ${trapCount}`);
+  process.exit(1);
 }
 
 fs.writeFileSync(outUrl, `${JSON.stringify(kept, null, 2)}\n`);

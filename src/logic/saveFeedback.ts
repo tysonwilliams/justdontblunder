@@ -1,6 +1,6 @@
 import { Chess, type PieceSymbol, type Square } from 'chess.js';
 
-import type { DrillPosition } from '@/src/logic/drills';
+import { drillTrap, teachingMoves, type DrillPosition } from '@/src/logic/drills';
 import { bestPunishment, pieceName } from '@/src/logic/safety';
 
 export type DrillRound = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
@@ -14,11 +14,46 @@ const NAMES: Record<PieceSymbol, string> = {
   k: 'king',
 };
 
+function sanOf(fen: string, uci: string): string | null {
+  if (uci.length < 4) return null;
+  try {
+    const game = new Chess(fen);
+    const move = game.move({
+      from: uci.slice(0, 2) as Square,
+      to: uci.slice(2, 4) as Square,
+      promotion: 'q',
+    });
+    return move?.san ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Safe moves outside the engine window can mention a stronger idea.
+ * The sentence never changes a pass into a fail.
+ */
+function withStrongerIdea(drill: DrillPosition, from: Square, to: Square, text: string): string {
+  const uci = `${from}${to}`;
+  const window = teachingMoves(drill);
+  if (window.some((sol) => sol.startsWith(uci))) return text;
+  const best = window[0];
+  if (!best) return text;
+  const bestSan = sanOf(drill.fen, best);
+  if (!bestSan) return text;
+  if (sanOf(drill.fen, uci) === bestSan) return text;
+  return `${text} Safe! ${bestSan} was even stronger.`;
+}
+
 /**
  * Describe the save that was just played.
  * Hint copy (`drill.note`) stays on the reveal and miss paths.
  */
 export function saveFeedback(drill: DrillPosition, from: Square, to: Square): string {
+  return withStrongerIdea(drill, from, to, describeSave(drill, from, to));
+}
+
+function describeSave(drill: DrillPosition, from: Square, to: Square): string {
   const game = new Chess(drill.fen);
   const atRisk = game.get(drill.atRiskSquare);
   const opponent = drill.sideToMove === 'w' ? 'b' : 'w';
@@ -80,6 +115,8 @@ const RETRY_COPY = "That doesn't save your piece. Look again and try another mov
 
 /** Why the move just played fails: the opponent's reply, not a repeat of the hint. */
 export function missFeedback(drill: DrillPosition, from: Square, to: Square): string {
+  const trap = drillTrap(drill, from, to);
+  if (trap) return trap.explanation;
   const game = new Chess(drill.fen);
   let playedSan = '';
   try {

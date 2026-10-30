@@ -2,7 +2,6 @@ import type { Square } from 'chess.js';
 
 import beginnerBlunders from '@/src/data/beginner-blunders.json';
 import { moveRemovesDanger } from '@/src/logic/danger';
-import { moveOutcome } from '@/src/logic/safety';
 
 export type DrillTheme =
   | 'hanging'
@@ -10,6 +9,14 @@ export type DrillTheme =
   | 'pin'
   | 'back_rank'
   | 'missed_mate';
+
+/** A move that looks safe until the opponent's short refutation. */
+export type DrillTrap = {
+  move: string;
+  /** UCI moves starting with the opponent's reply. */
+  line: string[];
+  explanation: string;
+};
 
 export type DrillPosition = {
   id: string;
@@ -21,10 +28,15 @@ export type DrillPosition = {
   solution: string[];
   /**
    * Moves within about 1.5 pawns of the engine best that do not drop material
-   * or allow mate in 1. A longer forced mate is not, by itself, grounds to omit a move.
-   * Mate drills list every move that stops mate in 1 without dropping material.
+   * or allow mate in 1. Used for hints and "Show the idea", not to fail a safe move.
+   * A longer forced mate is not, by itself, grounds to omit a move.
    */
   acceptable: string[];
+  /**
+   * Safe on the one-move material rule, but a short tactic still wins material.
+   * Precomputed offline. The judge reads this list and does not search at runtime.
+   */
+  traps: DrillTrap[];
   note: string;
   expectedDropCp: number;
 };
@@ -100,14 +112,24 @@ export function createThemeSession(theme: DrillTheme): DrillSession {
   };
 }
 
-/** Material-safe, and inside the verified window. Delivering checkmate always counts. */
+/** Engine window used for hints and "Show the idea". It does not decide pass or fail. */
+export function teachingMoves(drill: DrillPosition): string[] {
+  return drill.acceptable?.length ? drill.acceptable : drill.solution;
+}
+
+export function drillTrap(drill: DrillPosition, from: Square, to: Square): DrillTrap | null {
+  const uci = `${from}${to}`;
+  return drill.traps.find((trap) => trap.move === uci) ?? null;
+}
+
+/**
+ * A move passes when it avoids a blunder: no mate in 1, and no material loss.
+ * Equal trades pass. Checkmate always passes. Mate in 2 or more does not fail a move.
+ * A precomputed two-move trap still fails. The engine window never turns a pass into a fail.
+ */
 export function isCorrectDrillMove(drill: DrillPosition, from: Square, to: Square): boolean {
   if (!moveRemovesDanger(drill, from, to)) return false;
-  const uci = `${from}${to}`;
-  const window = drill.acceptable?.length ? drill.acceptable : drill.solution;
-  if (window.some((sol) => sol.startsWith(uci))) return true;
-  const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
-  return outcome !== null && outcome >= 100;
+  return drillTrap(drill, from, to) === null;
 }
 
 export const HABIT_PROMPT = 'Before you move: is anything of yours hanging?';

@@ -65,8 +65,8 @@ describe('the save judge', () => {
     expect(opponentThreatensMateInOne(after.fen())).toBe(false);
   });
 
-  it('rejects Ke7 on the pin file and accepts d5', () => {
-    expect(ok('pin-02', 'e8e7')).toBe(false);
+  it('accepts Ke7 when the king keeps the material and accepts d5', () => {
+    expect(ok('pin-02', 'e8e7')).toBe(true);
     expect(ok('pin-02', 'd7d5')).toBe(true);
     expect(isAbsolutePin(new Chess(drill('pin-01').fen), 'c6', 'b')).toBe(true);
     expect(isAbsolutePin(new Chess(drill('pin-04').fen), 'c3', 'w')).toBe(true);

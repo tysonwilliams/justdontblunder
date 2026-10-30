@@ -19,7 +19,8 @@
       "h5e2",
       "h5f3",
       "h5h4"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-q-02",
@@ -53,6 +54,17 @@
       "d5f5",
       "d5c5",
       "d5g5"
+    ],
+    "traps": [
+      {
+        "move": "d5c6",
+        "line": [
+          "f1b5",
+          "c8f5",
+          "b5c6"
+        ],
+        "explanation": "Careful: after Qc6, Bb5 pins your queen to your king and you lose it."
+      }
     ]
   },
   {
@@ -73,7 +85,8 @@
       "h4e4",
       "h4e7",
       "h4f6"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-q-06",
@@ -93,7 +106,8 @@
       "a5b4",
       "a5a4",
       "a5b6"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-r-01",
@@ -111,7 +125,8 @@
     "acceptable": [
       "h4e4",
       "h4h5"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-r-02",
@@ -129,7 +144,8 @@
     "acceptable": [
       "e5e4",
       "e5e7"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-r-03",
@@ -137,15 +153,16 @@
     "sideToMove": "w",
     "theme": "hanging",
     "atRiskSquare": "h5",
-    "prompt": "Your rook is hanging to the knight — save it.",
+    "prompt": "Your rook is hanging to the knight — make everything safe.",
     "solution": [
       "h5h4"
     ],
-    "note": "Nf6 attacks your unprotected rook. Get it off h5.",
+    "note": "Nf6 attacks your unprotected rook. Make everything safe — move the rook, defend it, or deal with the knight.",
     "expectedDropCp": 500,
     "acceptable": [
       "h5h4"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-r-04",
@@ -171,7 +188,8 @@
       "g2g3",
       "g1f3",
       "d1h5"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-n-01",
@@ -191,6 +209,17 @@
       "e4f6",
       "e4d6",
       "e4c5"
+    ],
+    "traps": [
+      {
+        "move": "f8b4",
+        "line": [
+          "c2c3",
+          "e4f2",
+          "e1f2"
+        ],
+        "explanation": "Careful: after Bb4+, c3 attacks that bishop, and your knight on e4 is lost for a pawn."
+      }
     ]
   },
   {
@@ -215,7 +244,8 @@
       "f6d7",
       "f6g4",
       "f6d5"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-n-03",
@@ -235,7 +265,8 @@
       "c4e3",
       "c4e5",
       "c4a3"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-b-01",
@@ -259,7 +290,8 @@
       "b4e7",
       "b4c5",
       "b4f8"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-b-02",
@@ -277,7 +309,8 @@
     "acceptable": [
       "c4d5",
       "e4d5"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-b-03",
@@ -285,18 +318,38 @@
     "sideToMove": "b",
     "theme": "hanging",
     "atRiskSquare": "f5",
-    "prompt": "Your bishop is hanging — pull it back.",
+    "prompt": "Your bishop is hanging — make everything safe.",
     "solution": [
       "f6e4",
       "d5e4",
       "f5e4"
     ],
-    "note": "The e-pawn attacks your bishop on f5. Pull the bishop back or trade it off.",
+    "note": "The e-pawn attacks your bishop on f5. Make everything safe — move the bishop, or deal with the pawn.",
     "expectedDropCp": 300,
     "acceptable": [
       "f6e4",
       "d5e4",
       "f5e4"
+    ],
+    "traps": [
+      {
+        "move": "f5e6",
+        "line": [
+          "e4e5",
+          "f6g8",
+          "f3g5"
+        ],
+        "explanation": "Careful: after Be6, e5 kicks your knight and Ng5 attacks your bishop."
+      },
+      {
+        "move": "f5c8",
+        "line": [
+          "e4d5",
+          "f6d5",
+          "c3d5"
+        ],
+        "explanation": "Careful: after Bc8, exd5 takes your pawn and Nxd5 takes the knight that recaptures."
+      }
     ]
   },
   {
@@ -321,7 +374,8 @@
       "b8c6",
       "d8e7",
       "f8d6"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "hang-p-02",
@@ -345,7 +399,8 @@
       "g8f6",
       "d8e7",
       "d8h4"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "fork-01",
@@ -363,6 +418,122 @@
     "acceptable": [
       "f3d4",
       "f3e5"
+    ],
+    "traps": [
+      {
+        "move": "f3g5",
+        "line": [
+          "d4e2"
+        ],
+        "explanation": "Careful: after Ng5, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "f3g1",
+        "line": [
+          "d4e2"
+        ],
+        "explanation": "Careful: after Ng1, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "f3d2",
+        "line": [
+          "d4e2"
+        ],
+        "explanation": "Careful: after Nd2, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "e2b5",
+        "line": [
+          "d4b5",
+          "c3b5"
+        ],
+        "explanation": "Careful: after Bb5, Nxb5 takes your bishop."
+      },
+      {
+        "move": "g2g3",
+        "line": [
+          "d4e2",
+          "d1e2"
+        ],
+        "explanation": "Careful: after g3, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "h2h4",
+        "line": [
+          "d4e2",
+          "d1e2"
+        ],
+        "explanation": "Careful: after h4, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "a1b1",
+        "line": [
+          "d4e2",
+          "d1e2"
+        ],
+        "explanation": "Careful: after Rb1, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "c1d2",
+        "line": [
+          "d4e2",
+          "d1e2"
+        ],
+        "explanation": "Careful: after Bd2, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "d1d2",
+        "line": [
+          "d4e2",
+          "d2e2"
+        ],
+        "explanation": "Careful: after Qd2, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "d1d3",
+        "line": [
+          "d4e2",
+          "d3e2"
+        ],
+        "explanation": "Careful: after Qd3, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "e1d2",
+        "line": [
+          "f8b4",
+          "f3e5",
+          "d8e7",
+          "a2a3",
+          "f6e4",
+          "d2e1",
+          "b4c3"
+        ],
+        "explanation": "Careful: after Kd2, Bb4 pins your knight on c3 to your king and Bxc3 takes it."
+      },
+      {
+        "move": "e1f1",
+        "line": [
+          "d4e2",
+          "d1e2"
+        ],
+        "explanation": "Careful: after Kf1, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "h1g1",
+        "line": [
+          "d4e2",
+          "d1e2"
+        ],
+        "explanation": "Careful: after Rg1, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      },
+      {
+        "move": "h1f1",
+        "line": [
+          "d4e2",
+          "d1e2"
+        ],
+        "explanation": "Careful: after Rf1, Nxe2 takes your bishop. The knight on d4 was still forking it."
+      }
     ]
   },
   {
@@ -371,14 +542,25 @@
     "sideToMove": "w",
     "theme": "fork",
     "atRiskSquare": "b3",
-    "prompt": "Knight forks your queen and knight — save the queen.",
+    "prompt": "A knight forks your queen and knight — make everything safe.",
     "solution": [
       "f3d4"
     ],
-    "note": "Nd4 forks Qb3 and Nf3. Take the knight, or move the queen only if the knight on f3 stays safe.",
+    "note": "Nd4 forks Qb3 and Nf3. Make both pieces safe — take the knight, or move a piece only when the other one stays safe.",
     "expectedDropCp": 900,
     "acceptable": [
       "f3d4"
+    ],
+    "traps": [
+      {
+        "move": "b3c3",
+        "line": [
+          "f8b4",
+          "f3d4",
+          "b4c3"
+        ],
+        "explanation": "Careful: after Qc3, Bb4 pins your queen to your king and you lose it."
+      }
     ]
   },
   {
@@ -395,7 +577,8 @@
     "expectedDropCp": 500,
     "acceptable": [
       "d1c2"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "fork-05",
@@ -413,7 +596,8 @@
     "acceptable": [
       "f1d3",
       "c2d3"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "fork-06",
@@ -429,6 +613,38 @@
     "expectedDropCp": 900,
     "acceptable": [
       "d3e4"
+    ],
+    "traps": [
+      {
+        "move": "c3e4",
+        "line": [
+          "d7d5",
+          "c4b3",
+          "d5e4"
+        ],
+        "explanation": "Careful: after Nxe4, d5 attacks that knight and dxe4 wins it back."
+      },
+      {
+        "move": "d2e3",
+        "line": [
+          "e4c3"
+        ],
+        "explanation": "Careful: after Qe3, Nxc3 takes your knight. Moving the queen left it in the fork."
+      },
+      {
+        "move": "d2e2",
+        "line": [
+          "e4c3"
+        ],
+        "explanation": "Careful: after Qe2, Nxc3 takes your knight. Moving the queen left it in the fork."
+      },
+      {
+        "move": "d2d1",
+        "line": [
+          "e4c3"
+        ],
+        "explanation": "Careful: after Qd1, Nxc3 takes your knight. Moving the queen left it in the fork."
+      }
     ]
   },
   {
@@ -481,7 +697,8 @@
       "d8f6",
       "e8e7",
       "g8h6"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "pin-02",
@@ -489,7 +706,7 @@
     "sideToMove": "b",
     "theme": "pin",
     "atRiskSquare": "e6",
-    "prompt": "A rook pins your knight to the king — block the file.",
+    "prompt": "A rook pins your knight to the king — make everything safe.",
     "solution": [
       "c7c5",
       "d7d5",
@@ -510,7 +727,7 @@
       "g7g6",
       "f7f6"
     ],
-    "note": "Re1 pins Ne6 to the king. Block the file. Stepping the king to e7 stays on the file, so the knight is still pinned.",
+    "note": "Re1 pins Ne6 to the king. Make everything safe. Blocking the file is one way.",
     "expectedDropCp": 40,
     "acceptable": [
       "c7c5",
@@ -531,7 +748,8 @@
       "f7f5",
       "g7g6",
       "f7f6"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "pin-04",
@@ -579,7 +797,8 @@
       "f3g5",
       "h1g1",
       "e1e2"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "pin-06",
@@ -599,7 +818,8 @@
       "d4c6",
       "f2f3",
       "d1d3"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "back-01",
@@ -619,7 +839,8 @@
       "c8e6",
       "g8f8",
       "c8d7"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "back-02",
@@ -645,6 +866,17 @@
       "a3c3",
       "e1f1",
       "e1e3"
+    ],
+    "traps": [
+      {
+        "move": "f2d3",
+        "line": [
+          "d8b6",
+          "g1h1",
+          "e8e1"
+        ],
+        "explanation": "Careful: after Nd3, Qb6+ checks and Rxe1+ takes your rook."
+      }
     ]
   },
   {
@@ -667,7 +899,8 @@
       "d8e7",
       "d7d5",
       "g7g6"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "mate-02",
@@ -685,7 +918,8 @@
     "acceptable": [
       "b8d7",
       "f7f6"
-    ]
+    ],
+    "traps": []
   },
   {
     "id": "mate-03",
@@ -717,6 +951,7 @@
       "e2e4",
       "f1g2",
       "f1h3"
-    ]
+    ],
+    "traps": []
   }
 ]

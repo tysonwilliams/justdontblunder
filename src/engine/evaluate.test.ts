@@ -160,7 +160,7 @@ describe('beginner fixtures', () => {
     expect(isCorrectDrillMove(drill, 'h5', 'g4')).toBe(false);
     expect(isCorrectDrillMove(drill, 'h5', 'g6')).toBe(false);
     expect(isCorrectDrillMove(drill, 'h5', 'h6')).toBe(false);
-    expect(isCorrectDrillMove(drill, 'h5', 'f5')).toBe(false);
+    expect(isCorrectDrillMove(drill, 'h5', 'f5')).toBe(true);
   });
 
   it("fool's mate drill accepts stops that do not drop material", () => {
