@@ -16,7 +16,6 @@ export type ProgressState = {
   blundersMade: number;
   practiceMoves: number;
   themeStats: Partial<Record<DrillTheme, ThemeTally>>;
-  habitTutorialDone: boolean;
   recordStreak: number;
   bestPuzzleStreak: number;
   missedDate: string | null;
@@ -26,7 +25,6 @@ export type ProgressState = {
   clearMiss: (drillId: string) => void;
   recordPuzzleRun: (length: number) => void;
   markPracticeMove: (avoidedBlunder: boolean, madeBlunder: boolean) => void;
-  completeHabitTutorial: () => void;
   resetProgress: () => void;
 };
 
@@ -74,7 +72,6 @@ export const useProgressStore = create<ProgressState>()(
       blundersMade: 0,
       practiceMoves: 0,
       themeStats: {},
-      habitTutorialDone: false,
       recordStreak: 0,
       bestPuzzleStreak: 0,
       missedDate: null,
@@ -121,7 +118,6 @@ export const useProgressStore = create<ProgressState>()(
           blundersAvoided: state.blundersAvoided + (avoidedBlunder ? 1 : 0),
           blundersMade: state.blundersMade + (madeBlunder ? 1 : 0),
         })),
-      completeHabitTutorial: () => set({ habitTutorialDone: true }),
       resetProgress: () =>
         set({
           dailyStreak: 0,
@@ -132,7 +128,6 @@ export const useProgressStore = create<ProgressState>()(
           blundersMade: 0,
           practiceMoves: 0,
           themeStats: {},
-          habitTutorialDone: false,
           recordStreak: 0,
           bestPuzzleStreak: 0,
           missedDate: null,
