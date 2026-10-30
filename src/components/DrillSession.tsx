@@ -18,6 +18,7 @@ import {
   type DrillSession as DrillSessionData,
   type DrillTheme,
 } from '@/src/logic/drills';
+import { createGame, tryMove } from '@/src/logic/game';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
@@ -69,6 +70,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const reviewStarted = useRef(false);
   const runRecorded = useRef(false);
+  const resultCounted = useRef(false);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
 
   const drill: DrillPosition | undefined = session.positions[index];
@@ -115,6 +117,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   useEffect(() => {
     if (!drill) return;
+    resultCounted.current = false;
     setDisplayFen(drill.fen);
     setRound('playing');
     setHighlights([]);
@@ -153,10 +156,42 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     setBoardKey((k) => k + 1);
   };
 
-  const noteMiss = () => {
+  /** Persist and score each puzzle once, on its first outcome. */
+  const recordFirstResult = (correct: boolean) => {
+    if (!drill || resultCounted.current) return;
+    resultCounted.current = true;
+    setScore((s) => ({
+      correct: s.correct + (correct ? 1 : 0),
+      total: s.total + 1,
+    }));
+    markDrillResult(correct);
+    if (correct) {
+      if (reviewing) clearMiss(drill.id);
+    } else {
+      recordMiss(drill.id);
+    }
+  };
+
+  const revealIdea = () => {
     if (!drill) return;
-    markDrillResult(false);
-    recordMiss(drill.id);
+    recordFirstResult(false);
+    const uci = drill.solution[0];
+    if (uci && uci.length >= 4) {
+      const from = uci.slice(0, 2) as Square;
+      const to = uci.slice(2, 4) as Square;
+      const game = createGame(drill.fen);
+      const moved = tryMove(game, from, to);
+      if (moved) {
+        setDisplayFen(game.fen());
+        setLastMove({ from: moved.from, to: moved.to });
+        setHighlights([moved.from, moved.to, drill.atRiskSquare]);
+      } else {
+        setHighlights([drill.atRiskSquare]);
+      }
+    } else {
+      setHighlights([drill.atRiskSquare]);
+    }
+    setRound('revealed');
   };
 
   const onMove = (event: BoardMoveEvent) => {
@@ -167,14 +202,11 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
     const ok = isCorrectDrillMove(drill, event.from, event.to);
     if (ok) {
-      setScore((s) => ({ correct: s.correct + 1, total: s.total + 1 }));
-      markDrillResult(true);
-      if (reviewing) clearMiss(drill.id);
+      recordFirstResult(true);
       setRound('correct');
       setHighlights([event.to]);
     } else if (mode === 'streak') {
-      setScore((s) => ({ ...s, total: s.total + 1 }));
-      noteMiss();
+      recordFirstResult(false);
       if (!runRecorded.current) {
         runRecorded.current = true;
         recordPuzzleRun(score.correct);
@@ -182,8 +214,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
       setRound('streakEnd');
       setHighlights([event.from, event.to, drill.atRiskSquare]);
     } else {
-      setScore((s) => ({ ...s, total: s.total + 1 }));
-      noteMiss();
+      recordFirstResult(false);
       setRound('retry');
       setHighlights([event.from, event.to, drill.atRiskSquare]);
     }
@@ -267,16 +298,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
                   : 'No hints. One miss ends the run.'}
               </Text>
               {learn ? (
-                <Button
-                  label="Show the idea"
-                  variant="secondary"
-                  onPress={() => {
-                    noteMiss();
-                    setRound('revealed');
-                    setHighlights([drill.atRiskSquare]);
-                    setScore((s) => ({ ...s, total: s.total + 1 }));
-                  }}
-                />
+                <Button label="Show the idea" variant="secondary" onPress={revealIdea} />
               ) : null}
             </View>
           ) : (
