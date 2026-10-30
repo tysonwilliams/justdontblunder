@@ -43,3 +43,4 @@ yarn-error.*
 # local scratch
 agent-tools/
 .cursor/
+.vercel
