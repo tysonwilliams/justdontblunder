@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { highlightsForRound, squareBackground } from '@/src/components/Board/highlight';
+import { highlightsForRound, legalMoveInk, squareBackground } from '@/src/components/Board/highlight';
 import { colors } from '@/src/theme';
 
 const quiet = {
@@ -32,6 +32,17 @@ describe('squareBackground', () => {
 
   it('leaves an unmarked last-move square on the neutral last-move color', () => {
     expect(squareBackground({ ...quiet, isLast: true })).toBe(colors.boardLastMove);
+  });
+});
+
+describe('legalMoveInk', () => {
+  it('uses the grey-blue move dot for captures, not blunder red', () => {
+    expect(legalMoveInk(true)).toBe(colors.boardLegalOnDark);
+    expect(legalMoveInk(false)).toBe(colors.boardLegalOnLight);
+    expect(legalMoveInk(true)).not.toBe(colors.boardBlunder);
+    expect(legalMoveInk(false)).not.toBe(colors.danger);
+    expect(legalMoveInk(true)).not.toBe(colors.boardCaptureOnDark);
+    expect(legalMoveInk(false)).not.toBe(colors.boardCaptureOnLight);
   });
 });
 

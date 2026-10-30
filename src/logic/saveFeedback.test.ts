@@ -1,7 +1,7 @@
 import { Chess, type Square } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 
-import { feedbackForRound, saveFeedback } from '@/src/logic/saveFeedback';
+import { feedbackForRound, missFeedback, saveFeedback } from '@/src/logic/saveFeedback';
 import { getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
 
 function drill(id: string) {
@@ -56,6 +56,35 @@ describe('saveFeedback', () => {
         expect(text, `${item.id} ${text}`).not.toMatch(/\bGet (her|it)\b/);
       }
     }
+  });
+});
+
+describe('missFeedback', () => {
+  it('describes the square the queen moved to when the knight still wins it', () => {
+    const third = drill('hang-q-03');
+    const text = missFeedback(third, 'h4', 'g5');
+    expect(text).toBe('g5 is still attacked by the knight — Nxg5 wins your queen.');
+    expect(text).not.toMatch(/h4/);
+    expect(text).not.toBe(third.note);
+  });
+
+  it('names the capture that refutes the move actually played', () => {
+    const text = missFeedback(drill('hang-q-02'), 'd5', 'd2');
+    expect(text).toMatch(/Bxd2/);
+    expect(text).toMatch(/wins your queen/);
+    expect(text).not.toMatch(/Move her off d5/);
+  });
+
+  it('names the opponent who delivers the mate', () => {
+    const asBlack = drill('back-01');
+    expect(asBlack.sideToMove).toBe('b');
+    expect(missFeedback(asBlack, 'b8', 'c6')).toBe('White plays Re8#.');
+
+    const asWhite = drill('back-02');
+    expect(asWhite.sideToMove).toBe('w');
+    const text = missFeedback(asWhite, 'a3', 'a4');
+    expect(text.startsWith('Black plays ')).toBe(true);
+    expect(text).toMatch(/#/);
   });
 });
 

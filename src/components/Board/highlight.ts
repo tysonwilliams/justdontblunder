@@ -5,6 +5,11 @@ import { colors } from '@/src/theme';
 
 export type HighlightTone = 'danger' | 'success';
 
+/** Quiet dots and capture rings share this ink. Red is only for a blunder. */
+export function legalMoveInk(isDark: boolean): string {
+  return isDark ? colors.boardLegalOnDark : colors.boardLegalOnLight;
+}
+
 type SquarePaint = {
   isDark: boolean;
   isLast: boolean;

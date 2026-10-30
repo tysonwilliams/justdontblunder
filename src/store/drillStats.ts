@@ -6,8 +6,8 @@ export type DrillTally = {
 };
 
 /**
- * `drillsCompleted` is attempts, so accuracy can stay correct/attempted.
- * "Drills done" reads `drillsCorrect` — a miss is not a solved drill.
+ * Every answer increments `drillsCompleted` once.
+ * `drillsCorrect` and the save / blunder tallies follow pass vs fail.
  */
 export function applyDrillResult(state: DrillTally, correct: boolean): DrillTally {
   return {
@@ -18,6 +18,7 @@ export function applyDrillResult(state: DrillTally, correct: boolean): DrillTall
   };
 }
 
-export function drillsDoneCount(drillsCorrect: number): number {
-  return drillsCorrect;
+/** Drills played, including misses. Accuracy is correct / this count. */
+export function drillsDoneCount(drillsCompleted: number): number {
+  return drillsCompleted;
 }

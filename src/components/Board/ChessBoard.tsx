@@ -20,7 +20,7 @@ import {
   tryMove,
   type GameSnapshot,
 } from '@/src/logic/game';
-import { squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
+import { legalMoveInk, squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
 import { colors, fonts, radii } from '@/src/theme';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
@@ -270,16 +270,8 @@ export function ChessBoard({
                           {
                             width: squareSize * (piece ? 0.9 : 0.32),
                             height: squareSize * (piece ? 0.9 : 0.32),
-                            backgroundColor: piece
-                              ? 'transparent'
-                              : isDark
-                                ? colors.boardLegalOnDark
-                                : colors.boardLegalOnLight,
-                            borderColor: piece
-                              ? isDark
-                                ? colors.boardCaptureOnDark
-                                : colors.boardCaptureOnLight
-                              : 'transparent',
+                            backgroundColor: piece ? 'transparent' : legalMoveInk(isDark),
+                            borderColor: piece ? legalMoveInk(isDark) : 'transparent',
                           },
                         ]}
                       />

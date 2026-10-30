@@ -127,8 +127,19 @@ export function missFeedback(drill: DrillPosition, from: Square, to: Square): st
     return RETRY_COPY;
   }
   const punishment = bestPunishment(game.fen());
-  if (punishment?.mate) return `${punishment.san} is checkmate.`;
-  if (punishment) return `${punishment.san} wins your ${pieceName(punishment.captured)}.`;
+  if (punishment?.mate) {
+    const who = game.turn() === 'w' ? 'White' : 'Black';
+    return `${who} plays ${punishment.san}.`;
+  }
+  if (punishment) {
+    const victim = pieceName(punishment.captured);
+    if (punishment.to === to) {
+      const attacker = game.get(punishment.from);
+      const attackerName = attacker ? pieceName(attacker.type) : 'piece';
+      return `${to} is still attacked by the ${attackerName} — ${punishment.san} wins your ${victim}.`;
+    }
+    return `${punishment.san} wins your ${victim}.`;
+  }
   const idea = drill.solution[0];
   if (idea && idea.length >= 4) {
     const teach = new Chess(drill.fen);

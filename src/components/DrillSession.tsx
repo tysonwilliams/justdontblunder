@@ -24,7 +24,7 @@ import {
   type DrillTheme,
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
-import { feedbackForRound } from '@/src/logic/saveFeedback';
+import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
 import { bestPunishment } from '@/src/logic/safety';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
@@ -51,8 +51,11 @@ type RunSummary = {
   saved: number;
   best: number;
   playedSan: string | null;
-  missPrompt: string;
-  missNote: string;
+  missText: string;
+  fen: string;
+  lastMove: { from: Square; to: Square } | null;
+  orientation: 'white' | 'black';
+  atRisk: Square;
 };
 
 type Props = {
@@ -66,7 +69,7 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
 }
 
 export function DrillSession({ mode, reviewing = false }: Props) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const wide = boardStageIsWide(width);
   const router = useRouter();
   const learn = mode === 'learn';
@@ -252,31 +255,44 @@ export function DrillSession({ mode, reviewing = false }: Props) {
       saved: score.correct,
       best: Math.max(bestPuzzleStreak, score.correct),
       playedSan: lastMove ? playedSan(drill.fen, lastMove.from, lastMove.to) : null,
-      missPrompt: drill.prompt,
-      missNote: drill.note,
+      missText:
+        !shownIdea && lastMove ? missFeedback(drill, lastMove.from, lastMove.to) : drill.note,
+      fen: displayFen ?? drill.fen,
+      lastMove,
+      orientation: drill.sideToMove === 'b' ? 'black' : 'white',
+      atRisk: drill.atRiskSquare,
     });
   };
 
   if (runSummary) {
+    const marks = highlightsForRound('streakEnd', runSummary.lastMove, runSummary.atRisk);
     return (
       <Screen maxWidth={wide ? 1120 : 560}>
         <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
-        <View style={styles.doneCard}>
-          <Text style={styles.eyebrow}>Drills</Text>
-          <Text style={styles.heading}>Streak over</Text>
-          <Text style={styles.score}>{runSummary.saved}</Text>
-          <Text style={styles.sub}>
-            saved this run · best {runSummary.best}
-          </Text>
-          <View style={styles.missBlock}>
-            <Text style={styles.missLabel}>The miss</Text>
-            <Text style={styles.missPrompt}>{runSummary.missPrompt}</Text>
-            {runSummary.playedSan ? (
-              <Text style={styles.hint}>You played {runSummary.playedSan}.</Text>
-            ) : null}
-            <Text style={styles.hint}>{runSummary.missNote}</Text>
+        <View style={[styles.summary, { minHeight: Math.max(520, height - 160) }]}>
+          <ChessBoard
+            fen={runSummary.fen}
+            orientation={runSummary.orientation}
+            flipCue={runSummary.orientation === 'black'}
+            interactive={false}
+            lastMove={runSummary.lastMove}
+            highlightSquares={marks.squares}
+            highlightTone={marks.tone}
+          />
+          <View style={styles.doneCard}>
+            <Text style={styles.eyebrow}>Drills</Text>
+            <Text style={styles.heading}>Streak over</Text>
+            <Text style={styles.score}>{runSummary.saved}</Text>
+            <Text style={styles.sub}>saved this run · best {runSummary.best}</Text>
+            <View style={styles.missBlock}>
+              <Text style={styles.missLabel}>The miss</Text>
+              {runSummary.playedSan ? (
+                <Text style={styles.hint}>You played {runSummary.playedSan}.</Text>
+              ) : null}
+              <Text style={styles.hint}>{runSummary.missText}</Text>
+            </View>
+            <Button label="Start again" onPress={() => begin(sessionFor(setId))} />
           </View>
-          <Button label="Start again" onPress={() => begin(sessionFor(setId))} />
         </View>
       </Screen>
     );
@@ -552,6 +568,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
+  summary: {
+    width: '100%',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
   doneCard: {
     backgroundColor: colors.bgElevated,
     borderRadius: radii.lg,
@@ -590,11 +611,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-  },
-  missPrompt: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 22,
   },
 });

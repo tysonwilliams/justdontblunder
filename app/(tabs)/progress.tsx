@@ -67,7 +67,7 @@ export default function ProgressScreen() {
       </View>
 
       <View style={styles.grid}>
-        <Stat label="Drills done" value={String(drillsDoneCount(drillsCorrect))} wide={!compact} />
+        <Stat label="Drills done" value={String(drillsDoneCount(drillsCompleted))} wide={!compact} />
         <Stat label="Accuracy" value={`${accuracy}%`} wide={!compact} />
         <Stat label="Saves" value={String(blundersAvoided)} wide={!compact} />
         <Stat label="Blunders" value={String(blundersMade)} wide={!compact} />

@@ -11,7 +11,7 @@ import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
 import { Screen } from '@/src/components/ui/Screen';
-import { quickPatternFeedback, type MoveFeedback } from '@/src/engine/evaluate';
+import { judgePracticeMove, type MoveFeedback } from '@/src/engine/evaluate';
 import { findHangingPieces } from '@/src/engine/patterns';
 import { HABIT_PROMPT } from '@/src/logic/drills';
 import { createGame, snapshot } from '@/src/logic/game';
@@ -45,6 +45,7 @@ export default function PracticeScreen() {
   const [fen, setFen] = useState(() => createGame().fen());
   const [boardKey, setBoardKey] = useState(0);
   const [feedback, setFeedback] = useState<MoveFeedback | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [tone, setTone] = useState<'danger' | 'success' | 'warn'>('danger');
   const [replySan, setReplySan] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
@@ -70,6 +71,7 @@ export default function PracticeScreen() {
     setFen(createGame().fen());
     setBoardKey((k) => k + 1);
     setFeedback(null);
+    setStatus(null);
     setReplySan(null);
     setThinking(false);
     setHighlights([]);
@@ -78,15 +80,23 @@ export default function PracticeScreen() {
 
   const onMove = (event: BoardMoveEvent) => {
     if (thinking || gameOver) return false;
-    const result = quickPatternFeedback(event.afterFen, 'w');
+    const result = judgePracticeMove(event.beforeFen, event.from, event.to, 'w');
     const hadHanging = findHangingPieces(event.beforeFen, 'w').length > 0;
     markPracticeMove(result.ok && hadHanging, !result.ok);
     setFen(event.afterFen);
     setLastMove({ from: event.from, to: event.to });
-    setFeedback(result);
-    setTone(result.ok ? 'success' : 'danger');
     setReplySan(null);
-    setHighlights(result.squares);
+    if (result.ok) {
+      setFeedback(null);
+      setStatus(`${result.title}. ${result.message}`);
+      setTone('success');
+      setHighlights([]);
+    } else {
+      setStatus(null);
+      setFeedback(result);
+      setTone('danger');
+      setHighlights(result.squares);
+    }
 
     const afterSnap = snapshot(createGame(event.afterFen));
     if (afterSnap.isGameOver) {
@@ -104,6 +114,7 @@ export default function PracticeScreen() {
         setReplySan(reply.san);
         playMoveSound(soundForSan(reply.san));
         const created = findHangingPieces(reply.fen, 'w');
+        if (result.ok) setStatus(null);
         if (result.ok && created[0]) {
           const name = created[0].message.replace(/^You left the /, '').replace(/ hanging$/, '');
           setFeedback({
@@ -124,9 +135,15 @@ export default function PracticeScreen() {
   };
 
   const arrow: BoardArrow[] = [];
-  const marked = feedback?.squares?.length ? feedback.squares : hangingNow[0]?.squares;
+  const preMoveHang = !feedback && !status ? hangingNow[0] : undefined;
+  const marked = feedback?.squares?.length ? feedback.squares : preMoveHang?.squares;
+  const arrowIsWarn = tone === 'warn' || Boolean(preMoveHang);
   if (marked?.[0] && marked[1]) {
-    arrow.push({ from: marked[1], to: marked[0], color: tone === 'warn' ? colors.warn : colors.danger });
+    arrow.push({
+      from: marked[1],
+      to: marked[0],
+      color: arrowIsWarn ? colors.warn : colors.danger,
+    });
   }
 
   const panelMessage = feedback
@@ -157,9 +174,12 @@ export default function PracticeScreen() {
             fen={fen}
             orientation="white"
             interactive={!thinking && !gameOver && fen.includes(' w ')}
-            highlightSquares={highlights}
-            highlightTone={tone === 'success' ? 'success' : 'danger'}
-            arrows={tone === 'success' ? [] : arrow}
+            highlightSquares={feedback && tone === 'danger' ? highlights : []}
+            attentionSquares={
+              tone === 'warn' ? highlights : preMoveHang ? preMoveHang.squares : []
+            }
+            highlightTone="danger"
+            arrows={feedback && tone === 'success' ? [] : arrow}
             lastMove={lastMove}
             onMove={onMove}
           />
@@ -185,6 +205,8 @@ export default function PracticeScreen() {
                   setReplySan(null);
                 }}
               />
+            ) : status ? (
+              <Text style={styles.reminder}>{status}</Text>
             ) : hangingNow[0] ? (
               <BlunderOverlay
                 visible

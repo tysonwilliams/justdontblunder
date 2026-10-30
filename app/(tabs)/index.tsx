@@ -18,14 +18,14 @@ export default function HomeScreen() {
   const stacked = width < 720;
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
   const streak = useProgressStore((s) => s.dailyStreak);
-  const drillsCorrect = useProgressStore((s) => s.drillsCorrect);
+  const drillsCompleted = useProgressStore((s) => s.drillsCompleted);
   const blundersAvoided = useProgressStore((s) => s.blundersAvoided);
   const habitTutorialDone = useProgressStore((s) => s.habitTutorialDone);
   const completeHabitTutorial = useProgressStore((s) => s.completeHabitTutorial);
   const missedDate = useProgressStore((s) => s.missedDate);
   const missedIds = useProgressStore((s) => s.missedIds);
   const missCount = missesForDate(missedDate, missedIds).length;
-  const fresh = drillsCorrect === 0 && blundersAvoided === 0 && streak === 0;
+  const fresh = drillsCompleted === 0 && blundersAvoided === 0 && streak === 0;
 
   useEffect(() => {
     const unsub = useProgressStore.persist.onFinishHydration(() => setHydrated(true));
@@ -82,7 +82,7 @@ export default function HomeScreen() {
           <Text style={styles.cardSub}>
             {fresh || !hydrated
               ? 'Nothing saved yet'
-              : `${drillsDoneCount(drillsCorrect)} drills · ${blundersAvoided} saves`}
+              : `${drillsDoneCount(drillsCompleted)} drills · ${blundersAvoided} saves`}
           </Text>
         </Pressable>
       </View>
