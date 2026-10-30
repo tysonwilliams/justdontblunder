@@ -152,26 +152,30 @@ describe('beginner fixtures', () => {
     expect(session.positions.map((drill) => drill.id)).toEqual(['hang-q-01', 'mate-03']);
   });
 
-  it('hanging queen on h5 accepts Qxe5 even if that move was left off the list', () => {
+  it('hanging queen on h5 accepts Qxe5 and rejects squares the knight still attacks', () => {
     const drill = getAllDrills().find((item) => item.id === 'hang-q-01');
     expect(drill).toBeTruthy();
     if (!drill) return;
     expect(isCorrectDrillMove(drill, 'h5', 'e5')).toBe(true);
-    expect(isCorrectDrillMove({ ...drill, solution: [] }, 'h5', 'e5')).toBe(true);
     expect(isCorrectDrillMove(drill, 'h5', 'g4')).toBe(false);
     expect(isCorrectDrillMove(drill, 'h5', 'g6')).toBe(false);
     expect(isCorrectDrillMove(drill, 'h5', 'h6')).toBe(false);
+    expect(isCorrectDrillMove(drill, 'h5', 'f5')).toBe(false);
   });
 
-  it("fool's mate drill only accepts moves that stop Qh4#", () => {
+  it("fool's mate drill accepts stops that do not drop material", () => {
     const drill = getAllDrills().find((item) => item.id === 'mate-03');
     expect(drill).toBeTruthy();
     if (!drill) return;
-    for (const bad of ['f3f4', 'b1c3', 'c2c3', 'c2c4']) {
-      expect(drill.solution, bad).not.toContain(bad);
+    for (const bad of ['f3f4', 'b1c3', 'c2c3', 'c2c4', 'g4g5']) {
+      expect(isCorrectDrillMove(drill, bad.slice(0, 2) as 'f3', bad.slice(2, 4) as 'f4'), bad).toBe(
+        false,
+      );
     }
-    for (const good of ['g4g5', 'h2h4', 'e1f2', 'g1h3']) {
-      expect(drill.solution, good).toContain(good);
+    for (const good of ['h2h4', 'e1f2', 'g1h3']) {
+      expect(isCorrectDrillMove(drill, good.slice(0, 2) as 'h2', good.slice(2, 4) as 'h4'), good).toBe(
+        true,
+      );
     }
     for (const sol of drill.solution) {
       const game = new Chess(drill.fen);

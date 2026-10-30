@@ -2,7 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import type { DrillTheme } from '@/src/logic/drills';
 import { applyDrillResult } from '@/src/store/drillStats';
+
+export type ThemeTally = { attempts: number; correct: number };
 
 export type ProgressState = {
   dailyStreak: number;
@@ -12,12 +15,13 @@ export type ProgressState = {
   blundersAvoided: number;
   blundersMade: number;
   practiceMoves: number;
+  themeStats: Partial<Record<DrillTheme, ThemeTally>>;
   habitTutorialDone: boolean;
   recordStreak: number;
   bestPuzzleStreak: number;
   missedDate: string | null;
   missedIds: string[];
-  markDrillResult: (correct: boolean) => void;
+  markDrillResult: (correct: boolean, theme: DrillTheme) => void;
   recordMiss: (drillId: string) => void;
   clearMiss: (drillId: string) => void;
   recordPuzzleRun: (length: number) => void;
@@ -69,17 +73,26 @@ export const useProgressStore = create<ProgressState>()(
       blundersAvoided: 0,
       blundersMade: 0,
       practiceMoves: 0,
+      themeStats: {},
       habitTutorialDone: false,
       recordStreak: 0,
       bestPuzzleStreak: 0,
       missedDate: null,
       missedIds: [],
-      markDrillResult: (correct) =>
+      markDrillResult: (correct, theme) =>
         set((state) => {
           const streak = bumpStreak(state.lastDrillDate, state.dailyStreak);
+          const prev = state.themeStats[theme] ?? { attempts: 0, correct: 0 };
           return {
             ...streak,
             ...applyDrillResult(state, correct),
+            themeStats: {
+              ...state.themeStats,
+              [theme]: {
+                attempts: prev.attempts + 1,
+                correct: prev.correct + (correct ? 1 : 0),
+              },
+            },
             recordStreak: Math.max(state.recordStreak, streak.dailyStreak),
           };
         }),
@@ -118,6 +131,7 @@ export const useProgressStore = create<ProgressState>()(
           blundersAvoided: 0,
           blundersMade: 0,
           practiceMoves: 0,
+          themeStats: {},
           habitTutorialDone: false,
           recordStreak: 0,
           bestPuzzleStreak: 0,
@@ -134,6 +148,7 @@ export const useProgressStore = create<ProgressState>()(
           ...current,
           ...saved,
           bestPuzzleStreak: saved.bestPuzzleStreak ?? 0,
+          themeStats: saved.themeStats ?? {},
           missedDate: saved.missedDate ?? null,
           missedIds: saved.missedIds ?? [],
         };

@@ -59,7 +59,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
           {state.routes.map((route, index) => {
             const focused = state.index === index;
             const label = descriptors[route.key]?.options.title ?? route.name;
-            const color = focused ? colors.accent : colors.textDim;
+            const color = focused ? colors.accent : colors.text;
             const Icon = isIconName(route.name) ? ICONS[route.name] : IconHome;
 
             const onPress = () => {
@@ -169,10 +169,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: 11,
+    fontSize: 14,
   },
   labelWide: {
     fontFamily: fonts.bodyBold,
-    fontSize: 14,
+    fontSize: 16,
   },
 });

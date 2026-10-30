@@ -68,6 +68,6 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fonts.bodyBold,
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 15,
   },
 });

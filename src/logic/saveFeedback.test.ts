@@ -63,13 +63,13 @@ describe('feedbackForRound', () => {
   const hanging = drill('hang-q-01');
   const save = { from: 'h5' as const, to: 'e5' as const };
 
-  it('uses the played save on success and the hint on reveal and miss', () => {
+  it('uses the played save on success, the hint on reveal, and the refutation on a miss', () => {
     expect(feedbackForRound('correct', hanging, save)).toBe(
       'Qxe5+ takes the pawn and gets your queen off h5.',
     );
     expect(feedbackForRound('revealed', hanging, save)).toBe(hanging.note);
-    expect(feedbackForRound('streakEnd', hanging, { from: 'h5', to: 'g4' })).toBe(hanging.note);
-    expect(feedbackForRound('retry', hanging, { from: 'h5', to: 'g4' })).toMatch(/doesn't save/);
+    expect(feedbackForRound('streakEnd', hanging, { from: 'h5', to: 'g4' })).toMatch(/wins your queen/);
+    expect(feedbackForRound('retry', hanging, { from: 'h5', to: 'g4' })).toMatch(/wins your queen/);
     expect(feedbackForRound('playing', hanging, null)).toBeNull();
   });
 });

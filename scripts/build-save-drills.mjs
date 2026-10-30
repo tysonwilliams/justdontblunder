@@ -212,6 +212,9 @@ function isAbsolutePin(game, square, side) {
   if (!piece || piece.color !== side || piece.type === 'k') return false;
   const kingSq = findKing(game, side);
   if (!kingSq) return false;
+  // The square between the piece and its king must be empty. A pawn on that
+  // line (d7 in a Bb5/Nc6 position) means there is no pin.
+  if (!pathClear(game, square, kingSq)) return false;
   const opp = side === 'w' ? 'b' : 'w';
   const atk = attackersOf(game, square, opp);
   const kf = FILES.indexOf(kingSq[0]);
@@ -225,6 +228,29 @@ function isAbsolutePin(game, square, side) {
     if (between(af, ar, sf, sr, kf, kr)) return true;
   }
   return false;
+}
+
+/** Extra officers have to be paid for by a missing pawn. Stops the generator from cloning an attacker onto the board. */
+function materialReachable(fen) {
+  const game = new Chess(fen);
+  const counts = { w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }, b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 } };
+  for (const row of game.board()) {
+    for (const piece of row) {
+      if (!piece) continue;
+      counts[piece.color][piece.type] += 1;
+    }
+  }
+  for (const color of ['w', 'b']) {
+    const tally = counts[color];
+    if (tally.k !== 1 || tally.p > 8) return false;
+    const extras =
+      Math.max(0, tally.q - 1) +
+      Math.max(0, tally.r - 2) +
+      Math.max(0, tally.b - 2) +
+      Math.max(0, tally.n - 2);
+    if (extras > 8 - tally.p) return false;
+  }
+  return true;
 }
 
 function opponentThreatensMateInOne(fen, side) {
@@ -291,6 +317,7 @@ function validate(d) {
   } catch (e) {
     return `bad fen: ${e.message}`;
   }
+  if (!materialReachable(d.fen)) return 'unreachable material (attacker cloned onto the board)';
   if (pieceCount(d.fen) < MIN_PIECES) return `too sparse (${pieceCount(d.fen)} pcs)`;
   if (game.turn() !== d.sideToMove) return `turn mismatch`;
   const piece = game.get(d.atRiskSquare);
@@ -298,18 +325,9 @@ function validate(d) {
   if (piece.color !== d.sideToMove) return `wrong color`;
 
   const legal = game.moves({ verbose: true }).map((m) => `${m.from}${m.to}${m.promotion ?? ''}`);
-  if (d.theme === 'hanging' || d.theme === 'fork' || d.theme === 'back_rank' || d.theme === 'missed_mate') {
-    const before = new Set(d.solution);
-    d.solution = movesThatSave(d);
-    const after = new Set(d.solution);
-    const added = [...after].filter((m) => !before.has(m));
-    const removed = [...before].filter((m) => !after.has(m) && legal.some((u) => u.startsWith(m.slice(0, 4))));
-    if (added.length || removed.length) {
-      console.log(`${d.id} +[${added.join(' ')}] -[${removed.join(' ')}]`);
-    }
-  } else {
-    d.solution = d.solution.filter((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
-  }
+  // Acceptance is material safety plus the engine window in src/logic/drills.ts.
+  // This script only keeps a legal teaching move; refresh-acceptable.mts rewrites the full set.
+  d.solution = d.solution.filter((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
   if (!d.solution.length) return `no legal solution`;
 
   if (d.theme === 'hanging' && !isTrulyHanging(game, d.atRiskSquare, d.sideToMove)) {
@@ -381,13 +399,13 @@ const drills = [
   // ——— Hanging rooks ———
   {
     id: 'hang-r-01',
-    fen: 'rnbqk2r/pppp1ppp/5n2/4p3/2B1P2r/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4',
+    fen: 'rnbqk3/pppp1ppp/5n2/4p3/2B1P2r/5N2/PPPP1PPP/RNBQK2R b KQq - 2 4',
     sideToMove: 'b',
     theme: 'hanging',
     atRiskSquare: 'h4',
     prompt: 'Your rook is hanging on h4 — save it.',
     solution: ['h4h5', 'h4h6', 'h4h3', 'h4h2', 'h4g4', 'h4f4', 'h4e4'],
-    note: 'White’s knight (and more) can take the rook. Pull it back now.',
+    note: 'Nf3 attacks the rook on h4. Move the rook before it is taken.',
     expectedDropCp: 500,
   },
   {
@@ -433,7 +451,7 @@ const drills = [
     atRiskSquare: 'e4',
     prompt: 'Your knight on e4 is hanging — save it.',
     solution: ['e4f6', 'e4c5', 'e4c3', 'e4d6', 'e4g5', 'e4g3', 'e4f2', 'e4d2', 'd7d5'],
-    note: 'White threatens dxe4. Retreat the knight or support with d5.',
+    note: 'The pawn on d3 attacks the knight. Nf6 gets it home. Ng5 walks into Nxg5.',
     expectedDropCp: 300,
   },
   {
@@ -484,13 +502,13 @@ const drills = [
   },
   {
     id: 'hang-b-03',
-    fen: 'rnbqkb1r/ppp1pppp/5n2/3p1b2/3PP3/2N5/PPP2PPP/R1BQKBNR b KQkq - 2 3',
+    fen: 'rn1qkb1r/ppp1pppp/5n2/3p1b2/3PP3/2N2N2/PPP2PPP/R1BQKB1R b KQkq - 2 4',
     sideToMove: 'b',
     theme: 'hanging',
     atRiskSquare: 'f5',
     prompt: 'Your bishop is hanging — pull it back.',
     solution: ['f5e6', 'f5d7', 'f5g6', 'f5g4', 'f5h3', 'f5e4'],
-    note: 'White can take the loose bishop. Move it now.',
+    note: 'The e-pawn attacks your bishop on f5. Pull the bishop back or trade it off.',
     expectedDropCp: 300,
   },
 
@@ -514,14 +532,14 @@ const drills = [
     atRiskSquare: 'e4',
     prompt: 'Your advanced pawn is loose — save it or defend it.',
     solution: ['e4e3'],
-    note: 'Nf3 attacks the pawn on e4, and nothing defends it.',
+    note: 'Nc3 attacks the pawn on e4, and nothing defends it.',
     expectedDropCp: 100,
   },
 
   // ——— Live forks (full boards) ———
   {
     id: 'fork-01',
-    fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/3nP3/2N2N2/PPP1BPPP/R1BQK2R w KQkq - 6 6',
+    fen: 'r1bqkb1r/pppp1ppp/5n2/4p3/3nP3/2N2N2/PPP1BPPP/R1BQK2R w KQkq - 4 5',
     sideToMove: 'w',
     theme: 'fork',
     atRiskSquare: 'f3',
@@ -532,7 +550,7 @@ const drills = [
   },
   {
     id: 'fork-03',
-    fen: 'r1bqkbnr/pppp1ppp/2n5/4p3/3nP3/1Q3N2/PPP2PPP/RNB1KB1R w KQkq - 5 5',
+    fen: 'r1bqkbnr/pppp1ppp/8/4p3/3nP3/1Q3N2/PPP2PPP/RNB1KB1R w KQkq - 1 4',
     sideToMove: 'w',
     theme: 'fork',
     atRiskSquare: 'b3',
@@ -546,53 +564,53 @@ const drills = [
   },
   {
     id: 'fork-04',
-    fen: 'rnbqkb1r/pppp1ppp/5n2/4p3/4P3/8/PPnP1PPP/RNBQKBNR w KQkq - 0 3',
+    fen: 'r1bqkb1r/pppp1ppp/5n2/4p3/2B1P3/2NP1N2/PPn2PPP/R1BQK2R w KQkq - 0 6',
     sideToMove: 'w',
     theme: 'fork',
     atRiskSquare: 'a1',
-    prompt: 'Knight forks your king and rook — get out of it.',
+    prompt: 'Knight forks your king and rook — take the knight.',
     solution: ['d1c2', 'e1e2'],
-    note: 'Nc2 checks the king and eyes Ra1. Take the knight or step the king.',
+    note: 'Nxc2 checks and attacks the rook on a1. Qxc2 wins the knight. Stepping the king aside loses the rook.',
     expectedDropCp: 500,
   },
   {
     id: 'fork-05',
-    fen: 'rnbqkb1r/ppp2ppp/3p1n2/4p3/4P3/3n1N2/PPPP1PPP/RNBQKB1R w KQkq - 0 4',
+    fen: 'r1bqkb1r/ppp2ppp/3p1n2/4p3/4P3/3n1N2/PPPP1PPP/RNBQKB1R w KQkq - 2 4',
     sideToMove: 'w',
     theme: 'fork',
     atRiskSquare: 'c1',
-    prompt: 'Knight forks king and bishop — break the fork.',
+    prompt: 'Knight forks your king and bishop — take it.',
     solution: ['c2d3', 'e1e2', 'f1d3'],
-    note: 'Nd3 checks and hits Bc1. Capture the knight or walk the king.',
+    note: 'Nd3 checks and hits the bishop on c1. Capture the knight. Walking the king loses the bishop.',
     expectedDropCp: 300,
   },
   {
     id: 'fork-06',
-    fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1n3/2NP1N2/PPPQ1PPP/R1B1K2R w KQkq - 0 6',
+    fen: 'r1bqkb1r/pppp1ppp/2n5/4p3/2B1n3/2NP1N2/PPPQ1PPP/R1B1K2R w KQkq - 2 6',
     sideToMove: 'w',
     theme: 'fork',
     atRiskSquare: 'd2',
-    prompt: 'The knight on e4 forks your queen — move her.',
+    prompt: 'The knight on e4 forks your queen and knight.',
     solution: [
       'd2e3', 'd2f4', 'd2g5', 'd2h6', 'd2e2', 'd2d1', 'd2c1', 'd2e1',
       'd2d3', 'd2d4', 'd2d5', 'd2d6', 'd2d7', 'd2d8',
       'c3e4', 'c3a4', 'c3b5', 'c3d5', 'c3b1', 'c3a2',
       'd3e4', 'f3e5', 'f3g5', 'f3d4',
     ],
-    note: 'Ne4 forks Qd2 and Nc3. Move the queen or capture the knight.',
+    note: 'Ne4 attacks Qd2 and Nc3. Capture the knight. Moving only the queen leaves the other piece to be taken.',
     expectedDropCp: 900,
   },
 
   // ——— Absolute pins ———
   {
     id: 'pin-01',
-    fen: 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3',
+    fen: 'r1bqkbnr/ppp2ppp/2np4/1B2p3/4P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 1 4',
     sideToMove: 'b',
     theme: 'pin',
     atRiskSquare: 'c6',
     prompt: 'Your knight is pinned to the king — break the pin.',
     solution: ['a7a6', 'd7d6', 'g8e7', 'g8f6', 'd8e7', 'a7a5'],
-    note: 'Bb5 pins Nc6 to the king. Play a6 or prepare to break it.',
+    note: 'Bb5 pins Nc6 to the king along the empty diagonal. a6 kicks the bishop. Moving the knight off the diagonal is illegal.',
     expectedDropCp: 40,
   },
   {
@@ -603,29 +621,29 @@ const drills = [
     atRiskSquare: 'e6',
     prompt: 'A rook pins your knight to the king — block the file.',
     solution: ['d8e7', 'f8e7', 'g8e7', 'e8e7'],
-    note: 'Re1 pins Ne6 to the king. Block on e7, or step the king off the file.',
+    note: 'Re1 pins Ne6 to the king. Block the file. Stepping the king to e7 stays on the file, so the knight is still pinned.',
     expectedDropCp: 40,
   },
   {
     id: 'pin-04',
-    fen: 'rnbqk2r/pppp1ppp/5n2/4p3/1b2P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4',
+    fen: 'r1bqk2r/pppp1ppp/2n2n2/4p3/1b2P3/2NP1N2/PPP2PPP/R1BQKB1R w KQkq - 1 5',
     sideToMove: 'w',
     theme: 'pin',
     atRiskSquare: 'c3',
-    prompt: 'Your knight is pinned to the king — unpin carefully.',
+    prompt: 'Your knight on c3 is pinned to the king.',
     solution: ['a2a3', 'd2d3', 'd1e2', 'e1e2', 'f1e2', 'f1d3', 'f1c4', 'f1b5'],
-    note: 'Bb4 pins Nc3 to the king. Don’t move the knight off the pin line.',
+    note: 'Bb4 pins Nc3 to the king. The d-pawn has left d2, so the line is open. Do not move the knight off that diagonal.',
     expectedDropCp: 40,
   },
   {
     id: 'pin-06',
-    fen: 'rnbqkb1r/ppp1pppp/5n2/3p4/4P1b1/5N2/PPPP1PPP/RNBKQB1R w kq - 4 4',
+    fen: 'r1bqk2r/pppp1ppp/2n2n2/8/1b1NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6',
     sideToMove: 'w',
     theme: 'pin',
-    atRiskSquare: 'f3',
-    prompt: 'Your knight is pinned to the king — don’t move it blindly.',
+    atRiskSquare: 'c3',
+    prompt: 'Your knight on c3 is pinned to the king.',
     solution: ['e4e5', 'e4d5', 'h2h3', 'd1e2', 'e1e2', 'f1e2', 'f1d3', 'f1c4', 'f1b5', 'b1c3'],
-    note: 'Bg4 pins Nf3 to the king on d1. Unpin before the knight runs.',
+    note: 'Bb4 pins Nc3 to the king. Deal with the bishop before you move that knight.',
     expectedDropCp: 40,
   },
 
@@ -658,9 +676,9 @@ const drills = [
     sideToMove: 'b',
     theme: 'missed_mate',
     atRiskSquare: 'f7',
-    prompt: 'Scholar’s mate is threatened — stop Qxf7#.',
+    prompt: 'Scholar’s mate is threatened — stop Qxf7#. The queen on h5 is loose.',
     solution: ['g7g6', 'd8e7'],
-    note: 'Qe7 or g6 defends f7. Don’t let Qxf7# land.',
+    note: 'Nxh5 wins the queen. g6 attacks the queen; it does not defend f7. Qe7 stops Qxf7# as well.',
     expectedDropCp: 900,
   },
   {
@@ -671,7 +689,7 @@ const drills = [
     atRiskSquare: 'g8',
     prompt: 'The queen mates on d8 next — stop Qd8#.',
     solution: ['f7f6', 'g7g6', 'c8d7', 'c8e6', 'b8d7', 'a8a7'],
-    note: 'Qd8# comes down the open d-file. Block the file or step the king off the back rank.',
+    note: 'Qd8# comes down the open d-file. Nd7 or f6 stops it without hanging a pawn. A longer mate is not the task — but do not drop the e-pawn to Nxe5.',
     expectedDropCp: 10000,
   },
   {
@@ -682,7 +700,7 @@ const drills = [
     atRiskSquare: 'e1',
     prompt: 'Fool’s mate is threatened — don’t get mated next move.',
     solution: ['f3f4', 'g4g5', 'e2e3', 'e2e4', 'b1c3', 'g1h3', 'd2d3', 'd2d4', 'c2c3', 'c2c4', 'd1e2'],
-    note: 'Qh4# is the threat. g5 or h4 stops the queen landing there, and the king can also step out. Pushing the f-pawn does not.',
+    note: 'h4 occupies the square the queen wants. g5 stops Qh4# but Qxg5 wins the pawn. The king can also step out. Pushing the f-pawn does not stop the mate.',
     expectedDropCp: 10000,
   },
 ];
@@ -709,8 +727,23 @@ if (sparse.length) {
   process.exit(1);
 }
 
-fs.writeFileSync(
-  new URL('../src/data/beginner-blunders.json', import.meta.url),
-  `${JSON.stringify(kept, null, 2)}\n`,
-);
+const outUrl = new URL('../src/data/beginner-blunders.json', import.meta.url);
+let previous = [];
+try {
+  previous = JSON.parse(fs.readFileSync(outUrl, 'utf8'));
+} catch {
+  previous = [];
+}
+const prevById = new Map(previous.map((drill) => [drill.id, drill]));
+for (const drill of kept) {
+  const old = prevById.get(drill.id);
+  if (old && old.fen === drill.fen && Array.isArray(old.acceptable) && old.acceptable.length) {
+    drill.acceptable = old.acceptable;
+    drill.solution = old.solution;
+  } else {
+    console.warn(`${drill.id}: fen changed — run scripts/refresh-acceptable.mts to rebuild the engine window`);
+  }
+}
+
+fs.writeFileSync(outUrl, `${JSON.stringify(kept, null, 2)}\n`);
 console.log(`Wrote ${kept.length} full-board immediate-danger drills (min ${MIN_PIECES} pieces)`);

@@ -2,6 +2,7 @@ import type { Square } from 'chess.js';
 
 import beginnerBlunders from '@/src/data/beginner-blunders.json';
 import { moveRemovesDanger } from '@/src/logic/danger';
+import { moveOutcome } from '@/src/logic/safety';
 
 export type DrillTheme =
   | 'hanging'
@@ -18,6 +19,12 @@ export type DrillPosition = {
   atRiskSquare: Square;
   prompt: string;
   solution: string[];
+  /**
+   * Moves within about 1.5 pawns of the engine best that do not drop material
+   * or allow mate in 1. A longer forced mate is not, by itself, grounds to omit a move.
+   * Mate drills list every move that stops mate in 1 without dropping material.
+   */
+  acceptable: string[];
   note: string;
   expectedDropCp: number;
 };
@@ -93,13 +100,35 @@ export function createThemeSession(theme: DrillTheme): DrillSession {
   };
 }
 
-/** A move counts when it actually removes the threat, not only when it is prelisted. */
+/** Material-safe, and inside the verified window. Delivering checkmate always counts. */
 export function isCorrectDrillMove(drill: DrillPosition, from: Square, to: Square): boolean {
+  if (!moveRemovesDanger(drill, from, to)) return false;
   const uci = `${from}${to}`;
-  if (drill.theme === 'pin') {
-    return drill.solution.some((sol) => sol.startsWith(uci));
+  const window = drill.acceptable?.length ? drill.acceptable : drill.solution;
+  if (window.some((sol) => sol.startsWith(uci))) return true;
+  const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
+  return outcome !== null && outcome >= 100;
+}
+
+export const HABIT_PROMPT = 'Before you move: is anything of yours hanging?';
+
+export function themeInstruction(theme: DrillTheme): string {
+  switch (theme) {
+    case 'hanging':
+      return 'This piece can be taken for free. Move it, defend it, or take the attacker.';
+    case 'fork':
+      return 'One enemy piece attacks two of yours. Save the one you would lose.';
+    case 'pin':
+      return 'That piece is pinned to your king. Do not step it off the line.';
+    case 'back_rank':
+      return 'Back-rank mate is one move away. Block it, or give the king a square.';
+    case 'missed_mate':
+      return 'They can mate you next move. Stop that. A longer mate is not the task.';
+    default: {
+      const _exhaustive: never = theme;
+      return _exhaustive;
+    }
   }
-  return moveRemovesDanger(drill, from, to);
 }
 
 export function themeLabel(theme: DrillTheme): string {

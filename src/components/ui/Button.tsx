@@ -76,7 +76,7 @@ function labelColor(variant: Variant) {
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 48,
+    minHeight: 52,
     paddingHorizontal: 18,
     borderRadius: radii.md,
     alignItems: 'center',
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bodyExtra,
-    fontSize: 16,
+    fontSize: 17,
     letterSpacing: 0.1,
   },
 });

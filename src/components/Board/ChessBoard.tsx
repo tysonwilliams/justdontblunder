@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
+import Svg, { Polygon } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -26,6 +27,12 @@ const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
 const RANKS_WHITE = [8, 7, 6, 5, 4, 3, 2, 1] as const;
 const RANKS_BLACK = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
+export type BoardArrow = {
+  from: Square;
+  to: Square;
+  color?: string;
+};
+
 export type BoardMoveEvent = {
   from: Square;
   to: Square;
@@ -44,6 +51,9 @@ type Props = {
   /** Softer amber attention (e.g. your hanging piece to save). */
   attentionSquares?: Square[];
   lastMove?: { from: Square; to: Square } | null;
+  arrows?: BoardArrow[];
+  /** Black-to-move drills flip the board. Say so next to the turn. */
+  flipCue?: boolean;
   onMove?: (event: BoardMoveEvent) => boolean | void;
   onPositionChange?: (snap: GameSnapshot) => void;
 };
@@ -62,6 +72,8 @@ export function ChessBoard({
   highlightTone = 'danger',
   attentionSquares = [],
   lastMove = null,
+  arrows = [],
+  flipCue = false,
   onMove,
   onPositionChange,
 }: Props) {
@@ -211,6 +223,7 @@ export function ChessBoard({
                 ? `${snap.turn === 'w' ? 'White' : 'Black'} in check`
                 : `${snap.turn === 'w' ? 'White' : 'Black'} to move`}
         </Text>
+        {flipCue ? <Text style={styles.flip}>You're playing Black. Board flipped.</Text> : null}
       </View>
       <GestureDetector gesture={pan}>
         <View style={styles.board} onLayout={onLayout}>
@@ -299,6 +312,24 @@ export function ChessBoard({
               })}
             </View>
           ))}
+          {arrows.length && squareSize > 0 ? (
+            <Svg
+              pointerEvents="none"
+              width={boardSize}
+              height={boardSize}
+              style={styles.arrows}
+              viewBox={`0 0 ${boardSize} ${boardSize}`}>
+              {arrows.map((arrow) => (
+                <ArrowShape
+                  key={`${arrow.from}${arrow.to}`}
+                  from={centerOf(arrow.from, orientation, squareSize)}
+                  to={centerOf(arrow.to, orientation, squareSize)}
+                  color={arrow.color ?? colors.danger}
+                  square={squareSize}
+                />
+              ))}
+            </Svg>
+          ) : null}
           {dragPiece ? (
             <Animated.View
               pointerEvents="none"
@@ -319,22 +350,85 @@ export function ChessBoard({
   );
 }
 
+function centerOf(
+  square: Square,
+  orientation: 'white' | 'black',
+  squareSize: number,
+): { x: number; y: number } {
+  const file = square.charCodeAt(0) - 97;
+  const rank = Number(square[1]) - 1;
+  const col = orientation === 'white' ? file : 7 - file;
+  const row = orientation === 'white' ? 7 - rank : rank;
+  return { x: (col + 0.5) * squareSize, y: (row + 0.5) * squareSize };
+}
+
+function ArrowShape({
+  from,
+  to,
+  color,
+  square,
+}: {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  color: string;
+  square: number;
+}) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const startX = from.x + ux * square * 0.28;
+  const startY = from.y + uy * square * 0.28;
+  const tipX = to.x - ux * square * 0.18;
+  const tipY = to.y - uy * square * 0.18;
+  const head = square * 0.28;
+  const baseX = tipX - ux * head;
+  const baseY = tipY - uy * head;
+  const px = -uy;
+  const py = ux;
+  const wing = head * 0.55;
+  const points = `${tipX},${tipY} ${baseX + px * wing},${baseY + py * wing} ${baseX - px * wing},${baseY - py * wing}`;
+  return (
+    <>
+      <Polygon
+        points={`${startX + px * 3},${startY + py * 3} ${baseX + px * 3},${baseY + py * 3} ${baseX - px * 3},${baseY - py * 3} ${startX - px * 3},${startY - py * 3}`}
+        fill={color}
+        opacity={0.95}
+      />
+      <Polygon points={points} fill={color} />
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
   },
   meta: {
     marginBottom: 10,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   turn: {
     fontFamily: fonts.bodyBold,
-    color: colors.boardMeta,
+    color: colors.text,
+    fontSize: 15,
+  },
+  flip: {
+    fontFamily: fonts.bodyBold,
+    color: colors.accentText,
+    backgroundColor: colors.warn,
     fontSize: 14,
+    lineHeight: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    overflow: 'hidden',
   },
   board: {
     borderRadius: radii.sm,
@@ -361,11 +455,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 4,
   },
+  arrows: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 4,
+  },
   coord: {
     position: 'absolute',
-    fontSize: 10,
+    fontSize: 14,
     fontFamily: fonts.bodyBold,
-    opacity: 0.85,
   },
   fileCoord: {
     right: 3,

@@ -1,6 +1,7 @@
 import { Chess, type PieceSymbol, type Square } from 'chess.js';
 
 import type { DrillPosition } from '@/src/logic/drills';
+import { bestPunishment, pieceName } from '@/src/logic/safety';
 
 export type DrillRound = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
 
@@ -77,7 +78,34 @@ export function saveFeedback(drill: DrillPosition, from: Square, to: Square): st
 
 const RETRY_COPY = "That doesn't save your piece. Look again and try another move.";
 
-/** Success describes the move played. Hints and misses keep the drill note. */
+/** Why the move just played fails: the opponent's reply, not a repeat of the hint. */
+export function missFeedback(drill: DrillPosition, from: Square, to: Square): string {
+  const game = new Chess(drill.fen);
+  let playedSan = '';
+  try {
+    const played = game.move({ from, to, promotion: 'q' });
+    if (!played) return RETRY_COPY;
+    playedSan = played.san;
+  } catch {
+    return RETRY_COPY;
+  }
+  const punishment = bestPunishment(game.fen());
+  if (punishment?.mate) return `${punishment.san} is checkmate.`;
+  if (punishment) return `${punishment.san} wins your ${pieceName(punishment.captured)}.`;
+  const idea = drill.solution[0];
+  if (idea && idea.length >= 4) {
+    const teach = new Chess(drill.fen);
+    const shown = teach.move({
+      from: idea.slice(0, 2) as Square,
+      to: idea.slice(2, 4) as Square,
+      promotion: 'q',
+    });
+    if (shown) return `${playedSan} holds the material, but ${shown.san} is the move to find.`;
+  }
+  return RETRY_COPY;
+}
+
+/** Success describes the move played. A miss explains the refutation. The hint stays on reveal. */
 export function feedbackForRound(
   round: DrillRound,
   drill: DrillPosition,
@@ -89,9 +117,9 @@ export function feedbackForRound(
     case 'correct':
       return move ? saveFeedback(drill, move.from, move.to) : 'That gets the piece to safety.';
     case 'retry':
-      return RETRY_COPY;
-    case 'revealed':
     case 'streakEnd':
+      return move ? missFeedback(drill, move.from, move.to) : drill.note;
+    case 'revealed':
       return drill.note;
     default: {
       const _exhaustive: never = round;

@@ -6,18 +6,25 @@ import { spacing } from '@/src/theme';
 type Props = {
   board: ReactNode;
   aside: ReactNode;
+  /** On a phone, show the feedback card before the board so it stays on screen. */
+  asideFirst?: boolean;
 };
 
 const WIDE = 900;
 
-export function BoardStage({ board, aside }: Props) {
+export function BoardStage({ board, aside, asideFirst = false }: Props) {
   const { width } = useWindowDimensions();
   const wide = width >= WIDE;
+  const boardPane = (
+    <View style={[styles.board, wide && styles.boardWide]}>{board}</View>
+  );
+  const asidePane = <View style={[styles.aside, wide && styles.asideWide]}>{aside}</View>;
 
   return (
     <View style={[styles.stage, wide && styles.stageWide]}>
-      <View style={styles.board}>{board}</View>
-      <View style={[styles.aside, wide && styles.asideWide]}>{aside}</View>
+      {wide || !asideFirst ? boardPane : null}
+      {asidePane}
+      {!wide && asideFirst ? boardPane : null}
     </View>
   );
 }
@@ -37,18 +44,22 @@ const styles = StyleSheet.create({
   },
   board: {
     width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
+  },
+  boardWide: {
+    flexGrow: 1.3,
+    flexShrink: 1,
+    maxWidth: 680,
+    alignSelf: 'flex-start',
   },
   aside: {
     width: '100%',
-    maxWidth: 520,
     alignSelf: 'center',
   },
   asideWide: {
-    flex: 1,
-    maxWidth: 360,
+    flex: 0.9,
+    maxWidth: 420,
     alignSelf: 'stretch',
-    paddingTop: 28,
+    paddingTop: 36,
   },
 });

@@ -1,16 +1,9 @@
 import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js';
 
+import { listHangingPieces, pieceName as safetyPieceName } from '@/src/logic/safety';
+
 const FILES = 'abcdefgh';
 const RANKS = '12345678';
-
-const PIECE_VALUE: Record<PieceSymbol, number> = {
-  p: 1,
-  n: 3,
-  b: 3,
-  r: 5,
-  q: 9,
-  k: 0,
-};
 
 export type PatternFinding = {
   kind: 'hanging' | 'fork' | 'pin' | 'back_rank' | 'missed_mate';
@@ -36,99 +29,17 @@ function opponent(color: Color): Color {
 }
 
 function pieceName(type: PieceSymbol): string {
-  switch (type) {
-    case 'p':
-      return 'pawn';
-    case 'n':
-      return 'knight';
-    case 'b':
-      return 'bishop';
-    case 'r':
-      return 'rook';
-    case 'q':
-      return 'queen';
-    case 'k':
-      return 'king';
-    default: {
-      const _exhaustive: never = type;
-      return _exhaustive;
-    }
-  }
-}
-
-/** Collect squares of `by` that currently attack `square` (turn-independent). */
-function attackerSquares(game: Chess, square: Square, by: Color): Square[] {
-  const board = game.board();
-  const attackers: Square[] = [];
-  for (let rank = 0; rank < 8; rank += 1) {
-    for (let file = 0; file < 8; file += 1) {
-      const piece = board[rank]?.[file];
-      if (!piece || piece.color !== by) continue;
-      const from = sq(file, 7 - rank);
-      if (!from) continue;
-      // Probe: if removing other side-to-move constraint via temporary fen is heavy,
-      // use isAttacked on the target and verify this piece participates by
-      // checking attacks from `from` with a cloned position where `by` to move.
-      const clone = new Chess(game.fen());
-      const parts = clone.fen().split(' ');
-      parts[1] = by;
-      try {
-        clone.load(parts.join(' '));
-      } catch {
-        continue;
-      }
-      const hits = clone.moves({ square: from, verbose: true }).some((m) => m.to === square);
-      if (hits) attackers.push(from);
-    }
-  }
-  // Fallback: if isAttacked but scan missed (edge fen), still report target.
-  if (attackers.length === 0 && game.isAttacked(square, by)) {
-    attackers.push(square);
-  }
-  return attackers;
+  return safetyPieceName(type);
 }
 
 export function findHangingPieces(fen: string, side?: Color): PatternFinding[] {
-  const game = new Chess(fen);
-  const findings: PatternFinding[] = [];
-  const board = game.board();
-  const focus = side ?? opponent(game.turn());
-
-  for (let rank = 0; rank < 8; rank += 1) {
-    for (let file = 0; file < 8; file += 1) {
-      const piece = board[rank]?.[file];
-      if (!piece || piece.color !== focus || piece.type === 'k') continue;
-      const square = sq(file, 7 - rank);
-      if (!square) continue;
-
-      const attacked = game.isAttacked(square, opponent(focus));
-      if (!attacked) continue;
-
-      const defended = game.isAttacked(square, focus);
-      const attacks = attackerSquares(game, square, opponent(focus));
-      const attackedValue = PIECE_VALUE[piece.type];
-      const cheapestAttacker = Math.min(
-        ...attacks.map((a) => {
-          if (a === square) return 1;
-          const atk = game.get(a);
-          return atk ? PIECE_VALUE[atk.type] : 9;
-        }),
-        9,
-      );
-
-      const hanging = !defended || cheapestAttacker < attackedValue;
-      if (hanging) {
-        findings.push({
-          kind: 'hanging',
-          message: `You left the ${pieceName(piece.type)} hanging`,
-          squares: [square, ...(attacks[0] && attacks[0] !== square ? [attacks[0]] : [])],
-          severity: attackedValue >= 5 ? 'blunder' : 'mistake',
-        });
-      }
-    }
-  }
-
-  return findings;
+  const focus = side ?? opponent(new Chess(fen).turn());
+  return listHangingPieces(fen, focus).map((hanging) => ({
+    kind: 'hanging' as const,
+    message: `You left the ${pieceName(hanging.type)} hanging`,
+    squares: hanging.attacker ? [hanging.square, hanging.attacker] : [hanging.square],
+    severity: hanging.gain >= 5 ? ('blunder' as const) : ('mistake' as const),
+  }));
 }
 
 export function findSimpleForks(fen: string, forColor?: Color): PatternFinding[] {

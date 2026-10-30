@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.bgElevated,
     borderRadius: radii.lg,
-    borderWidth: 1,
+    borderWidth: 2,
     padding: 16,
     gap: 12,
   },
@@ -107,9 +107,9 @@ const styles = StyleSheet.create({
   },
   message: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textMuted,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.text,
   },
   hintBox: {
     backgroundColor: colors.bg,
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   },
   hintLabel: {
     fontFamily: fonts.bodyBold,
-    fontSize: 11,
+    fontSize: 14,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: colors.textDim,

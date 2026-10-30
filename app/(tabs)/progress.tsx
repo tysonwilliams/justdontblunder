@@ -6,6 +6,7 @@ import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
+import { themeLabel, type DrillTheme } from '@/src/logic/drills';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
@@ -26,6 +27,7 @@ export default function ProgressScreen() {
     blundersAvoided,
     blundersMade,
     practiceMoves,
+    themeStats,
     resetProgress,
   } = useProgressStore();
 
@@ -38,15 +40,28 @@ export default function ProgressScreen() {
       <Text style={styles.heading}>Progress</Text>
       <Text style={styles.sub}>Stored locally. No account.</Text>
 
-      <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
+      {dailyStreak > 0 ? (
+        <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
+      ) : (
+        <Text style={styles.zero}>No streak yet. Finish a drill to start one.</Text>
+      )}
+
+      <View style={styles.categories}>
+        {(['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const).map((theme) => (
+          <CategoryStat key={theme} theme={theme} tally={themeStats[theme]} wide={!compact} />
+        ))}
+      </View>
 
       <View style={styles.badges}>
         {badgeList(dailyStreak, recordStreak, bestPuzzleStreak, blundersAvoided).map((badge) => (
           <View
             key={badge.title}
             style={[styles.badge, badge.earned ? styles.badgeOn : styles.badgeOff]}>
+            <Text style={[styles.badgeState, badge.earned ? styles.badgeStateOn : styles.badgeStateOff]}>
+              {badge.earned ? 'Earned' : 'Locked'}
+            </Text>
             <Text style={[styles.badgeTitle, !badge.earned && styles.badgeTitleOff]}>{badge.title}</Text>
-            <Text style={styles.badgeDetail}>{badge.detail}</Text>
+            <Text style={[styles.badgeDetail, badge.earned && styles.badgeDetailOn]}>{badge.detail}</Text>
           </View>
         ))}
       </View>
@@ -107,6 +122,29 @@ function badgeList(
   ];
 }
 
+function CategoryStat({
+  theme,
+  tally,
+  wide,
+}: {
+  theme: DrillTheme;
+  tally: { attempts: number; correct: number } | undefined;
+  wide: boolean;
+}) {
+  const attempts = tally?.attempts ?? 0;
+  const correct = tally?.correct ?? 0;
+  const accuracy = attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
+  return (
+    <View style={[styles.stat, wide ? styles.statWide : styles.statFull]}>
+      <Text style={styles.statValue}>{attempts === 0 ? '—' : `${accuracy}%`}</Text>
+      <Text style={styles.statLabel}>
+        {themeLabel(theme)}
+        {attempts === 0 ? ' · not started' : ` · ${correct}/${attempts}`}
+      </Text>
+    </View>
+  );
+}
+
 function Stat({ label, value, wide }: { label: string; value: string; wide: boolean }) {
   return (
     <View style={[styles.stat, wide ? styles.statWide : styles.statFull]}>
@@ -117,10 +155,20 @@ function Stat({ label, value, wide }: { label: string; value: string; wide: bool
 }
 
 const styles = StyleSheet.create({
+  zero: {
+    fontFamily: fonts.bodyBold,
+    color: colors.text,
+    fontSize: 16,
+  },
+  categories: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
   eyebrow: {
     fontFamily: fonts.bodyBold,
     color: colors.accent,
-    fontSize: 12,
+    fontSize: 14,
     letterSpacing: 1.1,
     textTransform: 'uppercase',
   },
@@ -150,26 +198,42 @@ const styles = StyleSheet.create({
   },
   badgeOn: {
     borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.accent,
   },
   badgeOff: {
-    borderColor: colors.border,
-    backgroundColor: colors.bgElevated,
-    opacity: 0.45,
+    borderStyle: 'dashed',
+    borderColor: colors.textDim,
+    backgroundColor: 'transparent',
+  },
+  badgeState: {
+    fontFamily: fonts.bodyExtra,
+    fontSize: 14,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  badgeStateOn: {
+    color: colors.accentText,
+  },
+  badgeStateOff: {
+    color: colors.textMuted,
   },
   badgeTitle: {
     fontFamily: fonts.bodyExtra,
-    color: colors.text,
-    fontSize: 14,
+    color: colors.accentText,
+    fontSize: 16,
   },
   badgeTitleOff: {
-    color: colors.textMuted,
+    color: colors.text,
   },
   badgeDetail: {
     marginTop: 2,
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 15,
+  },
+  badgeDetailOn: {
+    color: colors.accentText,
   },
   grid: {
     flexDirection: 'row',
@@ -203,7 +267,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 15,
   },
   dialogTitle: {
     fontFamily: fonts.display,
