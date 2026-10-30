@@ -5,7 +5,6 @@ import { type MoveSound } from '@/src/audio/moveSound';
 const sources: Record<MoveSound, number> = {
   move: require('../../assets/sounds/move.wav'),
   capture: require('../../assets/sounds/capture.wav'),
-  check: require('../../assets/sounds/check.wav'),
   fail: require('../../assets/sounds/fail.wav'),
 };
 
@@ -22,7 +21,6 @@ function getPlayers(): Record<MoveSound, AudioPlayer> {
     players = {
       move: createAudioPlayer(sources.move),
       capture: createAudioPlayer(sources.capture),
-      check: createAudioPlayer(sources.check),
       fail: createAudioPlayer(sources.fail),
     };
   }

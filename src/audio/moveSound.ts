@@ -1,8 +1,7 @@
-export type MoveSound = 'move' | 'capture' | 'check' | 'fail';
+export type MoveSound = 'move' | 'capture' | 'fail';
 
-/** Check wins over capture, matching the usual chess-site priority. */
+/** Capture covers checks and mates too — one clip for any decisive contact. */
 export function soundForSan(san: string): MoveSound {
-  if (san.includes('+') || san.includes('#')) return 'check';
-  if (san.includes('x')) return 'capture';
+  if (san.includes('x') || san.includes('+') || san.includes('#')) return 'capture';
   return 'move';
 }

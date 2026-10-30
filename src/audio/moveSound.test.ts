@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { soundForSan } from '@/src/audio/moveSound';
 
 describe('soundForSan', () => {
-  it('uses a move, a capture, then check for a mating line', () => {
+  it('uses move for quiet plays and capture for checks and takes', () => {
     const game = new Chess();
     const quiet = game.move('e4');
     expect(soundForSan(quiet.san)).toBe('move');
@@ -15,7 +15,7 @@ describe('soundForSan', () => {
     game.move('Qh5');
     game.move('Nf6');
     const mate = game.move('Qxf7');
-    expect(soundForSan(mate.san)).toBe('check');
+    expect(soundForSan(mate.san)).toBe('capture');
   });
 
   it('treats a capture that is not check as a capture', () => {
@@ -24,5 +24,10 @@ describe('soundForSan', () => {
     game.move('d5');
     const capture = game.move('exd5');
     expect(soundForSan(capture.san)).toBe('capture');
+  });
+
+  it('treats check without capture as capture sound', () => {
+    expect(soundForSan('Qh5+')).toBe('capture');
+    expect(soundForSan('Nf7#')).toBe('capture');
   });
 });

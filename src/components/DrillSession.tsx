@@ -214,7 +214,9 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     if (ok) {
       recordFirstResult(true);
       setRound('correct');
-    } else if (mode === 'streak') {
+      return true;
+    }
+    if (mode === 'streak') {
       recordFirstResult(false);
       if (!runRecorded.current) {
         runRecorded.current = true;
@@ -225,7 +227,8 @@ export function DrillSession({ mode, reviewing = false }: Props) {
       recordFirstResult(false);
       setRound('retry');
     }
-    return true;
+    // false → ChessBoard plays fail (illegal / Not quite / streak miss)
+    return false;
   };
 
   const showRunSummary = () => {
