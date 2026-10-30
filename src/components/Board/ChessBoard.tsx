@@ -19,6 +19,7 @@ import {
   tryMove,
   type GameSnapshot,
 } from '@/src/logic/game';
+import { squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
 import { colors, fonts, radii } from '@/src/theme';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
@@ -38,6 +39,8 @@ type Props = {
   orientation?: 'white' | 'black';
   interactive?: boolean;
   highlightSquares?: Square[];
+  /** Danger (red) is a blunder. Success (green) is a save. */
+  highlightTone?: HighlightTone;
   /** Softer amber attention (e.g. your hanging piece to save). */
   attentionSquares?: Square[];
   lastMove?: { from: Square; to: Square } | null;
@@ -56,6 +59,7 @@ export function ChessBoard({
   orientation = 'white',
   interactive = true,
   highlightSquares = [],
+  highlightTone = 'danger',
   attentionSquares = [],
   lastMove = null,
   onMove,
@@ -224,11 +228,14 @@ export function ChessBoard({
                   lastMove != null && (lastMove.from === square || lastMove.to === square);
                 const hideForDrag = dragSquare === square;
 
-                let bg: string = isDark ? colors.boardDark : colors.boardLight;
-                if (isLast) bg = colors.boardLastMove;
-                if (isAttention) bg = colors.boardAttention;
-                if (isSelected) bg = colors.boardSelected;
-                if (isHighlight) bg = colors.boardBlunder;
+                const bg = squareBackground({
+                  isDark,
+                  isLast,
+                  isAttention,
+                  isSelected,
+                  isHighlight,
+                  highlightTone,
+                });
 
                 return (
                   <Pressable

@@ -30,6 +30,7 @@ export const colors = {
   boardLastMove: 'rgba(245, 197, 66, 0.34)',
   boardAttention: '#F5C54299',
   boardBlunder: '#FF5C5C8C',
+  boardSave: 'rgba(142, 191, 85, 0.55)',
   boardFrame: '#2A3344',
   boardFrameBg: '#1C2330',
   boardMeta: '#9AA6B2',

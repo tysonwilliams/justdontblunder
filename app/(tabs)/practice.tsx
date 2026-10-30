@@ -6,6 +6,7 @@ import { playMoveSound } from '@/src/audio/playMoveSound';
 import { soundForSan } from '@/src/audio/moveSound';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
+import { BoardLead } from '@/src/components/ui/BoardLead';
 import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
@@ -105,11 +106,13 @@ export default function PracticeScreen() {
 
   return (
     <Screen maxWidth={wide ? 980 : 560}>
-      <Text style={styles.eyebrow}>Practice</Text>
-      <Text style={styles.heading}>Your game</Text>
-      <Text style={styles.sub}>
-        You play White. Black answers. If you leave a piece loose, they take it.
-      </Text>
+      <BoardLead>
+        <Text style={styles.eyebrow}>Practice</Text>
+        <Text style={styles.heading}>Your game</Text>
+        <Text style={styles.sub}>
+          You play White. Black answers. If you leave a piece loose, they take it.
+        </Text>
+      </BoardLead>
 
       <BoardStage
         board={

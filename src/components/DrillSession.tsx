@@ -5,6 +5,8 @@ import type { Square } from 'chess.js';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
+import { highlightsForRound } from '@/src/components/Board/highlight';
+import { BoardLead } from '@/src/components/ui/BoardLead';
 import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
@@ -19,6 +21,7 @@ import {
   type DrillTheme,
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
+import { feedbackForRound } from '@/src/logic/saveFeedback';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
@@ -40,10 +43,23 @@ function sessionFor(set: SessionSet): DrillSessionData {
   return createThemeSession(set);
 }
 
+type RunSummary = {
+  saved: number;
+  best: number;
+  playedSan: string | null;
+  missPrompt: string;
+  missNote: string;
+};
+
 type Props = {
   mode: SessionMode;
   reviewing?: boolean;
 };
+
+function playedSan(fen: string, from: Square, to: Square): string | null {
+  const moved = tryMove(createGame(fen), from, to);
+  return moved?.san ?? null;
+}
 
 export function DrillSession({ mode, reviewing = false }: Props) {
   const { width } = useWindowDimensions();
@@ -63,8 +79,8 @@ export function DrillSession({ mode, reviewing = false }: Props) {
   const [session, setSession] = useState<DrillSessionData>(() => createAllSession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
-  const [highlights, setHighlights] = useState<Square[]>([]);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
+  const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
   const [displayFen, setDisplayFen] = useState<string | null>(null);
   const [boardKey, setBoardKey] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0 });
@@ -83,7 +99,6 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   const resetBoard = () => {
     setRound('playing');
-    setHighlights([]);
     setLastMove(null);
     setDisplayFen(null);
     setBoardKey((k) => k + 1);
@@ -91,6 +106,8 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   const begin = (nextSession: DrillSessionData) => {
     runRecorded.current = false;
+    resultCounted.current = false;
+    setRunSummary(null);
     setSession(nextSession);
     setIndex(0);
     setScore({ correct: 0, total: 0 });
@@ -120,7 +137,6 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     resultCounted.current = false;
     setDisplayFen(drill.fen);
     setRound('playing');
-    setHighlights([]);
     setLastMove(null);
   }, [drill?.id, drill?.fen]);
 
@@ -151,7 +167,6 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     if (!drill) return;
     setDisplayFen(drill.fen);
     setLastMove(null);
-    setHighlights([]);
     setRound('playing');
     setBoardKey((k) => k + 1);
   };
@@ -184,12 +199,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
       if (moved) {
         setDisplayFen(game.fen());
         setLastMove({ from: moved.from, to: moved.to });
-        setHighlights([moved.from, moved.to, drill.atRiskSquare]);
-      } else {
-        setHighlights([drill.atRiskSquare]);
       }
-    } else {
-      setHighlights([drill.atRiskSquare]);
     }
     setRound('revealed');
   };
@@ -204,7 +214,6 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     if (ok) {
       recordFirstResult(true);
       setRound('correct');
-      setHighlights([event.to]);
     } else if (mode === 'streak') {
       recordFirstResult(false);
       if (!runRecorded.current) {
@@ -212,14 +221,48 @@ export function DrillSession({ mode, reviewing = false }: Props) {
         recordPuzzleRun(score.correct);
       }
       setRound('streakEnd');
-      setHighlights([event.from, event.to, drill.atRiskSquare]);
     } else {
       recordFirstResult(false);
       setRound('retry');
-      setHighlights([event.from, event.to, drill.atRiskSquare]);
     }
     return true;
   };
+
+  const showRunSummary = () => {
+    if (!drill) return;
+    setRunSummary({
+      saved: score.correct,
+      best: Math.max(bestPuzzleStreak, score.correct),
+      playedSan: lastMove ? playedSan(drill.fen, lastMove.from, lastMove.to) : null,
+      missPrompt: drill.prompt,
+      missNote: drill.note,
+    });
+  };
+
+  if (runSummary) {
+    return (
+      <Screen maxWidth={wide ? 980 : 560}>
+        <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
+        <View style={styles.doneCard}>
+          <Text style={styles.eyebrow}>Drills</Text>
+          <Text style={styles.heading}>Streak over</Text>
+          <Text style={styles.score}>{runSummary.saved}</Text>
+          <Text style={styles.sub}>
+            saved this run · best {runSummary.best}
+          </Text>
+          <View style={styles.missBlock}>
+            <Text style={styles.missLabel}>The miss</Text>
+            <Text style={styles.missPrompt}>{runSummary.missPrompt}</Text>
+            {runSummary.playedSan ? (
+              <Text style={styles.hint}>You played {runSummary.playedSan}.</Text>
+            ) : null}
+            <Text style={styles.hint}>{runSummary.missNote}</Text>
+          </View>
+          <Button label="Start again" onPress={() => begin(sessionFor(setId))} />
+        </View>
+      </Screen>
+    );
+  }
 
   if (done) {
     const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
@@ -256,23 +299,27 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   const boardFen = displayFen ?? drill.fen;
   const progress = (index + (round === 'playing' ? 0 : 1)) / session.positions.length;
+  const marks = highlightsForRound(round, lastMove, drill.atRiskSquare);
+  const roundCopy = feedbackForRound(round, drill, lastMove) ?? '';
 
   return (
     <Screen maxWidth={wide ? 980 : 560}>
-      <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
-      <View style={styles.metaRow}>
-        <Text style={styles.chip}>
-          {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
-        </Text>
-        <Text style={styles.count}>
-          {index + 1} / {session.positions.length}
-          {mode === 'streak' ? ` · ${score.correct} in a row` : ''}
-        </Text>
-      </View>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
-      </View>
-      <Text style={styles.heading}>{drill.prompt}</Text>
+      <BoardLead>
+        <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
+        <View style={styles.metaRow}>
+          <Text style={styles.chip}>
+            {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
+          </Text>
+          <Text style={styles.count}>
+            {index + 1} / {session.positions.length}
+            {mode === 'streak' ? ` · ${score.correct} in a row` : ''}
+          </Text>
+        </View>
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
+        </View>
+        <Text style={styles.heading}>{drill.prompt}</Text>
+      </BoardLead>
 
       <BoardStage
         board={
@@ -285,7 +332,8 @@ export function DrillSession({ mode, reviewing = false }: Props) {
             attentionSquares={
               learn && round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []
             }
-            highlightSquares={round === 'playing' ? [] : highlights}
+            highlightSquares={marks.squares}
+            highlightTone={marks.tone}
             onMove={onMove}
           />
         }
@@ -307,7 +355,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
                 visible={round === 'correct'}
                 tone="success"
                 title="Nice save"
-                message={drill.note}
+                message={roundCopy}
                 actionLabel="Next"
                 onDismiss={next}
               />
@@ -315,7 +363,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
                 visible={round === 'retry'}
                 tone="danger"
                 title="Not quite"
-                message="That doesn't save your piece. Look again and try another move."
+                message={roundCopy}
                 actionLabel="Try again"
                 onDismiss={tryAgain}
               />
@@ -323,7 +371,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
                 visible={round === 'revealed'}
                 tone="warn"
                 title="Here's the idea"
-                message={drill.note}
+                message={roundCopy}
                 actionLabel="Next"
                 onDismiss={next}
               />
@@ -331,9 +379,9 @@ export function DrillSession({ mode, reviewing = false }: Props) {
                 visible={round === 'streakEnd'}
                 tone="danger"
                 title="Streak over"
-                message={`${score.correct} in a row. ${drill.note}`}
+                message={`${score.correct} in a row. ${roundCopy}`}
                 actionLabel="Done"
-                onDismiss={() => begin(sessionFor(setId))}
+                onDismiss={showRunSummary}
               />
             </>
           )
@@ -483,5 +531,22 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 16,
     marginBottom: spacing.sm,
+  },
+  missBlock: {
+    gap: 4,
+    marginBottom: spacing.sm,
+  },
+  missLabel: {
+    fontFamily: fonts.bodyBold,
+    color: colors.textDim,
+    fontSize: 12,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  missPrompt: {
+    fontFamily: fonts.bodyBold,
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 22,
   },
 });

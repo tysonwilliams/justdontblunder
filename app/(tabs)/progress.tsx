@@ -6,6 +6,7 @@ import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
+import { drillsDoneCount } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
@@ -51,7 +52,7 @@ export default function ProgressScreen() {
       </View>
 
       <View style={styles.grid}>
-        <Stat label="Drills done" value={String(drillsCompleted)} wide={!compact} />
+        <Stat label="Drills done" value={String(drillsDoneCount(drillsCorrect))} wide={!compact} />
         <Stat label="Accuracy" value={`${accuracy}%`} wide={!compact} />
         <Stat label="Saves" value={String(blundersAvoided)} wide={!compact} />
         <Stat label="Blunders" value={String(blundersMade)} wide={!compact} />

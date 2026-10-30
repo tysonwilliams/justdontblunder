@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { applyDrillResult } from '@/src/store/drillStats';
+
 export type ProgressState = {
   dailyStreak: number;
   lastDrillDate: string | null;
@@ -77,10 +79,7 @@ export const useProgressStore = create<ProgressState>()(
           const streak = bumpStreak(state.lastDrillDate, state.dailyStreak);
           return {
             ...streak,
-            drillsCompleted: state.drillsCompleted + 1,
-            drillsCorrect: state.drillsCorrect + (correct ? 1 : 0),
-            blundersAvoided: state.blundersAvoided + (correct ? 1 : 0),
-            blundersMade: state.blundersMade + (correct ? 0 : 1),
+            ...applyDrillResult(state, correct),
             recordStreak: Math.max(state.recordStreak, streak.dailyStreak),
           };
         }),

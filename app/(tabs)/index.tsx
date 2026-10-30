@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Screen } from '@/src/components/ui/Screen';
 import { tipsOfTheDay } from '@/src/logic/drills';
+import { drillsDoneCount } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
@@ -12,7 +13,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const stacked = width < 640;
   const streak = useProgressStore((s) => s.dailyStreak);
-  const drillsCompleted = useProgressStore((s) => s.drillsCompleted);
+  const drillsCorrect = useProgressStore((s) => s.drillsCorrect);
   const blundersAvoided = useProgressStore((s) => s.blundersAvoided);
 
   return (
@@ -50,7 +51,7 @@ export default function HomeScreen() {
           style={({ pressed }) => [styles.card, pressed && styles.cardOn]}>
           <Text style={styles.cardTitle}>Your progress</Text>
           <Text style={styles.cardSub}>
-            {drillsCompleted} drills · {blundersAvoided} saves
+            {drillsDoneCount(drillsCorrect)} drills · {blundersAvoided} saves
           </Text>
         </Pressable>
       </View>
