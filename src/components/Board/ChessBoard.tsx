@@ -8,6 +8,8 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
+import { playMoveSound, unlockMoveSounds } from '@/src/audio/playMoveSound';
+import { soundForSan } from '@/src/audio/moveSound';
 import { Piece, pieceCodeFrom } from '@/src/components/Board/Piece';
 import {
   createGame,
@@ -96,6 +98,7 @@ export function ChessBoard({
     const moved = tryMove(probe, from, to);
     if (!moved) {
       clearSelection();
+      playMoveSound('fail');
       return;
     }
     const afterFen = probe.fen();
@@ -108,8 +111,10 @@ export function ChessBoard({
     });
     if (allowed === false) {
       clearSelection();
+      playMoveSound('fail');
       return;
     }
+    playMoveSound(soundForSan(moved.san));
     if (fen === undefined) {
       setGameFen(afterFen);
     }
@@ -132,6 +137,7 @@ export function ChessBoard({
         return;
       }
       clearSelection();
+      playMoveSound('fail');
       return;
     }
 
@@ -157,8 +163,11 @@ export function ChessBoard({
     const fileIndex = Math.max(0, Math.min(7, Math.floor(x / squareSize)));
     const rankIndex = Math.max(0, Math.min(7, Math.floor(y / squareSize)));
     const to = squareAt(fileIndex, rankIndex, orientation);
-    if (getLegalTargets(game, from).includes(to)) {
+    if (to !== from && getLegalTargets(game, from).includes(to)) {
       commitMove(from, to);
+    } else if (to !== from) {
+      clearSelection();
+      playMoveSound('fail');
     } else {
       clearSelection();
     }
@@ -187,7 +196,7 @@ export function ChessBoard({
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
 
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} onPointerDown={unlockMoveSounds}>
       <View style={styles.meta}>
         <Text style={styles.turn}>
           {snap.isCheckmate

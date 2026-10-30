@@ -64,23 +64,17 @@
   },
   {
     "id": "hang-q-06",
-    "fen": "rnb1kb1r/ppp1pppp/5n2/3q4/8/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 3 4",
+    "fen": "rnb1kbnr/pppp1ppp/8/q3p3/4P3/1N6/PPPP1PPP/R1BQKBNR b KQkq - 1 3",
     "sideToMove": "b",
     "theme": "hanging",
-    "atRiskSquare": "d5",
-    "prompt": "Your queen is hanging under knight fire — relocate her.",
+    "atRiskSquare": "a5",
+    "prompt": "Your queen on the queenside is hanging — move her.",
     "solution": [
-      "d5c6",
-      "d5d6",
-      "d5d7",
-      "d5d8",
-      "d5e6",
-      "d5f5",
-      "d5h5",
-      "d5c5",
-      "d5a5"
+      "a5b6",
+      "a5b4",
+      "a5a4"
     ],
-    "note": "Nc3 attacks the unprotected queen. Move her before you drop her.",
+    "note": "Nb3 attacks the queen on a5. Get her off that square.",
     "expectedDropCp": 900
   },
   {
@@ -194,19 +188,18 @@
   },
   {
     "id": "hang-n-03",
-    "fen": "rnbqkb1r/pppppppp/5n2/4P3/8/5N2/PPPP1PPP/RNBQKB1R b KQkq - 0 2",
-    "sideToMove": "b",
+    "fen": "r1bqkbnr/pppp1ppp/8/1p6/2N1P3/8/PPPP1PPP/RNBQKB1R w KQkq - 0 3",
+    "sideToMove": "w",
     "theme": "hanging",
-    "atRiskSquare": "f6",
-    "prompt": "A pawn attacks your knight — save it.",
+    "atRiskSquare": "c4",
+    "prompt": "A pawn attacks your knight on c4 — save it.",
     "solution": [
-      "f6g8",
-      "f6h5",
-      "f6g4",
-      "f6e4",
-      "f6d5"
+      "c4a5",
+      "c4e5",
+      "c4e3",
+      "c4a3"
     ],
-    "note": "e5 hits Nf6 and the knight is unprotected. Move it.",
+    "note": "b5 hits the knight. Move it before it drops.",
     "expectedDropCp": 300
   },
   {
@@ -228,20 +221,21 @@
   },
   {
     "id": "hang-b-02",
-    "fen": "rnbqk1nr/pppp1ppp/8/2b1p3/1PB1P3/8/P1PP1PPP/RNBQK1NR b KQkq - 0 3",
-    "sideToMove": "b",
+    "fen": "rnbqkbnr/ppp2ppp/8/3p4/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 0 3",
+    "sideToMove": "w",
     "theme": "hanging",
-    "atRiskSquare": "c5",
-    "prompt": "A pawn attacks your bishop — save it.",
+    "atRiskSquare": "c4",
+    "prompt": "Your bishop on c4 is hanging — save it.",
     "solution": [
-      "c5b6",
-      "c5d6",
-      "c5e7",
-      "c5f8",
-      "c5d4",
-      "c5b4"
+      "c4b5",
+      "c4d5",
+      "c4d3",
+      "c4e2",
+      "c4f1",
+      "c4b3",
+      "e4d5"
     ],
-    "note": "b4 hits the bishop. Retreat before bxc5.",
+    "note": "d5 hits the bishop. Move it or take on d5.",
     "expectedDropCp": 300
   },
   {
@@ -284,21 +278,20 @@
   },
   {
     "id": "hang-p-02",
-    "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+    "fen": "rnbqkbnr/pppp1ppp/8/8/4p3/2N5/PPPPPPPP/R1BQKBNR b KQkq - 0 2",
     "sideToMove": "b",
     "theme": "hanging",
-    "atRiskSquare": "e5",
-    "prompt": "Your e-pawn is hanging to the knight — handle it.",
+    "atRiskSquare": "e4",
+    "prompt": "Your advanced pawn is loose — save it or defend it.",
     "solution": [
-      "b8c6",
       "d8e7",
-      "d8f6",
-      "d8g5",
-      "f8d6",
-      "d7d6",
-      "f7f6"
+      "d8h4",
+      "f8b4",
+      "g8f6",
+      "d7d5",
+      "f7f5"
     ],
-    "note": "Nf3 attacks e5. Defend the pawn or you’ll drop it.",
+    "note": "Nf3 attacks the pawn on e4, and nothing defends it.",
     "expectedDropCp": 100
   },
   {
@@ -388,7 +381,7 @@
     "sideToMove": "w",
     "theme": "fork",
     "atRiskSquare": "d2",
-    "prompt": "Knight forks your queen and knight — save the queen.",
+    "prompt": "The knight on e4 forks your queen — move her.",
     "solution": [
       "c3a4",
       "c3b5",
@@ -427,19 +420,18 @@
   },
   {
     "id": "pin-02",
-    "fen": "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 4 4",
+    "fen": "r1bqkbnr/pppp1ppp/4n3/8/8/8/PPPP1PPP/RNBQR1K1 b kq - 1 4",
     "sideToMove": "b",
     "theme": "pin",
-    "atRiskSquare": "c6",
-    "prompt": "Ruy Lopez pin — your c6-knight can’t wander.",
+    "atRiskSquare": "e6",
+    "prompt": "A rook pins your knight to the king — block the file.",
     "solution": [
-      "a7a6",
-      "d7d6",
-      "f8c5",
+      "d8e7",
       "f8e7",
-      "d8e7"
+      "g8e7",
+      "e8e7"
     ],
-    "note": "Bb5 pins the knight to the king. Challenge with a6 or shore it up.",
+    "note": "Re1 pins Ne6 to the king. Block on e7, or step the king off the file.",
     "expectedDropCp": 40
   },
   {
@@ -509,25 +501,45 @@
   },
   {
     "id": "back-02",
-    "fen": "1nb3k1/pp3ppp/2pp4/5n2/3P4/5N2/PPP2PPP/RNBQR1K1 b - - 0 9",
-    "sideToMove": "b",
+    "fen": "r1bqr1k1/pp3ppp/2p2n2/3p4/8/Q7/PPP2NPP/RNB1R1K1 w - - 0 12",
+    "sideToMove": "w",
     "theme": "back_rank",
-    "atRiskSquare": "g8",
-    "prompt": "Stop Re8# — make luft now.",
+    "atRiskSquare": "g1",
+    "prompt": "Stop Rxe1# — your king is stuck on the back rank.",
     "solution": [
-      "b8d7",
-      "c8d7",
-      "c8e6",
-      "g8f8",
-      "f7f6",
-      "g7g6",
-      "g7g5",
-      "h7h6",
-      "h7h5",
-      "f5e7",
-      "f5e3"
+      "a3a5",
+      "a3a6",
+      "a3b4",
+      "a3e7",
+      "a3f8",
+      "a3c3",
+      "a3d3",
+      "a3e3",
+      "f2d3",
+      "f2e4",
+      "f2g4",
+      "f2h3",
+      "f2h1",
+      "f2d1",
+      "g2g3",
+      "g2g4",
+      "h2h3",
+      "h2h4",
+      "b1d2",
+      "c1d2",
+      "c1e3",
+      "e1e2",
+      "e1e3",
+      "e1e4",
+      "e1e5",
+      "e1e6",
+      "e1e7",
+      "e1e8",
+      "e1f1",
+      "e1d1",
+      "g1f1"
     ],
-    "note": "The e-file is open to your back rank. Create an escape square.",
+    "note": "Black’s rook on the open e-file threatens Rxe1#. Block the file or give the king air.",
     "expectedDropCp": 10000
   },
   {

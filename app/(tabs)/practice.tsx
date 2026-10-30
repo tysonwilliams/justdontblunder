@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { Square } from 'chess.js';
 
+import { playMoveSound } from '@/src/audio/playMoveSound';
+import { soundForSan } from '@/src/audio/moveSound';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
 import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
@@ -63,6 +65,7 @@ export default function PracticeScreen() {
         setFen(reply.fen);
         setLastMove({ from: reply.from, to: reply.to });
         setReplySan(reply.san);
+        playMoveSound(soundForSan(reply.san));
       }
       setThinking(false);
     }, REPLY_DELAY_MS);
