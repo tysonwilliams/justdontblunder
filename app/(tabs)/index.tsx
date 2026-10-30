@@ -5,7 +5,6 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
-import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
 import { HABIT_PROMPT, tipsOfTheDay } from '@/src/logic/drills';
 import { drillsDoneCount } from '@/src/store/drillStats';
@@ -20,8 +19,6 @@ export default function HomeScreen() {
   const streak = useProgressStore((s) => s.dailyStreak);
   const drillsCorrect = useProgressStore((s) => s.drillsCorrect);
   const blundersAvoided = useProgressStore((s) => s.blundersAvoided);
-  const habitTutorialDone = useProgressStore((s) => s.habitTutorialDone);
-  const completeHabitTutorial = useProgressStore((s) => s.completeHabitTutorial);
   const missedDate = useProgressStore((s) => s.missedDate);
   const missedIds = useProgressStore((s) => s.missedIds);
   const missCount = missesForDate(missedDate, missedIds).length;
@@ -93,16 +90,6 @@ export default function HomeScreen() {
           onPress={() => router.push('/learn?review=1')}
         />
       ) : null}
-
-      <Dialog visible={hydrated && !habitTutorialDone}>
-        <Text style={styles.dialogTitle}>What “hanging” means</Text>
-        <Text style={styles.dialogBody}>
-          A piece is hanging when your opponent can take it and you lose material — it has no
-          defender, or a cheaper piece attacks it. Before every move, ask: is anything of mine
-          hanging? Will this move leave something hanging?
-        </Text>
-        <Button label="I'll watch my pieces" onPress={completeHabitTutorial} />
-      </Dialog>
     </Screen>
   );
 }
@@ -217,20 +204,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     lineHeight: 22,
-  },
-  dialogTitle: {
-    fontFamily: fonts.display,
-    fontSize: 26,
-    color: colors.text,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  dialogBody: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
   },
 });
