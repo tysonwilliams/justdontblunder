@@ -26,6 +26,7 @@ import {
 import { createGame, tryMove } from '@/src/logic/game';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
 import { bestPunishment } from '@/src/logic/safety';
+import { claimDrillResult } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
@@ -182,8 +183,10 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   /** Persist and score each puzzle once, on its first outcome. */
   const recordFirstResult = (correct: boolean) => {
-    if (!drill || resultCounted.current) return;
-    resultCounted.current = true;
+    if (!drill) return;
+    const claim = claimDrillResult(resultCounted.current);
+    resultCounted.current = claim.claimed;
+    if (!claim.recorded) return;
     setScore((s) => ({
       correct: s.correct + (correct ? 1 : 0),
       total: s.total + 1,

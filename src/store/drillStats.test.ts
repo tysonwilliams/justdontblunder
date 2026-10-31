@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyDrillResult, drillsDoneCount, type DrillTally } from '@/src/store/drillStats';
+import {
+  applyDrillResult,
+  claimDrillResult,
+  drillsDoneCount,
+  type DrillTally,
+} from '@/src/store/drillStats';
 
 const empty: DrillTally = {
   drillsCompleted: 0,
@@ -33,5 +38,37 @@ describe('drills done', () => {
     expect(state.drillsCorrect).toBe(4);
     expect(state.blundersAvoided).toBe(4);
     expect(state.blundersMade).toBe(2);
+  });
+});
+
+describe('home and drills share one count per puzzle', () => {
+  function submit(claimed: boolean, tally: DrillTally, correct: boolean) {
+    const claim = claimDrillResult(claimed);
+    if (!claim.recorded) return { claimed: claim.claimed, tally };
+    return { claimed: claim.claimed, tally: applyDrillResult(tally, correct) };
+  }
+
+  it('applies a save once when the same attempt is claimed twice', () => {
+    const first = submit(false, empty, true);
+    expect(first.tally).toEqual({
+      drillsCompleted: 1,
+      drillsCorrect: 1,
+      blundersAvoided: 1,
+      blundersMade: 0,
+    });
+    const second = submit(first.claimed, first.tally, true);
+    expect(second.tally).toEqual(first.tally);
+  });
+
+  it('counts the next puzzle after the claim is released, still once', () => {
+    const save = submit(false, empty, true);
+    const miss = submit(false, save.tally, false);
+    expect(miss.tally).toEqual({
+      drillsCompleted: 2,
+      drillsCorrect: 1,
+      blundersAvoided: 1,
+      blundersMade: 1,
+    });
+    expect(submit(miss.claimed, miss.tally, false).tally).toEqual(miss.tally);
   });
 });

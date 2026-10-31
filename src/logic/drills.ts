@@ -82,6 +82,42 @@ export function createDailySession(date = new Date(), count = 7): DrillSession {
   };
 }
 
+/** Today's drills, white hanging saves first, so Home opens on the habit. */
+export function createHomeSession(date = new Date()): DrillSession {
+  const daily = createDailySession(date);
+  const whiteHanging = daily.positions.filter(
+    (drill) => drill.theme === 'hanging' && drill.sideToMove === 'w',
+  );
+  const blackHanging = daily.positions.filter(
+    (drill) => drill.theme === 'hanging' && drill.sideToMove === 'b',
+  );
+  const rest = daily.positions.filter((drill) => drill.theme !== 'hanging');
+  return {
+    id: `home-${daily.id}`,
+    positions: [...whiteHanging, ...blackHanging, ...rest],
+    startedAt: daily.startedAt,
+  };
+}
+
+export const HOME_HANGING_PROMPT = 'Something of yours is hanging. Make everything safe.';
+
+/** One plain sentence for the Home board. Hanging puzzles use the habit line. */
+export function homePlayPrompt(drill: DrillPosition): string {
+  switch (drill.theme) {
+    case 'hanging':
+      return HOME_HANGING_PROMPT;
+    case 'fork':
+    case 'pin':
+    case 'back_rank':
+    case 'missed_mate':
+      return drill.prompt;
+    default: {
+      const _exhaustive: never = drill.theme;
+      return _exhaustive;
+    }
+  }
+}
+
 /** Every drill, in a fixed order, so All is the whole bank and numbers stay put. */
 export function createAllSession(): DrillSession {
   return {
@@ -172,14 +208,3 @@ export function themeLabel(theme: DrillTheme): string {
   }
 }
 
-export function tipsOfTheDay(): string {
-  const tips = [
-    'Before every move: scan YOUR pieces for hanging stuff.',
-    'If one of your pieces has zero defenders, move it or protect it.',
-    'Early queen trips often leave something of yours hanging behind.',
-    'Luft (h3/h6/g3/g6) keeps back-rank mates off your king.',
-    'When you’re forked, save the higher piece first — usually the queen.',
-  ];
-  const idx = hashDay(new Date().toISOString().slice(0, 10)) % tips.length;
-  return tips[idx]!;
-}

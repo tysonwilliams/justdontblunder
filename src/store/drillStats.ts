@@ -22,3 +22,12 @@ export function applyDrillResult(state: DrillTally, correct: boolean): DrillTall
 export function drillsDoneCount(drillsCompleted: number): number {
   return drillsCompleted;
 }
+
+/**
+ * Home and Drills both call `markDrillResult` only when `recorded` is true.
+ * A second outcome for the same puzzle does not move the counters again.
+ */
+export function claimDrillResult(alreadyClaimed: boolean): { claimed: true; recorded: boolean } {
+  if (alreadyClaimed) return { claimed: true, recorded: false };
+  return { claimed: true, recorded: true };
+}
