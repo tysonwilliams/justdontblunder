@@ -20,6 +20,7 @@ import {
   tryMove,
   type GameSnapshot,
 } from '@/src/logic/game';
+import { squareSizeForFrame } from '@/src/components/Board/boardGeometry';
 import { legalMoveInk, squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
 import { colors, fonts, radii } from '@/src/theme';
 
@@ -56,6 +57,11 @@ type Props = {
   arrows?: BoardArrow[];
   /** Black-to-move drills flip the board. Say so next to the turn. */
   flipCue?: boolean;
+  /**
+   * Border-box width of the frame, in px. Comes from the layout that sizes
+   * the slot, so the squares match the frame before onLayout runs.
+   */
+  size?: number;
   onMove?: (event: BoardMoveEvent) => boolean | void;
   onPositionChange?: (snap: GameSnapshot) => void;
 };
@@ -76,10 +82,11 @@ export function ChessBoard({
   lastMove = null,
   arrows = [],
   flipCue = false,
+  size,
   onMove,
   onPositionChange,
 }: Props) {
-  const [boardSize, setBoardSize] = useState(320);
+  const [measured, setMeasured] = useState(0);
   const [gameFen, setGameFen] = useState(() => fen ?? createGame().fen());
   const [selected, setSelected] = useState<Square | null>(null);
   const [legal, setLegal] = useState<Square[]>([]);
@@ -88,7 +95,11 @@ export function ChessBoard({
   const activeFen = fen ?? gameFen;
   const game = useMemo(() => createGame(activeFen), [activeFen]);
   const snap = snapshot(game);
-  const squareSize = boardSize / 8;
+  // Prefer the slot width. A measurement from the previous size would keep
+  // the grid small for a frame after every resize.
+  const outer = size && size > 0 ? Math.round(size) : measured;
+  const squareSize = squareSizeForFrame(outer);
+  const inner = squareSize * 8;
 
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
@@ -101,7 +112,8 @@ export function ChessBoard({
   }));
 
   const onLayout = (e: LayoutChangeEvent) => {
-    setBoardSize(e.nativeEvent.layout.width);
+    const next = Math.round(e.nativeEvent.layout.width);
+    setMeasured((prev) => (prev === next ? prev : next));
   };
 
   const clearSelection = () => {
@@ -177,7 +189,7 @@ export function ChessBoard({
   const endDrag = (x: number, y: number) => {
     const from = dragSquare;
     setDragSquare(null);
-    if (!from) return;
+    if (!from || squareSize <= 0) return;
     const fileIndex = Math.max(0, Math.min(7, Math.floor(x / squareSize)));
     const rankIndex = Math.max(0, Math.min(7, Math.floor(y / squareSize)));
     const to = squareAt(fileIndex, rankIndex, orientation);
@@ -193,6 +205,7 @@ export function ChessBoard({
 
   const pan = Gesture.Pan()
     .onBegin((e) => {
+      if (squareSize <= 0) return;
       const fileIndex = Math.max(0, Math.min(7, Math.floor(e.x / squareSize)));
       const rankIndex = Math.max(0, Math.min(7, Math.floor(e.y / squareSize)));
       const square = squareAt(fileIndex, rankIndex, orientation);
@@ -228,7 +241,9 @@ export function ChessBoard({
         {flipCue ? <Text style={styles.flip}>You're playing Black. Board flipped.</Text> : null}
       </View>
       <GestureDetector gesture={pan}>
-        <View style={styles.board} onLayout={onLayout}>
+        <View
+          style={[styles.board, outer > 0 ? { height: outer } : styles.boardSquare]}
+          onLayout={onLayout}>
           {Array.from({ length: 8 }).map((_, rankIndex) => (
             <View key={`r-${rankIndex}`} style={styles.row}>
               {Array.from({ length: 8 }).map((__, fileIndex) => {
@@ -309,10 +324,10 @@ export function ChessBoard({
           {arrows.length && squareSize > 0 ? (
             <Svg
               pointerEvents="none"
-              width={boardSize}
-              height={boardSize}
+              width={inner}
+              height={inner}
               style={styles.arrows}
-              viewBox={`0 0 ${boardSize} ${boardSize}`}>
+              viewBox={`0 0 ${inner} ${inner}`}>
               {arrows.map((arrow) => (
                 <ArrowShape
                   key={`${arrow.from}${arrow.to}${arrow.label ?? ''}`}
@@ -467,9 +482,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: colors.boardFrame,
-    aspectRatio: 1,
     width: '100%',
     backgroundColor: colors.boardFrameBg,
+  },
+  boardSquare: {
+    aspectRatio: 1,
   },
   row: {
     flexDirection: 'row',

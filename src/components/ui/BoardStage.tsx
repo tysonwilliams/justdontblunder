@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
+import { withBoardSize } from '@/src/components/Board/boardGeometry';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { layout, spacing } from '@/src/theme';
 
@@ -38,7 +39,7 @@ export function BoardStage({ board, aside, intro, footer, asideFirst = false }: 
     return (
       <View style={styles.center}>
         <View style={[styles.row, { width: rowWidth, gap }]}>
-          <View style={[styles.board, { width: boardWidth }]}>{board}</View>
+          <View style={[styles.board, { width: boardWidth }]}>{withBoardSize(board, boardWidth)}</View>
           <View style={styles.side}>
             {intro}
             {aside}
@@ -77,7 +78,7 @@ export function BoardStage({ board, aside, intro, footer, asideFirst = false }: 
           {aside}
         </View>
       ) : null}
-      <View style={[styles.board, { width: narrowBoard }]}>{board}</View>
+      <View style={[styles.board, { width: narrowBoard }]}>{withBoardSize(board, narrowBoard)}</View>
       {aside && !asideFirst ? (
         <View onLayout={remember(setAsideH)} style={styles.full}>
           {aside}
