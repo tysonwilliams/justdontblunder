@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
 import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
-import { colors, fonts, radii } from '@/src/theme';
+import { text } from '@/src/components/ui/text';
+import { colors, fonts, radii, spacing } from '@/src/theme';
 
 type Tone = 'danger' | 'success' | 'warn';
 
@@ -45,7 +46,7 @@ export function BlunderOverlay({
         </View>
         <Text style={styles.title}>{title}</Text>
       </View>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={text.body}>{message}</Text>
       {hint ? (
         <View style={styles.hintBox}>
           <Text style={styles.hintLabel}>Try</Text>
@@ -97,9 +98,10 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.bgElevated,
     borderRadius: radii.lg,
-    borderWidth: 2,
-    padding: 16,
-    gap: 12,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    padding: spacing.md,
+    gap: spacing.sm,
   },
   head: {
     flexDirection: 'row',
@@ -117,18 +119,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.display,
     fontSize: 22,
+    lineHeight: 28,
     color: colors.text,
     letterSpacing: -0.3,
   },
-  message: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.text,
-  },
   hintBox: {
     backgroundColor: colors.bg,
-    borderRadius: 10,
+    borderRadius: radii.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 2,

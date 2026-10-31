@@ -52,7 +52,26 @@ export const radii = {
   sm: 8,
   md: 12,
   lg: 16,
+  xl: 22,
   pill: 999,
+} as const;
+
+/** Breakpoints and frame sizes shared by the tab bar and every screen. */
+export const layout = {
+  /** Side-by-side board + panel. Also requires enough viewport height. */
+  split: 720,
+  splitMinHeight: 640,
+  /** Top navigation instead of the bottom tab bar. */
+  nav: 900,
+  stageMax: 1180,
+  pageMax: 1040,
+  asideMin: 280,
+  asideMax: 420,
+  boardMax: 720,
+  tabBar: 64,
+  padPhone: 16,
+  padTablet: 24,
+  padDesktop: 32,
 } as const;
 
 export const fonts = {

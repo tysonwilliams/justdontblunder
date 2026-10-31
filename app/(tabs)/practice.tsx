@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { playMoveSound } from '@/src/audio/playMoveSound';
@@ -7,10 +7,12 @@ import { soundForSan } from '@/src/audio/moveSound';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
-import { Screen } from '@/src/components/ui/Screen';
+import { PlayFrame } from '@/src/components/ui/PlayFrame';
+import { play } from '@/src/components/ui/playStyles';
+import { text } from '@/src/components/ui/text';
+import { useLayout } from '@/src/components/ui/useLayout';
 import { judgePracticeMove, type MoveFeedback } from '@/src/engine/evaluate';
 import { findHangingPieces } from '@/src/engine/patterns';
 import { HABIT_PROMPT } from '@/src/logic/drills';
@@ -18,7 +20,7 @@ import { createGame, snapshot } from '@/src/logic/game';
 import { chooseBlackReply } from '@/src/logic/reply';
 import { countRetriedMove } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors, fonts, spacing } from '@/src/theme';
+import { colors } from '@/src/theme';
 
 const REPLY_DELAY_MS = 700;
 
@@ -39,8 +41,7 @@ function gameResultLine(fen: string): string | null {
 }
 
 export default function PracticeScreen() {
-  const { width } = useWindowDimensions();
-  const wide = boardStageIsWide(width);
+  const { split } = useLayout();
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
 
   const [fen, setFen] = useState(() => createGame().fen());
@@ -191,20 +192,20 @@ export default function PracticeScreen() {
     : '';
 
   return (
-    <Screen maxWidth={wide ? 1120 : 560}>
-      <BoardLead>
-        <Text style={styles.eyebrow}>Practice</Text>
-        <Text style={styles.heading}>Your game</Text>
-        <Text style={styles.habit}>{HABIT_PROMPT}</Text>
-        <Text style={styles.sub}>
-          You play White. Black answers. If you leave a piece hanging, they take it.
-        </Text>
-        <ColorLegend />
-      </BoardLead>
-
-      <BoardStage
-        asideFirst={!wide && feedback != null && tone !== 'danger'}
-        board={
+    <PlayFrame
+      asideFirst={!split && feedback != null && tone !== 'danger'}
+      intro={
+        <BoardLead>
+          <Text style={text.eyebrow}>Practice</Text>
+          <Text style={text.title}>Your game</Text>
+          <Text style={text.habit}>{HABIT_PROMPT}</Text>
+          <Text style={text.body}>
+            You play White. Black answers. If you leave a piece hanging, they take it.
+          </Text>
+          <ColorLegend />
+        </BoardLead>
+      }
+      board={
           <ChessBoard
             key={boardKey}
             fen={fen}
@@ -220,8 +221,8 @@ export default function PracticeScreen() {
             onMove={onMove}
           />
         }
-        aside={
-          <View style={styles.guide}>
+      aside={
+          <View style={play.stack}>
             {feedback && (tone === 'danger' || !gameOver) ? (
               <BlunderOverlay
                 visible
@@ -236,12 +237,14 @@ export default function PracticeScreen() {
                 onSecondary={tone === 'danger' ? dismissFeedback : undefined}
               />
             ) : gameOver ? (
-              <>
-                <Text style={styles.result}>{resultLine}</Text>
+              <View style={play.guide}>
+                <Text style={text.bodyStrong}>{resultLine}</Text>
                 <Button label="New game" onPress={resetBoard} />
-              </>
+              </View>
             ) : status ? (
-              <Text style={styles.reminder}>{status}</Text>
+              <View style={play.guide}>
+                <Text style={text.bodyStrong}>{status}</Text>
+              </View>
             ) : hangingNow[0] ? (
               <BlunderOverlay
                 visible
@@ -251,58 +254,12 @@ export default function PracticeScreen() {
                   `Before you move: your ${hangingNow[0].message.replace('You left the ', '').replace(' hanging', '')} on ${hangingNow[0].squares[0]} is hanging`,
                 )}
               />
-            ) : (
-              <Text style={styles.reminder}>{HABIT_PROMPT}</Text>
-            )}
+            ) : null}
             {!gameOver ? (
               <Button label="New game" variant="secondary" onPress={resetBoard} />
             ) : null}
           </View>
         }
-      />
-    </Screen>
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  eyebrow: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 14,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-  },
-  heading: {
-    fontFamily: fonts.display,
-    color: colors.text,
-    fontSize: 28,
-    letterSpacing: -0.4,
-  },
-  habit: {
-    fontFamily: fonts.bodyBold,
-    color: colors.warn,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  sub: {
-    fontFamily: fonts.body,
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  guide: {
-    gap: spacing.sm,
-  },
-  reminder: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  result: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 24,
-  },
-});

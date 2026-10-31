@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 
 import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
-import { colors, fonts } from '@/src/theme';
+import { useLayout } from '@/src/components/ui/useLayout';
+import { colors, fonts, layout, radii } from '@/src/theme';
 
 const ICONS = {
   index: IconHome,
@@ -42,16 +43,23 @@ type Props = {
 };
 
 export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, wide }: Props) {
+  const { padX } = useLayout();
+
   return (
     <View
       style={[
         wide ? styles.top : styles.bottom,
         wide ? { paddingTop: insets.top } : { paddingBottom: Math.max(insets.bottom, 8) },
       ]}>
-      <View style={[styles.inner, wide && styles.innerWide]}>
+      <View
+        style={[
+          styles.inner,
+          wide && styles.innerWide,
+          wide && { paddingHorizontal: padX, maxWidth: layout.stageMax + padX * 2 },
+        ]}>
         {wide ? (
           <View style={styles.brand}>
-            <View style={styles.mark} />
+            <BrandMark />
             <Text style={styles.brandText}>Just Don't Blunder</Text>
           </View>
         ) : null}
@@ -59,7 +67,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
           {state.routes.map((route, index) => {
             const focused = state.index === index;
             const label = descriptors[route.key]?.options.title ?? route.name;
-            const color = focused ? colors.accent : colors.text;
+            const color = focused ? colors.accent : colors.textMuted;
             const Icon = isIconName(route.name) ? ICONS[route.name] : IconHome;
 
             const onPress = () => {
@@ -79,12 +87,16 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
                 accessibilityRole="tab"
                 accessibilityState={{ selected: focused }}
                 onPress={onPress}
-                style={(press) => [
-                  wide ? styles.linkWide : styles.link,
-                  focused && wide && styles.linkWideOn,
-                  press.pressed && styles.pressed,
-                ]}>
-                {wide ? null : <Icon color={color} />}
+                style={(press) => {
+                  const hovered = 'hovered' in press && Boolean(press.hovered);
+                  return [
+                    wide ? styles.linkWide : styles.link,
+                    focused && (wide ? styles.linkWideOn : styles.linkOn),
+                    !focused && hovered && styles.linkHover,
+                    press.pressed && styles.pressed,
+                  ];
+                }}>
+                {wide ? null : <Icon color={color} size={22} />}
                 <Text style={[wide ? styles.labelWide : styles.label, { color }]}>{label}</Text>
               </Pressable>
             );
@@ -95,84 +107,130 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
   );
 }
 
+function BrandMark() {
+  return (
+    <View style={styles.mark}>
+      <View style={styles.markRow}>
+        <View style={[styles.sq, styles.sqLight]} />
+        <View style={[styles.sq, styles.sqDark]} />
+      </View>
+      <View style={styles.markRow}>
+        <View style={[styles.sq, styles.sqDark]} />
+        <View style={[styles.sq, styles.sqLight]} />
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   top: {
     backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    minHeight: layout.tabBar,
+    justifyContent: 'center',
   },
   bottom: {
     backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    paddingTop: 6,
   },
   inner: {
-    minHeight: 58,
-    paddingHorizontal: 8,
+    minHeight: 56,
+    paddingHorizontal: 6,
     justifyContent: 'center',
   },
   innerWide: {
-    minHeight: 64,
-    maxWidth: 1100,
+    minHeight: layout.tabBar,
     width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 24,
   },
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flexShrink: 1,
   },
   mark: {
-    width: 14,
-    height: 14,
+    width: 18,
+    height: 18,
     borderRadius: 4,
-    backgroundColor: colors.accent,
+    overflow: 'hidden',
+    flexDirection: 'column',
+  },
+  markRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  sq: {
+    flex: 1,
+  },
+  sqLight: {
+    backgroundColor: colors.boardLight,
+  },
+  sqDark: {
+    backgroundColor: colors.boardDark,
   },
   brandText: {
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 16,
-    letterSpacing: -0.2,
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.3,
   },
   links: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    gap: 2,
   },
   linksWide: {
     gap: 4,
+    flexShrink: 0,
     justifyContent: 'flex-end',
   },
   link: {
     flex: 1,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingVertical: 8,
+    gap: 2,
+    borderRadius: 14,
     cursor: 'pointer',
   },
+  linkOn: {
+    backgroundColor: colors.accentSoft,
+  },
   linkWide: {
+    minHeight: 40,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
     cursor: 'pointer',
   },
   linkWideOn: {
     backgroundColor: colors.accentSoft,
   },
+  linkHover: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
   pressed: {
-    opacity: 0.75,
+    opacity: 0.78,
   },
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: 14,
+    fontSize: 12,
+    lineHeight: 14,
   },
   labelWide: {
     fontFamily: fonts.bodyBold,
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 20,
   },
 });

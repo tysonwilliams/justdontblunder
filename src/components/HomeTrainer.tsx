@@ -1,6 +1,6 @@
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
@@ -9,9 +9,13 @@ import { highlightsForRound } from '@/src/components/Board/highlight';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
+import { StatusPill } from '@/src/components/ui/Chip';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
-import { Screen } from '@/src/components/ui/Screen';
+import { PlayFrame } from '@/src/components/ui/PlayFrame';
+import { play } from '@/src/components/ui/playStyles';
+import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
+import { text } from '@/src/components/ui/text';
+import { useLayout } from '@/src/components/ui/useLayout';
 import {
   createHomeSession,
   homePlayPrompt,
@@ -23,7 +27,7 @@ import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry';
 type Dest = '/learn' | '/drills' | '/practice';
@@ -62,8 +66,7 @@ function resultCard(round: RoundState): { title: string; tone: 'success' | 'dang
 
 export function HomeTrainer() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const wide = boardStageIsWide(width);
+  const { split, contentW } = useLayout();
   const [session] = useState(() => createHomeSession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
@@ -155,32 +158,32 @@ export function HomeTrainer() {
   const watchingReply = replayActive && !playback.done;
 
   return (
-    <Screen maxWidth={wide ? 1120 : 560}>
-      <BoardLead>
-        <View style={styles.metaRow}>
-          <Text style={styles.chip}>Daily trainer</Text>
-          <View style={styles.metaRight}>
-            <Text style={styles.count}>
-              {index + 1} / {total}
-            </Text>
-            {hydrated && streak > 0 ? (
-              <StreakBadge streak={streak} celebrate />
-            ) : hydrated ? (
-              <Text style={styles.zero}>No streak yet</Text>
-            ) : null}
+    <PlayFrame
+      asideFirst={!split && round !== 'playing' && !watchingReply}
+      intro={
+        <BoardLead>
+          <View style={play.metaRow}>
+            <StatusPill>Daily trainer</StatusPill>
+            <View style={play.metaRight}>
+              <Text style={text.meta}>
+                {index + 1} / {total}
+              </Text>
+              {hydrated && streak > 0 ? (
+                <StreakBadge streak={streak} celebrate />
+              ) : hydrated ? (
+                <Text style={text.muted}>No streak yet</Text>
+              ) : (
+                <View style={styles.streakSlot} />
+              )}
+            </View>
           </View>
-        </View>
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
-        </View>
-        <Text style={styles.heading}>Stop hanging pieces.</Text>
-        <Text style={styles.prompt}>{homePlayPrompt(drill)}</Text>
-        <ColorLegend />
-      </BoardLead>
-
-      <BoardStage
-        asideFirst={!wide && round !== 'playing' && !watchingReply}
-        board={
+          <ProgressTrack progress={progress} />
+          <Text style={text.title}>Stop hanging pieces.</Text>
+          <Text style={text.habit}>{homePlayPrompt(drill)}</Text>
+          <ColorLegend />
+        </BoardLead>
+      }
+      board={
           <ChessBoard
             key={`${drill.id}-${boardKey}`}
             fen={boardFen}
@@ -195,9 +198,9 @@ export function HomeTrainer() {
             onMove={onMove}
           />
         }
-        aside={
+      aside={
           card ? (
-            <View style={styles.result}>
+            <View style={play.stack}>
               <BlunderOverlay
                 visible
                 tone={card.tone}
@@ -212,176 +215,122 @@ export function HomeTrainer() {
                 secondaryLabel={card.tone === 'danger' && replyReady ? 'Next puzzle' : undefined}
                 onSecondary={card.tone === 'danger' && replyReady ? next : undefined}
               />
-              <View style={styles.linkRow}>
+              <View style={play.linkRow}>
                 {RESULT_LINKS.map((item) => (
                   <Pressable
                     key={item.href}
                     accessibilityRole="button"
                     onPress={() => open(item.href)}
-                    style={styles.link}>
-                    <Text style={styles.linkText}>{item.label}</Text>
+                    style={play.link}>
+                    <Text style={play.linkText}>{item.label}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
           ) : (
-            <View style={styles.guide}>
-              {drill.theme === 'hanging' ? <Text style={styles.hint}>{drill.prompt}</Text> : null}
-              <Text style={drill.theme === 'hanging' ? styles.hintMuted : styles.hint}>
+            <View style={play.guide}>
+              {drill.theme === 'hanging' ? <Text style={text.body}>{drill.prompt}</Text> : null}
+              <Text style={drill.theme === 'hanging' ? text.muted : text.body}>
                 {themeInstruction(drill.theme)}
               </Text>
             </View>
           )
         }
-      />
+      footer={<EntryCards split={split} contentW={contentW} onOpen={open} />}
+    />
+  );
+}
 
-      <View style={[styles.cards, !wide && styles.cardsStacked]}>
-        {ENTRY_CARDS.map((item) => (
-          <Pressable
-            key={item.href}
-            accessibilityRole="button"
-            onPress={() => open(item.href)}
-            style={({ pressed }) => [styles.card, pressed && styles.cardOn]}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardBody}>{item.body}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </Screen>
+const CARD_PEEK = 28;
+
+function EntryCards({
+  split,
+  contentW,
+  onOpen,
+}: {
+  split: boolean;
+  contentW: number;
+  onOpen: (href: string) => void;
+}) {
+  const mode = split ? 'stack' : contentW >= 640 ? 'row' : 'slide';
+  const slideW = Math.max(220, contentW - CARD_PEEK);
+  const cards = ENTRY_CARDS.map((item) => (
+    <EntryCard key={item.href} item={item} mode={mode} slideW={slideW} onPress={() => onOpen(item.href)} />
+  ));
+
+  if (mode === 'slide') {
+    return (
+      <ScrollView
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        style={{ width: contentW }}
+        contentContainerStyle={[styles.entryRow, { paddingRight: CARD_PEEK }]}>
+        {cards}
+      </ScrollView>
+    );
+  }
+
+  return <View style={mode === 'stack' ? styles.entryStack : styles.entryGrid}>{cards}</View>;
+}
+
+function EntryCard({
+  item,
+  onPress,
+  mode,
+  slideW,
+}: {
+  item: (typeof ENTRY_CARDS)[number];
+  onPress: () => void;
+  mode: 'stack' | 'row' | 'slide';
+  slideW: number;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        play.card,
+        mode === 'stack' && styles.entryFull,
+        mode === 'row' && styles.entryCell,
+        mode === 'slide' && { width: slideW, flexBasis: slideW, flexGrow: 0, flexShrink: 0 },
+        pressed && play.cardOn,
+      ]}>
+      <Text style={play.cardTitle}>{item.title}</Text>
+      <Text style={play.cardBody} numberOfLines={3}>
+        {item.body}
+      </Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
+  streakSlot: {
+    minWidth: 108,
+    minHeight: 36,
   },
-  metaRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  chip: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 14,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    backgroundColor: colors.accentSoft,
-    overflow: 'hidden',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-  },
-  count: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 15,
-  },
-  zero: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  track: {
-    height: 4,
-    borderRadius: 99,
-    backgroundColor: colors.bgSoft,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: 4,
-    backgroundColor: colors.accent,
-  },
-  heading: {
-    fontFamily: fonts.display,
-    color: colors.text,
-    fontSize: 26,
-    lineHeight: 32,
-    letterSpacing: -0.4,
-  },
-  prompt: {
-    fontFamily: fonts.bodyBold,
-    color: colors.warn,
-    fontSize: 18,
-    lineHeight: 26,
-  },
-  guide: {
-    gap: spacing.sm,
-  },
-  hint: {
-    fontFamily: fonts.body,
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  hintMuted: {
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  result: {
-    gap: spacing.sm,
-  },
-  linkRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  entryStack: {
+    width: '100%',
     gap: 8,
   },
-  link: {
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-  },
-  linkText: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 16,
-  },
-  cards: {
+  entryRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    alignItems: 'stretch',
+    gap: 8,
   },
-  cardsStacked: {
-    flexDirection: 'column',
+  entryGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
   },
-  card: {
+  entryFull: {
+    width: '100%',
+    flexGrow: 0,
+  },
+  entryCell: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    padding: spacing.md,
-    minHeight: 88,
-    justifyContent: 'center',
-    cursor: 'pointer',
-  },
-  cardOn: {
-    backgroundColor: colors.bgSoft,
-  },
-  cardTitle: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 18,
-  },
-  cardBody: {
-    marginTop: 6,
-    fontFamily: fonts.body,
-    color: colors.text,
-    fontSize: 15,
-    lineHeight: 22,
+    minWidth: 0,
   },
 });

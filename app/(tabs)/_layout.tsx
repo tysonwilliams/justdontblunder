@@ -2,9 +2,9 @@ import { Tabs } from 'expo-router';
 import { useWindowDimensions } from 'react-native';
 
 import { AppTabBar } from '@/src/components/AppTabBar';
-import { colors } from '@/src/theme';
+import { colors, layout } from '@/src/theme';
 
-const WIDE = 880;
+const WIDE = layout.nav;
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();

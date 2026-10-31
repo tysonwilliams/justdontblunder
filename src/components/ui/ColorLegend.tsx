@@ -25,21 +25,24 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 8,
+    rowGap: 6,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    minHeight: 24,
   },
   swatch: {
-    width: 14,
-    height: 14,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 3,
   },
   label: {
     fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 14,
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

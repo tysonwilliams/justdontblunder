@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { playMoveSound } from '@/src/audio/playMoveSound';
@@ -10,10 +10,14 @@ import { highlightsForRound } from '@/src/components/Board/highlight';
 import { DrillModeBar, type DrillPlayMode } from '@/src/components/DrillModeBar';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
+import { FilterChips, StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
-import { Screen } from '@/src/components/ui/Screen';
+import { PlayFrame, ScoreFrame } from '@/src/components/ui/PlayFrame';
+import { play } from '@/src/components/ui/playStyles';
+import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
+import { text } from '@/src/components/ui/text';
+import { useLayout } from '@/src/components/ui/useLayout';
 import {
   createAllSession,
   createThemeSession,
@@ -30,7 +34,7 @@ import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/sr
 import { feedbackForRound, type DrillRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors, fonts, radii } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry';
 type SessionSet = 'daily' | DrillTheme;
@@ -86,8 +90,7 @@ type Props = {
 };
 
 export function SafeChoiceSession({ onMode }: Props) {
-  const { width } = useWindowDimensions();
-  const wide = boardStageIsWide(width);
+  const { split } = useLayout();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
 
@@ -211,19 +214,17 @@ export function SafeChoiceSession({ onMode }: Props) {
   if (done) {
     const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
     return (
-      <Screen maxWidth={wide ? 1120 : 560}>
-        <DrillModeBar mode="pick" onChange={onMode} />
-        <SetBar setId={setId} onSet={chooseSet} />
-        <View style={styles.doneCard}>
-          <Text style={styles.eyebrow}>Pick the safe move</Text>
-          <Text style={styles.heading}>That's the set</Text>
-          <Text style={styles.score}>
+      <ScoreFrame toolbar={<SessionToolbar setId={setId} onMode={onMode} onSet={chooseSet} />}>
+        <View style={play.done}>
+          <Text style={text.eyebrow}>Pick the safe move</Text>
+          <Text style={text.title}>That's the set</Text>
+          <Text style={text.hero}>
             {score.correct}/{score.total}
           </Text>
-          <Text style={styles.sub}>{pct}% safe on the first try</Text>
+          <Text style={text.muted}>{pct}% safe on the first try</Text>
           <Button label="Play again" onPress={() => begin(sessionFor(setId))} />
         </View>
-      </Screen>
+      </ScoreFrame>
     );
   }
 
@@ -249,28 +250,25 @@ export function SafeChoiceSession({ onMode }: Props) {
   const watchingReply = replayActive && !playback.done;
 
   return (
-    <Screen maxWidth={wide ? 1120 : 560}>
-      <BoardLead>
-        <DrillModeBar mode="pick" onChange={onMode} />
-        <SetBar setId={setId} onSet={chooseSet} />
-        <View style={styles.metaRow}>
-          <Text style={styles.chip}>{themeLabel(drill.theme)}</Text>
-          <Text style={styles.count}>
-            {index + 1} / {session.positions.length}
-          </Text>
-        </View>
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
-        </View>
-        <Text style={styles.habit}>{HABIT_PROMPT}</Text>
-        <Text style={styles.heading}>Which move is safe?</Text>
-        <Text style={styles.prompt}>{drill.prompt}</Text>
-        <ColorLegend />
-      </BoardLead>
-
-      <BoardStage
-        asideFirst={!wide && round !== 'playing' && !watchingReply}
-        board={
+    <PlayFrame
+      asideFirst={!split && round !== 'playing' && !watchingReply}
+      intro={
+        <BoardLead>
+          <SessionToolbar setId={setId} onMode={onMode} onSet={chooseSet} />
+          <View style={play.metaRow}>
+            <StatusPill>{themeLabel(drill.theme)}</StatusPill>
+            <Text style={text.meta}>
+              {index + 1} / {session.positions.length}
+            </Text>
+          </View>
+          <ProgressTrack progress={progress} />
+          <Text style={text.habit}>{HABIT_PROMPT}</Text>
+          <Text style={text.title}>Which move is safe?</Text>
+          <Text style={text.body}>{drill.prompt}</Text>
+          <ColorLegend />
+        </BoardLead>
+      }
+      board={
           <ChessBoard
             key={`${drill.id}-${boardKey}`}
             fen={boardFen}
@@ -301,14 +299,13 @@ export function SafeChoiceSession({ onMode }: Props) {
               onSecondary={card.tone === 'danger' && replyReady ? next : undefined}
             />
           ) : (
-            <View style={styles.guide}>
-              <Text style={styles.hint}>Blue arrows mark the two moves. One of them blunders.</Text>
+            <View style={play.guide}>
+              <Text style={text.body}>Blue arrows mark the two moves. One of them blunders.</Text>
               <ChoiceButtons presented={presented} onChoose={choose} />
             </View>
           )
         }
-      />
-    </Screen>
+    />
   );
 }
 
@@ -339,122 +336,39 @@ function ChoiceButtons({
   );
 }
 
-function SetBar({ setId, onSet }: { setId: SessionSet; onSet: (set: SessionSet) => void }) {
+function SessionToolbar({
+  setId,
+  onMode,
+  onSet,
+}: {
+  setId: SessionSet;
+  onMode: (mode: DrillPlayMode) => void;
+  onSet: (set: SessionSet) => void;
+}) {
   return (
-    <View style={styles.chips}>
-      {SETS.map((set) => {
-        const on = set.id === setId;
-        return (
-          <Pressable
-            key={set.id}
-            accessibilityRole="button"
-            onPress={() => onSet(set.id)}
-            style={[styles.pick, on && styles.pickOn]}>
-            <Text style={[styles.pickText, on && styles.pickTextOn]}>{set.label}</Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.toolbar}>
+      <DrillModeBar mode="pick" onChange={onMode} />
+      <FilterChips options={SETS} value={setId} onChange={onSet} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  toolbar: {
     gap: 8,
   },
-  pick: {
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    cursor: 'pointer',
-  },
-  pickOn: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  pickText: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 15,
-  },
-  pickTextOn: {
-    color: colors.accentText,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  chip: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 14,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    backgroundColor: colors.accentSoft,
-    overflow: 'hidden',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-  },
-  count: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 15,
-  },
-  track: {
-    height: 4,
-    borderRadius: 99,
-    backgroundColor: colors.bgSoft,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: 4,
-    backgroundColor: colors.accent,
-  },
-  habit: {
-    fontFamily: fonts.bodyBold,
-    color: colors.warn,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  heading: {
-    fontFamily: fonts.display,
-    color: colors.text,
-    fontSize: 26,
-    lineHeight: 32,
-    letterSpacing: -0.4,
-  },
-  prompt: {
-    fontFamily: fonts.body,
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  guide: {
-    gap: spacing.sm,
-  },
-  hint: {
-    fontFamily: fonts.body,
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
   choices: {
+    flexDirection: 'row',
     gap: 10,
   },
   choice: {
-    minHeight: 64,
-    borderRadius: radii.md,
+    flex: 1,
+    minWidth: 0,
+    minHeight: 72,
+    borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.bg,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -481,33 +395,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     color: colors.text,
     fontSize: 22,
+    lineHeight: 28,
     letterSpacing: -0.3,
-  },
-  doneCard: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  eyebrow: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 14,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-  },
-  score: {
-    fontFamily: fonts.display,
-    color: colors.text,
-    fontSize: 56,
-    letterSpacing: -1,
-  },
-  sub: {
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    fontSize: 16,
-    marginBottom: spacing.sm,
   },
 });

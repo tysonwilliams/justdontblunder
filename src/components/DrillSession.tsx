@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
@@ -9,10 +9,14 @@ import { highlightsForRound } from '@/src/components/Board/highlight';
 import { DrillModeBar, type DrillPlayMode } from '@/src/components/DrillModeBar';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
+import { FilterChips, StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
-import { Screen } from '@/src/components/ui/Screen';
+import { PlayFrame, ScoreFrame } from '@/src/components/ui/PlayFrame';
+import { play } from '@/src/components/ui/playStyles';
+import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
+import { text } from '@/src/components/ui/text';
+import { useLayout } from '@/src/components/ui/useLayout';
 import {
   createAllSession,
   createReviewSession,
@@ -30,7 +34,7 @@ import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
 type SessionMode = 'learn' | 'streak';
@@ -80,8 +84,7 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
 }
 
 export function DrillSession({ mode, reviewing = false, onMode }: Props) {
-  const { width, height } = useWindowDimensions();
-  const wide = boardStageIsWide(width);
+  const { split } = useLayout();
   const router = useRouter();
   const learn = mode === 'learn';
 
@@ -303,10 +306,9 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
   if (runSummary) {
     const marks = highlightsForRound('streakEnd', runSummary.lastMove, runSummary.atRisk);
     return (
-      <Screen maxWidth={wide ? 1120 : 560}>
-        {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
-        <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
-        <View style={[styles.summary, { minHeight: Math.max(520, height - 160) }]}>
+      <ScoreFrame
+        toolbar={<SessionToolbar mode={mode} onMode={onMode} setId={setId} reviewing={reviewing} onSet={chooseSet} />}
+        board={
           <ChessBoard
             fen={runSummary.fen}
             orientation={runSummary.orientation}
@@ -316,22 +318,20 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
             highlightSquares={marks.squares}
             highlightTone={marks.tone}
           />
-          <View style={styles.doneCard}>
-            <Text style={styles.eyebrow}>Drills</Text>
-            <Text style={styles.heading}>Streak over</Text>
-            <Text style={styles.score}>{runSummary.saved}</Text>
-            <Text style={styles.sub}>saved this run · best {runSummary.best}</Text>
-            <View style={styles.missBlock}>
-              <Text style={styles.missLabel}>The miss</Text>
-              {runSummary.playedSan ? (
-                <Text style={styles.hint}>You played {runSummary.playedSan}.</Text>
-              ) : null}
-              <Text style={styles.hint}>{runSummary.missText}</Text>
-            </View>
-            <Button label="Start again" onPress={() => begin(sessionFor(setId))} />
+        }>
+        <View style={play.done}>
+          <Text style={text.eyebrow}>Drills</Text>
+          <Text style={text.title}>Streak over</Text>
+          <Text style={text.hero}>{runSummary.saved}</Text>
+          <Text style={text.muted}>saved this run · best {runSummary.best}</Text>
+          <View style={play.miss}>
+            <Text style={text.section}>The miss</Text>
+            {runSummary.playedSan ? <Text style={text.body}>You played {runSummary.playedSan}.</Text> : null}
+            <Text style={text.body}>{runSummary.missText}</Text>
           </View>
+          <Button label="Start again" onPress={() => begin(sessionFor(setId))} />
         </View>
-      </Screen>
+      </ScoreFrame>
     );
   }
 
@@ -339,22 +339,21 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
     const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
     const emptyReview = reviewing && session.positions.length === 0;
     return (
-      <Screen maxWidth={wide ? 1120 : 560}>
-        {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
-        <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
-        <View style={styles.doneCard}>
-          <Text style={styles.eyebrow}>{mode === 'streak' ? 'Drills' : 'Learn'}</Text>
-          <Text style={styles.heading}>
+      <ScoreFrame
+        toolbar={<SessionToolbar mode={mode} onMode={onMode} setId={setId} reviewing={reviewing} onSet={chooseSet} />}>
+        <View style={play.done}>
+          <Text style={text.eyebrow}>{mode === 'streak' ? 'Drills' : 'Learn'}</Text>
+          <Text style={text.title}>
             {emptyReview ? 'Nothing to review' : mode === 'streak' ? 'Clean run' : "That's the set"}
           </Text>
           {emptyReview ? (
-            <Text style={styles.sub}>You have no misses saved for today.</Text>
+            <Text style={text.muted}>You have no misses saved for today.</Text>
           ) : (
             <>
-              <Text style={styles.score}>
+              <Text style={text.hero}>
                 {mode === 'streak' ? score.correct : `${score.correct}/${score.total}`}
               </Text>
-              <Text style={styles.sub}>
+              <Text style={text.muted}>
                 {mode === 'streak'
                   ? `in a row · best ${Math.max(bestPuzzleStreak, score.correct)}`
                   : `${pct}% saved on the first try`}
@@ -363,7 +362,7 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
           )}
           <Button label={mode === 'streak' ? 'Run again' : 'Learn again'} onPress={restart} />
         </View>
-      </Screen>
+      </ScoreFrame>
     );
   }
 
@@ -381,30 +380,27 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
   const watchingReply = replayActive && !playback.done;
 
   return (
-    <Screen maxWidth={wide ? 1120 : 560}>
-      <BoardLead>
-        {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
-        <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
-        <View style={styles.metaRow}>
-          <Text style={styles.chip}>
-            {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
-          </Text>
-          <Text style={styles.count}>
-            {index + 1} / {session.positions.length}
-            {mode === 'streak' ? ` · ${score.correct} in a row` : ''}
-          </Text>
-        </View>
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
-        </View>
-        <Text style={styles.habit}>{HABIT_PROMPT}</Text>
-        <Text style={styles.heading}>{drill.prompt}</Text>
-        <ColorLegend />
-      </BoardLead>
-
-      <BoardStage
-        asideFirst={!wide && round !== 'playing' && !watchingReply}
-        board={
+    <PlayFrame
+      asideFirst={!split && round !== 'playing' && !watchingReply}
+      intro={
+        <BoardLead>
+          <SessionToolbar mode={mode} onMode={onMode} setId={setId} reviewing={reviewing} onSet={chooseSet} />
+          <View style={play.metaRow}>
+            <StatusPill>
+              {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
+            </StatusPill>
+            <Text style={text.meta}>
+              {index + 1} / {session.positions.length}
+              {mode === 'streak' ? ` · ${score.correct} in a row` : ''}
+            </Text>
+          </View>
+          <ProgressTrack progress={progress} />
+          <Text style={text.habit}>{HABIT_PROMPT}</Text>
+          <Text style={text.title}>{drill.prompt}</Text>
+          <ColorLegend />
+        </BoardLead>
+      }
+      board={
           <ChessBoard
             key={boardKey}
             fen={boardFen}
@@ -423,9 +419,9 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
         }
         aside={
           round === 'playing' ? (
-            <View style={styles.guide}>
-              <Text style={styles.hint}>{themeInstruction(drill.theme)}</Text>
-              <Text style={styles.hintMuted}>
+            <View style={play.guide}>
+              <Text style={text.body}>{themeInstruction(drill.theme)}</Text>
+              <Text style={text.muted}>
                 {learn
                   ? 'The amber square is the piece under fire.'
                   : 'One miss ends the run. Showing the idea counts as a miss.'}
@@ -479,178 +475,37 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
             </>
           )
         }
-      />
-    </Screen>
+    />
   );
 }
 
-function SetBar({
+function SessionToolbar({
+  mode,
+  onMode,
   setId,
   reviewing,
   onSet,
 }: {
+  mode: SessionMode;
+  onMode?: (mode: DrillPlayMode) => void;
   setId: SessionSet;
   reviewing: boolean;
   onSet: (set: SessionSet) => void;
 }) {
-  if (reviewing) {
-    return <Text style={styles.reviewLabel}>Reviewing today's misses</Text>;
-  }
   return (
-    <View style={styles.chips}>
-      {SETS.map((set) => {
-        const on = set.id === setId;
-        return (
-          <Pressable
-            key={set.id}
-            accessibilityRole="button"
-            onPress={() => onSet(set.id)}
-            style={[styles.pick, on && styles.pickOn]}>
-            <Text style={[styles.pickText, on && styles.pickTextOn]}>{set.label}</Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.toolbar}>
+      {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
+      {reviewing ? (
+        <Text style={text.eyebrow}>Reviewing today's misses</Text>
+      ) : (
+        <FilterChips options={SETS} value={setId} onChange={onSet} />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  toolbar: {
     gap: 8,
-  },
-  pick: {
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    cursor: 'pointer',
-  },
-  pickOn: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  pickText: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 15,
-  },
-  pickTextOn: {
-    color: colors.accentText,
-  },
-  reviewLabel: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 15,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  chip: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 14,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    backgroundColor: colors.accentSoft,
-    overflow: 'hidden',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-  },
-  count: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 15,
-  },
-  track: {
-    height: 4,
-    borderRadius: 99,
-    backgroundColor: colors.bgSoft,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: 4,
-    backgroundColor: colors.accent,
-  },
-  heading: {
-    fontFamily: fonts.display,
-    color: colors.text,
-    fontSize: 26,
-    lineHeight: 32,
-    letterSpacing: -0.4,
-  },
-  guide: {
-    gap: spacing.sm,
-  },
-  habit: {
-    fontFamily: fonts.bodyBold,
-    color: colors.warn,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  hint: {
-    fontFamily: fonts.body,
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  hintMuted: {
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  summary: {
-    width: '100%',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  doneCard: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    alignItems: 'stretch',
-  },
-  eyebrow: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 14,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-  },
-  score: {
-    fontFamily: fonts.display,
-    color: colors.text,
-    fontSize: 56,
-    letterSpacing: -1,
-  },
-  sub: {
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    fontSize: 16,
-    marginBottom: spacing.sm,
-  },
-  missBlock: {
-    gap: 4,
-    marginBottom: spacing.sm,
-  },
-  missLabel: {
-    fontFamily: fonts.bodyBold,
-    color: colors.textMuted,
-    fontSize: 14,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
   },
 });

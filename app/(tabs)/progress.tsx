@@ -1,20 +1,26 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { Children, type ReactNode, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
+import { text } from '@/src/components/ui/text';
 import { themeLabel, type DrillTheme } from '@/src/logic/drills';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
+const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
+
 export default function ProgressScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const compact = width < 520;
+  const wideActions = width >= 720;
+  const themeCols = width < 560 ? 2 : width < 980 ? 3 : 5;
+  const badgeCols = width < 720 ? 2 : 5;
+  const statCols = width < 560 ? 2 : width < 980 ? 3 : 4;
   const [confirmReset, setConfirmReset] = useState(false);
   const {
     dailyStreak,
@@ -33,59 +39,82 @@ export default function ProgressScreen() {
 
   const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
   const missCount = missesForDate(missedDate, missedIds).length;
+  const badges = badgeList(dailyStreak, recordStreak, bestPuzzleStreak, blundersAvoided);
 
   return (
-    <Screen maxWidth={760}>
-      <Text style={styles.eyebrow}>This device</Text>
-      <Text style={styles.heading}>Progress</Text>
-      <Text style={styles.sub}>Stored locally. No account.</Text>
+    <Screen>
+      <View style={styles.page}>
+        <View style={styles.header}>
+          <Text style={text.eyebrow}>This device</Text>
+          <Text style={text.display}>Progress</Text>
+          <Text style={text.muted}>Stored locally. No account.</Text>
+        </View>
 
-      {dailyStreak > 0 ? (
-        <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
-      ) : (
-        <Text style={styles.zero}>No streak yet. Finish a drill to start one.</Text>
-      )}
+        <View style={styles.banner}>
+          {dailyStreak > 0 ? (
+            <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
+          ) : (
+            <Text style={text.bodyStrong}>No streak yet. Finish a drill to start one.</Text>
+          )}
+        </View>
 
-      <View style={styles.categories}>
-        {(['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const).map((theme) => (
-          <CategoryStat key={theme} theme={theme} tally={themeStats[theme]} wide={!compact} />
-        ))}
+        <View style={styles.group}>
+          <Text style={text.section}>Themes</Text>
+          <Grid columns={themeCols}>
+            {THEMES.map((theme) => (
+              <CategoryStat key={theme} theme={theme} tally={themeStats[theme]} />
+            ))}
+          </Grid>
+        </View>
+
+        <View style={styles.group}>
+          <Text style={text.section}>Badges</Text>
+          <Grid columns={badgeCols}>
+            {badges.map((badge) => (
+              <View
+                key={badge.title}
+                style={[styles.tile, styles.badge, badge.earned ? styles.badgeOn : styles.badgeOff]}>
+                <Text style={[styles.badgeState, badge.earned ? styles.badgeStateOn : styles.badgeStateOff]}>
+                  {badge.earned ? 'Earned' : 'Locked'}
+                </Text>
+                <Text style={styles.badgeTitle}>{badge.title}</Text>
+                <Text style={[styles.badgeDetail, badge.earned && styles.badgeDetailOn]}>{badge.detail}</Text>
+              </View>
+            ))}
+          </Grid>
+        </View>
+
+        <View style={styles.group}>
+          <Text style={text.section}>Totals</Text>
+          <Grid columns={statCols}>
+            <Stat label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />
+            <Stat label="Accuracy" value={`${accuracy}%`} />
+            <Stat label="Saves" value={String(blundersAvoided)} />
+            <Stat label="Blunders" value={String(blundersMade)} />
+            <Stat label="Practice moves" value={String(practiceMoves)} />
+            <Stat label="Best day streak" value={String(recordStreak)} />
+            <Stat label="Best run" value={String(bestPuzzleStreak)} />
+          </Grid>
+        </View>
+
+        <View style={[styles.actions, wideActions && styles.actionsRow]}>
+          <Button
+            style={wideActions ? styles.action : undefined}
+            label={missCount > 0 ? `Review today's misses (${missCount})` : 'No misses today'}
+            variant={missCount > 0 ? 'primary' : 'secondary'}
+            onPress={() => {
+              if (missCount === 0) return;
+              router.push('/learn?review=1');
+            }}
+          />
+          <Button
+            style={wideActions ? styles.action : undefined}
+            label="Reset local progress"
+            variant="secondary"
+            onPress={() => setConfirmReset(true)}
+          />
+        </View>
       </View>
-
-      <View style={styles.badges}>
-        {badgeList(dailyStreak, recordStreak, bestPuzzleStreak, blundersAvoided).map((badge) => (
-          <View
-            key={badge.title}
-            style={[styles.badge, badge.earned ? styles.badgeOn : styles.badgeOff]}>
-            <Text style={[styles.badgeState, badge.earned ? styles.badgeStateOn : styles.badgeStateOff]}>
-              {badge.earned ? 'Earned' : 'Locked'}
-            </Text>
-            <Text style={[styles.badgeTitle, !badge.earned && styles.badgeTitleOff]}>{badge.title}</Text>
-            <Text style={[styles.badgeDetail, badge.earned && styles.badgeDetailOn]}>{badge.detail}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.grid}>
-        <Stat label="Drills done" value={String(drillsDoneCount(drillsCompleted))} wide={!compact} />
-        <Stat label="Accuracy" value={`${accuracy}%`} wide={!compact} />
-        <Stat label="Saves" value={String(blundersAvoided)} wide={!compact} />
-        <Stat label="Blunders" value={String(blundersMade)} wide={!compact} />
-        <Stat label="Practice moves" value={String(practiceMoves)} wide={!compact} />
-        <Stat label="Best day streak" value={String(recordStreak)} wide={!compact} />
-        <Stat label="Best run" value={String(bestPuzzleStreak)} wide={!compact} />
-      </View>
-
-      <Button
-        label={missCount > 0 ? `Review today's misses (${missCount})` : 'No misses today'}
-        variant={missCount > 0 ? 'primary' : 'secondary'}
-        onPress={() => {
-          if (missCount === 0) return;
-          router.push('/learn?review=1');
-        }}
-      />
-
-      <Button label="Reset local progress" variant="secondary" onPress={() => setConfirmReset(true)} />
 
       <Dialog visible={confirmReset}>
         <Text style={styles.dialogTitle}>Reset progress?</Text>
@@ -122,156 +151,151 @@ function badgeList(
   ];
 }
 
+function Grid({ columns, children }: { columns: number; children: ReactNode }) {
+  return (
+    <View style={styles.grid}>
+      {Children.map(children, (child, index) => (
+        <View key={index} style={{ width: `${100 / columns}%`, padding: 6 }}>
+          {child}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function CategoryStat({
   theme,
   tally,
-  wide,
 }: {
   theme: DrillTheme;
   tally: { attempts: number; correct: number } | undefined;
-  wide: boolean;
 }) {
   const attempts = tally?.attempts ?? 0;
   const correct = tally?.correct ?? 0;
   const accuracy = attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
   return (
-    <View style={[styles.stat, wide ? styles.statWide : styles.statFull]}>
-      <Text style={styles.statValue}>{attempts === 0 ? '—' : `${accuracy}%`}</Text>
-      <Text style={styles.statLabel}>
-        {themeLabel(theme)}
-        {attempts === 0 ? ' · not started' : ` · ${correct}/${attempts}`}
-      </Text>
+    <View style={styles.tile}>
+      <Text style={[text.stat, attempts === 0 && styles.dim]}>{attempts === 0 ? '—' : `${accuracy}%`}</Text>
+      <View style={styles.tileCopy}>
+        <Text style={styles.tileLabel}>{themeLabel(theme)}</Text>
+        <Text style={text.muted}>{attempts === 0 ? 'Not started' : `${correct}/${attempts}`}</Text>
+      </View>
     </View>
   );
 }
 
-function Stat({ label, value, wide }: { label: string; value: string; wide: boolean }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <View style={[styles.stat, wide ? styles.statWide : styles.statFull]}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.tile}>
+      <Text style={text.stat}>{value}</Text>
+      <Text style={styles.tileLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  zero: {
-    fontFamily: fonts.bodyBold,
-    color: colors.text,
-    fontSize: 16,
+  page: {
+    width: '100%',
+    gap: 12,
+    paddingBottom: spacing.xs,
   },
-  categories: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  header: {
+    gap: 6,
   },
-  eyebrow: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    fontSize: 14,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-  },
-  heading: {
-    fontFamily: fonts.display,
-    color: colors.text,
-    fontSize: 32,
-    letterSpacing: -0.5,
-  },
-  sub: {
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    fontSize: 15,
-    marginBottom: spacing.xs,
-  },
-  badges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  badge: {
-    borderRadius: radii.md,
+  banner: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radii.lg,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minWidth: 108,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    minHeight: 56,
+    justifyContent: 'center',
   },
-  badgeOn: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
-  },
-  badgeOff: {
-    borderStyle: 'dashed',
-    borderColor: colors.textDim,
-    backgroundColor: 'transparent',
-  },
-  badgeState: {
-    fontFamily: fonts.bodyExtra,
-    fontSize: 14,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  badgeStateOn: {
-    color: colors.accentText,
-  },
-  badgeStateOff: {
-    color: colors.textMuted,
-  },
-  badgeTitle: {
-    fontFamily: fonts.bodyExtra,
-    color: colors.accentText,
-    fontSize: 16,
-  },
-  badgeTitleOff: {
-    color: colors.text,
-  },
-  badgeDetail: {
-    marginTop: 2,
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    fontSize: 15,
-  },
-  badgeDetailOn: {
-    color: colors.accentText,
+  group: {
+    gap: spacing.sm,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    marginHorizontal: -6,
   },
-  stat: {
+  tile: {
     backgroundColor: colors.bgElevated,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    minHeight: 90,
+    justifyContent: 'space-between',
+    gap: 10,
   },
-  statWide: {
-    width: '31%',
-    flexGrow: 1,
-    minWidth: 140,
+  tileCopy: {
+    gap: 2,
   },
-  statFull: {
-    width: '47%',
-    flexGrow: 1,
-  },
-  statValue: {
-    fontFamily: fonts.display,
+  tileLabel: {
+    fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 30,
-    letterSpacing: -0.5,
+    fontSize: 15,
+    lineHeight: 20,
   },
-  statLabel: {
-    marginTop: 4,
+  dim: {
+    color: colors.textDim,
+  },
+  badge: {
+    minHeight: 108,
+    justifyContent: 'flex-start',
+    gap: 4,
+  },
+  badgeOn: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  badgeOff: {
+    backgroundColor: colors.bgElevated,
+  },
+  badgeState: {
+    fontFamily: fonts.bodyExtra,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  badgeStateOn: {
+    color: colors.accent,
+  },
+  badgeStateOff: {
+    color: colors.textDim,
+  },
+  badgeTitle: {
+    fontFamily: fonts.bodyExtra,
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  badgeDetail: {
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  badgeDetailOn: {
+    color: colors.text,
+  },
+  actions: {
+    gap: spacing.sm,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+  },
+  action: {
+    flex: 1,
   },
   dialogTitle: {
     fontFamily: fonts.display,
     fontSize: 24,
+    lineHeight: 30,
     color: colors.text,
     textAlign: 'center',
     letterSpacing: -0.3,

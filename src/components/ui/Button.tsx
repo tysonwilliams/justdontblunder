@@ -85,8 +85,9 @@ function labelColor(variant: Variant) {
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 52,
+    minHeight: 48,
     paddingHorizontal: 18,
+    paddingVertical: 12,
     borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -97,7 +98,9 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bodyExtra,
-    fontSize: 17,
+    fontSize: 16,
+    lineHeight: 22,
     letterSpacing: 0.1,
+    textAlign: 'center',
   },
 });
