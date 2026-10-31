@@ -6,6 +6,7 @@ import type { Square } from 'chess.js';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
+import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
@@ -18,9 +19,8 @@ import {
   themeInstruction,
   type DrillPosition,
 } from '@/src/logic/drills';
-import { createGame } from '@/src/logic/game';
+import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
-import { bestPunishment } from '@/src/logic/safety';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
@@ -34,7 +34,12 @@ const RESULT_LINKS: { href: Dest; label: string }[] = [
   { href: '/practice', label: 'Practice' },
 ];
 
-const ENTRY_CARDS: { href: Dest; title: string; body: string }[] = [
+const ENTRY_CARDS: { href: string; title: string; body: string }[] = [
+  {
+    href: '/drills?pick=1',
+    title: 'Pick the safe move',
+    body: 'Two moves. One blunders. Tap the safe one.',
+  },
   { href: '/learn', title: 'Learn', body: 'Save the piece. The idea is there if you want it.' },
   { href: '/drills', title: 'Drills', body: 'One miss ends the run.' },
   { href: '/practice', title: 'Practice', body: 'Play White. Black takes what you hang.' },
@@ -65,8 +70,12 @@ export function HomeTrainer() {
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [displayFen, setDisplayFen] = useState<string | null>(null);
   const [boardKey, setBoardKey] = useState(0);
+  const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
   const resultCounted = useRef(false);
+  const replayActive = round === 'retry';
+  const playback = usePunishmentPlayback(replayActive, replayLine);
+  const replyReady = !replayActive || playback.done;
 
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
@@ -88,7 +97,7 @@ export function HomeTrainer() {
     };
   }, []);
 
-  const open = (href: Dest) => {
+  const open = (href: string) => {
     router.push(href as Href);
   };
 
@@ -98,7 +107,16 @@ export function HomeTrainer() {
     setRound('playing');
     setLastMove(null);
     setDisplayFen(null);
+    setReplayLine([]);
     setIndex((i) => (i + 1) % total);
+    setBoardKey((k) => k + 1);
+  };
+
+  const tryAgain = () => {
+    setReplayLine([]);
+    setRound('playing');
+    setLastMove(null);
+    setDisplayFen(null);
     setBoardKey((k) => k + 1);
   };
 
@@ -117,22 +135,24 @@ export function HomeTrainer() {
     setLastMove({ from: event.from, to: event.to });
     const ok = isCorrectDrillMove(drill, event.from, event.to);
     recordFirstResult(ok);
+    if (ok) setReplayLine([]);
+    else setReplayLine(punishmentLine(drill, event.from, event.to));
     setRound(ok ? 'correct' : 'retry');
     return ok;
   };
 
   if (!drill) return null;
 
-  const boardFen = displayFen ?? drill.fen;
+  const boardFen = playback.fen ?? displayFen ?? drill.fen;
+  const boardLastMove = playback.move ?? lastMove;
   const progress = (index + (round === 'playing' ? 0 : 1)) / total;
   const marks = highlightsForRound(round, lastMove, drill.atRiskSquare);
   const card = resultCard(round);
   const roundCopy = feedbackForRound(round, drill, lastMove) ?? '';
-  const threatArrow: BoardArrow[] = [];
-  if (lastMove && round === 'retry') {
-    const hit = bestPunishment(createGame(boardFen).fen());
-    if (hit) threatArrow.push({ from: hit.from, to: hit.to, color: colors.danger });
-  }
+  const threatArrow: BoardArrow[] = playback.arrow
+    ? [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }]
+    : [];
+  const watchingReply = replayActive && !playback.done;
 
   return (
     <Screen maxWidth={wide ? 1120 : 560}>
@@ -159,7 +179,7 @@ export function HomeTrainer() {
       </BoardLead>
 
       <BoardStage
-        asideFirst={!wide && round !== 'playing'}
+        asideFirst={!wide && round !== 'playing' && !watchingReply}
         board={
           <ChessBoard
             key={`${drill.id}-${boardKey}`}
@@ -167,7 +187,7 @@ export function HomeTrainer() {
             orientation={orientation}
             flipCue={orientation === 'black'}
             interactive={round === 'playing'}
-            lastMove={lastMove}
+            lastMove={boardLastMove}
             arrows={threatArrow}
             attentionSquares={round === 'playing' ? [drill.atRiskSquare] : []}
             highlightSquares={marks.squares}
@@ -183,8 +203,14 @@ export function HomeTrainer() {
                 tone={card.tone}
                 title={card.title}
                 message={roundCopy}
-                actionLabel="Next puzzle"
-                onDismiss={next}
+                waiting={card.tone === 'danger' && !replyReady ? 'Watch the reply.' : undefined}
+                actionLabel={
+                  card.tone === 'danger' ? (replyReady ? 'Try again' : undefined) : 'Next puzzle'
+                }
+                onDismiss={card.tone === 'danger' ? (replyReady ? tryAgain : undefined) : next}
+                actionTestID={card.tone === 'danger' ? 'try-again' : undefined}
+                secondaryLabel={card.tone === 'danger' && replyReady ? 'Next puzzle' : undefined}
+                onSecondary={card.tone === 'danger' && replyReady ? next : undefined}
               />
               <View style={styles.linkRow}>
                 {RESULT_LINKS.map((item) => (

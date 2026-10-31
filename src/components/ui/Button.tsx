@@ -10,12 +10,21 @@ type Props = {
   variant?: Variant;
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
-export function Button({ label, onPress, variant = 'primary', fullWidth = true, style }: Props) {
+export function Button({
+  label,
+  onPress,
+  variant = 'primary',
+  fullWidth = true,
+  style,
+  testID,
+}: Props) {
   return (
     <Pressable
       accessibilityRole="button"
+      testID={testID}
       onPress={onPress}
       style={(state) => {
         const hovered = 'hovered' in state && Boolean(state.hovered);

@@ -31,3 +31,11 @@ export function claimDrillResult(alreadyClaimed: boolean): { claimed: true; reco
   if (alreadyClaimed) return { claimed: true, recorded: false };
   return { claimed: true, recorded: true };
 }
+
+/**
+ * Try again restores the position and replays the same decision.
+ * The first result already moved the tallies, so that replay does not count again.
+ */
+export function countRetriedMove(isRetry: boolean): boolean {
+  return !isRetry;
+}

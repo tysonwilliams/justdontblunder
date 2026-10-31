@@ -14,6 +14,11 @@ type Props = {
   hint?: string;
   actionLabel?: string;
   onDismiss?: () => void;
+  actionTestID?: string;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+  /** Shown in place of the buttons while a punishment line is still playing. */
+  waiting?: string;
 };
 
 export function BlunderOverlay({
@@ -24,6 +29,10 @@ export function BlunderOverlay({
   hint,
   actionLabel = 'Got it',
   onDismiss,
+  actionTestID,
+  secondaryLabel,
+  onSecondary,
+  waiting,
 }: Props) {
   if (!visible) return null;
   const toneColor = toneColors(tone);
@@ -43,7 +52,13 @@ export function BlunderOverlay({
           <Text style={styles.hint}>{hint}</Text>
         </View>
       ) : null}
-      {onDismiss ? <Button label={actionLabel} onPress={onDismiss} /> : null}
+      {waiting && !onDismiss ? <Text style={styles.waiting}>{waiting}</Text> : null}
+      {onDismiss ? (
+        <Button label={actionLabel} onPress={onDismiss} testID={actionTestID} />
+      ) : null}
+      {onSecondary && secondaryLabel ? (
+        <Button label={secondaryLabel} onPress={onSecondary} variant="secondary" />
+      ) : null}
     </View>
   );
 }
@@ -129,5 +144,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 14,
     color: colors.text,
+  },
+  waiting: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: colors.textMuted,
   },
 });

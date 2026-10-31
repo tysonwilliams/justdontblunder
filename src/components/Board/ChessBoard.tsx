@@ -31,6 +31,8 @@ export type BoardArrow = {
   from: Square;
   to: Square;
   color?: string;
+  /** Short mark drawn on the arrow, such as A or B for a two-move choice. */
+  label?: string;
 };
 
 export type BoardMoveEvent = {
@@ -313,7 +315,7 @@ export function ChessBoard({
               viewBox={`0 0 ${boardSize} ${boardSize}`}>
               {arrows.map((arrow) => (
                 <ArrowShape
-                  key={`${arrow.from}${arrow.to}`}
+                  key={`${arrow.from}${arrow.to}${arrow.label ?? ''}`}
                   from={centerOf(arrow.from, orientation, squareSize)}
                   to={centerOf(arrow.to, orientation, squareSize)}
                   color={arrow.color ?? colors.danger}
@@ -322,6 +324,31 @@ export function ChessBoard({
               ))}
             </Svg>
           ) : null}
+          {arrows.map((arrow) => {
+            if (!arrow.label || squareSize <= 0) return null;
+            const badge = Math.max(22, Math.min(32, squareSize * 0.34));
+            const at = labelAnchor(arrow.to, orientation, squareSize);
+            return (
+              <View
+                key={`label-${arrow.from}${arrow.to}${arrow.label}`}
+                pointerEvents="none"
+                style={[
+                  styles.arrowLabel,
+                  {
+                    width: badge,
+                    height: badge,
+                    borderRadius: badge / 2,
+                    left: at.x - badge / 2,
+                    top: at.y - badge / 2,
+                    borderColor: arrow.color ?? colors.danger,
+                  },
+                ]}>
+                <Text style={[styles.arrowLabelText, { color: arrow.color ?? colors.danger, fontSize: badge * 0.48 }]}>
+                  {arrow.label}
+                </Text>
+              </View>
+            );
+          })}
           {dragPiece ? (
             <Animated.View
               pointerEvents="none"
@@ -340,6 +367,19 @@ export function ChessBoard({
       </GestureDetector>
     </View>
   );
+}
+
+function labelAnchor(
+  square: Square,
+  orientation: 'white' | 'black',
+  squareSize: number,
+): { x: number; y: number } {
+  const center = centerOf(square, orientation, squareSize);
+  const nudge = squareSize * 0.22;
+  return {
+    x: Math.min(center.x + nudge, squareSize * 8 - squareSize * 0.18),
+    y: Math.max(center.y - nudge, squareSize * 0.18),
+  };
 }
 
 function centerOf(
@@ -452,6 +492,18 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     zIndex: 4,
+  },
+  arrowLabel: {
+    position: 'absolute',
+    zIndex: 6,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowLabelText: {
+    fontFamily: fonts.bodyExtra,
+    textAlign: 'center',
   },
   coord: {
     position: 'absolute',

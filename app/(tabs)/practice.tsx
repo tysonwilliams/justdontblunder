@@ -16,6 +16,7 @@ import { findHangingPieces } from '@/src/engine/patterns';
 import { HABIT_PROMPT } from '@/src/logic/drills';
 import { createGame, snapshot } from '@/src/logic/game';
 import { chooseBlackReply } from '@/src/logic/reply';
+import { countRetriedMove } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, spacing } from '@/src/theme';
 
@@ -52,6 +53,12 @@ export default function PracticeScreen() {
   const [highlights, setHighlights] = useState<Square[]>([]);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryUncounted = useRef(false);
+  const lastMoveRef = useRef(lastMove);
+  const checkpoint = useRef<{ fen: string; lastMove: { from: Square; to: Square } | null } | null>(
+    null,
+  );
+  lastMoveRef.current = lastMove;
 
   const resultLine = useMemo(() => gameResultLine(fen), [fen]);
   const gameOver = resultLine != null;
@@ -76,13 +83,42 @@ export default function PracticeScreen() {
     setThinking(false);
     setHighlights([]);
     setLastMove(null);
+    checkpoint.current = null;
+    retryUncounted.current = false;
+  };
+
+  const dismissFeedback = () => {
+    setFeedback(null);
+    setHighlights([]);
+    setReplySan(null);
+  };
+
+  const tryAgain = () => {
+    const saved = checkpoint.current;
+    if (!saved) return;
+    if (replyTimer.current) clearTimeout(replyTimer.current);
+    retryUncounted.current = true;
+    setThinking(false);
+    setFen(saved.fen);
+    setLastMove(saved.lastMove);
+    setFeedback(null);
+    setStatus(null);
+    setReplySan(null);
+    setHighlights([]);
+    setBoardKey((k) => k + 1);
   };
 
   const onMove = (event: BoardMoveEvent) => {
     if (thinking || gameOver) return false;
     const result = judgePracticeMove(event.beforeFen, event.from, event.to, 'w');
     const hadHanging = findHangingPieces(event.beforeFen, 'w').length > 0;
-    markPracticeMove(result.ok && hadHanging, !result.ok);
+    const retried = retryUncounted.current;
+    retryUncounted.current = false;
+    if (countRetriedMove(retried)) {
+      markPracticeMove(result.ok && hadHanging, !result.ok);
+    }
+    if (result.ok) checkpoint.current = null;
+    else checkpoint.current = { fen: event.beforeFen, lastMove: lastMoveRef.current };
     setFen(event.afterFen);
     setLastMove({ from: event.from, to: event.to });
     setReplySan(null);
@@ -167,7 +203,7 @@ export default function PracticeScreen() {
       </BoardLead>
 
       <BoardStage
-        asideFirst={!wide && feedback != null}
+        asideFirst={!wide && feedback != null && tone !== 'danger'}
         board={
           <ChessBoard
             key={boardKey}
@@ -186,25 +222,24 @@ export default function PracticeScreen() {
         }
         aside={
           <View style={styles.guide}>
-            {gameOver ? (
-              <>
-                <Text style={styles.result}>{resultLine}</Text>
-                <Button label="New game" onPress={resetBoard} />
-              </>
-            ) : feedback ? (
+            {feedback && (tone === 'danger' || !gameOver) ? (
               <BlunderOverlay
                 visible
                 tone={tone}
                 title={feedback.title}
-                message={panelMessage}
+                message={gameOver && resultLine ? `${panelMessage} ${resultLine}` : panelMessage}
                 hint={feedback.bestMoveHint}
-                actionLabel="Continue"
-                onDismiss={() => {
-                  setFeedback(null);
-                  setHighlights([]);
-                  setReplySan(null);
-                }}
+                actionLabel={tone === 'danger' ? 'Try again' : 'Continue'}
+                onDismiss={tone === 'danger' ? tryAgain : dismissFeedback}
+                actionTestID={tone === 'danger' ? 'try-again' : undefined}
+                secondaryLabel={tone === 'danger' ? 'Continue' : undefined}
+                onSecondary={tone === 'danger' ? dismissFeedback : undefined}
               />
+            ) : gameOver ? (
+              <>
+                <Text style={styles.result}>{resultLine}</Text>
+                <Button label="New game" onPress={resetBoard} />
+              </>
             ) : status ? (
               <Text style={styles.reminder}>{status}</Text>
             ) : hangingNow[0] ? (

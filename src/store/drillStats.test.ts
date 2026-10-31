@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyDrillResult,
   claimDrillResult,
+  countRetriedMove,
   drillsDoneCount,
   type DrillTally,
 } from '@/src/store/drillStats';
@@ -58,6 +59,11 @@ describe('home and drills share one count per puzzle', () => {
     });
     const second = submit(first.claimed, first.tally, true);
     expect(second.tally).toEqual(first.tally);
+  });
+
+  it('does not count the move played after Try again', () => {
+    expect(countRetriedMove(false)).toBe(true);
+    expect(countRetriedMove(true)).toBe(false);
   });
 
   it('counts the next puzzle after the claim is released, still once', () => {

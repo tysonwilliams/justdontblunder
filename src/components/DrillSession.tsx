@@ -6,6 +6,8 @@ import type { Square } from 'chess.js';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
+import { DrillModeBar, type DrillPlayMode } from '@/src/components/DrillModeBar';
+import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { BoardStage, boardStageIsWide } from '@/src/components/ui/BoardStage';
 import { Button } from '@/src/components/ui/Button';
@@ -24,8 +26,8 @@ import {
   type DrillTheme,
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
+import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
-import { bestPunishment } from '@/src/logic/safety';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
@@ -59,9 +61,17 @@ type RunSummary = {
   atRisk: Square;
 };
 
+type MissedPlay = {
+  san: string | null;
+  text: string;
+  fen: string;
+  lastMove: { from: Square; to: Square };
+};
+
 type Props = {
   mode: SessionMode;
   reviewing?: boolean;
+  onMode?: (mode: DrillPlayMode) => void;
 };
 
 function playedSan(fen: string, from: Square, to: Square): string | null {
@@ -69,7 +79,7 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
   return moved?.san ?? null;
 }
 
-export function DrillSession({ mode, reviewing = false }: Props) {
+export function DrillSession({ mode, reviewing = false, onMode }: Props) {
   const { width, height } = useWindowDimensions();
   const wide = boardStageIsWide(width);
   const router = useRouter();
@@ -93,6 +103,9 @@ export function DrillSession({ mode, reviewing = false }: Props) {
   const [boardKey, setBoardKey] = useState(0);
   const [shownIdea, setShownIdea] = useState(false);
   const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
+  const [runOver, setRunOver] = useState(false);
+  const [missedPlay, setMissedPlay] = useState<MissedPlay | null>(null);
   const reviewStarted = useRef(false);
   const runRecorded = useRef(false);
   const resultCounted = useRef(false);
@@ -100,6 +113,9 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   const drill: DrillPosition | undefined = session.positions[index];
   const done = index >= session.positions.length;
+  const replayActive = runSummary == null && (round === 'retry' || round === 'streakEnd');
+  const playback = usePunishmentPlayback(replayActive, replayLine);
+  const replyReady = !replayActive || playback.done;
 
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
@@ -111,12 +127,15 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     setLastMove(null);
     setDisplayFen(null);
     setShownIdea(false);
+    setReplayLine([]);
     setBoardKey((k) => k + 1);
   };
 
   const begin = (nextSession: DrillSessionData) => {
     runRecorded.current = false;
     resultCounted.current = false;
+    setRunOver(false);
+    setMissedPlay(null);
     setRunSummary(null);
     setSession(nextSession);
     setIndex(0);
@@ -148,6 +167,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     setDisplayFen(drill.fen);
     setRound('playing');
     setLastMove(null);
+    setReplayLine([]);
   }, [drill?.id, drill?.fen]);
 
   useEffect(() => {
@@ -175,6 +195,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   const tryAgain = () => {
     if (!drill) return;
+    setReplayLine([]);
     setDisplayFen(drill.fen);
     setLastMove(null);
     setRound('playing');
@@ -233,15 +254,26 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
     const ok = isCorrectDrillMove(drill, event.from, event.to);
     if (ok) {
-      recordFirstResult(true);
+      if (!runOver) recordFirstResult(true);
+      setReplayLine([]);
       setRound('correct');
       return true;
     }
+    setReplayLine(punishmentLine(drill, event.from, event.to));
     if (mode === 'streak') {
-      recordFirstResult(false);
-      if (!runRecorded.current) {
-        runRecorded.current = true;
-        recordPuzzleRun(score.correct);
+      if (!runOver) {
+        recordFirstResult(false);
+        setMissedPlay({
+          san: event.san,
+          text: missFeedback(drill, event.from, event.to),
+          fen: event.afterFen,
+          lastMove: { from: event.from, to: event.to },
+        });
+        if (!runRecorded.current) {
+          runRecorded.current = true;
+          recordPuzzleRun(score.correct);
+        }
+        setRunOver(true);
       }
       setRound('streakEnd');
     } else {
@@ -254,14 +286,15 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   const showRunSummary = () => {
     if (!drill) return;
+    const stillOnMiss = round === 'streakEnd';
     setRunSummary({
       saved: score.correct,
       best: Math.max(bestPuzzleStreak, score.correct),
-      playedSan: lastMove ? playedSan(drill.fen, lastMove.from, lastMove.to) : null,
-      missText:
-        !shownIdea && lastMove ? missFeedback(drill, lastMove.from, lastMove.to) : drill.note,
-      fen: displayFen ?? drill.fen,
-      lastMove,
+      playedSan:
+        missedPlay?.san ?? (lastMove ? playedSan(drill.fen, lastMove.from, lastMove.to) : null),
+      missText: missedPlay?.text ?? (!shownIdea && lastMove ? missFeedback(drill, lastMove.from, lastMove.to) : drill.note),
+      fen: stillOnMiss ? (playback.fen ?? displayFen ?? drill.fen) : (missedPlay?.fen ?? drill.fen),
+      lastMove: stillOnMiss ? (playback.move ?? lastMove) : (missedPlay?.lastMove ?? null),
       orientation: drill.sideToMove === 'b' ? 'black' : 'white',
       atRisk: drill.atRiskSquare,
     });
@@ -271,6 +304,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     const marks = highlightsForRound('streakEnd', runSummary.lastMove, runSummary.atRisk);
     return (
       <Screen maxWidth={wide ? 1120 : 560}>
+        {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
         <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
         <View style={[styles.summary, { minHeight: Math.max(520, height - 160) }]}>
           <ChessBoard
@@ -306,6 +340,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
     const emptyReview = reviewing && session.positions.length === 0;
     return (
       <Screen maxWidth={wide ? 1120 : 560}>
+        {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
         <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
         <View style={styles.doneCard}>
           <Text style={styles.eyebrow}>{mode === 'streak' ? 'Drills' : 'Learn'}</Text>
@@ -334,24 +369,21 @@ export function DrillSession({ mode, reviewing = false }: Props) {
 
   if (!drill) return null;
 
-  const boardFen = displayFen ?? drill.fen;
+  const boardFen = playback.fen ?? displayFen ?? drill.fen;
+  const boardLastMove = playback.move ?? lastMove;
   const progress = (index + (round === 'playing' ? 0 : 1)) / session.positions.length;
   const marks = highlightsForRound(round, lastMove, drill.atRiskSquare);
   const roundCopy = feedbackForRound(round, drill, shownIdea ? null : lastMove) ?? '';
-  const threatArrow: BoardArrow[] = [];
-  if (!shownIdea && lastMove && (round === 'retry' || round === 'streakEnd')) {
-    const punished = createGame(boardFen);
-    const hit = bestPunishment(punished.fen());
-    if (hit && !hit.mate) {
-      threatArrow.push({ from: hit.from, to: hit.to, color: colors.danger });
-    } else if (hit?.mate) {
-      threatArrow.push({ from: hit.from, to: hit.to, color: colors.danger });
-    }
-  }
+  const threatArrow: BoardArrow[] =
+    !shownIdea && playback.arrow
+      ? [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }]
+      : [];
+  const watchingReply = replayActive && !playback.done;
 
   return (
     <Screen maxWidth={wide ? 1120 : 560}>
       <BoardLead>
+        {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
         <SetBar setId={setId} reviewing={reviewing} onSet={chooseSet} />
         <View style={styles.metaRow}>
           <Text style={styles.chip}>
@@ -371,7 +403,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
       </BoardLead>
 
       <BoardStage
-        asideFirst={!wide && round !== 'playing'}
+        asideFirst={!wide && round !== 'playing' && !watchingReply}
         board={
           <ChessBoard
             key={boardKey}
@@ -379,7 +411,7 @@ export function DrillSession({ mode, reviewing = false }: Props) {
             orientation={orientation}
             flipCue={orientation === 'black'}
             interactive={round === 'playing'}
-            lastMove={lastMove}
+            lastMove={boardLastMove}
             arrows={threatArrow}
             attentionSquares={
               learn && round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []
@@ -411,16 +443,18 @@ export function DrillSession({ mode, reviewing = false }: Props) {
                 tone="success"
                 title="Nice save"
                 message={roundCopy}
-                actionLabel="Next puzzle"
-                onDismiss={next}
+                actionLabel={runOver ? 'Done' : 'Next puzzle'}
+                onDismiss={runOver ? showRunSummary : next}
               />
               <BlunderOverlay
                 visible={round === 'retry'}
                 tone="danger"
                 title="Not quite"
                 message={roundCopy}
-                actionLabel="Try again"
-                onDismiss={tryAgain}
+                waiting={replyReady ? undefined : 'Watch the reply.'}
+                actionLabel={replyReady ? 'Try again' : undefined}
+                onDismiss={replyReady ? tryAgain : undefined}
+                actionTestID="try-again"
               />
               <BlunderOverlay
                 visible={round === 'revealed'}
@@ -435,8 +469,12 @@ export function DrillSession({ mode, reviewing = false }: Props) {
                 tone="danger"
                 title="Streak over"
                 message={`${score.correct} in a row. ${roundCopy}`}
-                actionLabel="Done"
-                onDismiss={showRunSummary}
+                waiting={!shownIdea && !replyReady ? 'Watch the reply.' : undefined}
+                actionLabel={!replyReady ? undefined : shownIdea ? 'Done' : 'Try again'}
+                onDismiss={!replyReady ? undefined : shownIdea ? showRunSummary : tryAgain}
+                actionTestID={shownIdea ? undefined : 'try-again'}
+                secondaryLabel={replyReady && !shownIdea ? 'Done' : undefined}
+                onSecondary={replyReady && !shownIdea ? showRunSummary : undefined}
               />
             </>
           )
