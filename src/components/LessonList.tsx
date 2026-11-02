@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { controlA11y } from '@/src/components/ui/a11y';
 import { IconCheck } from '@/src/components/ui/icons';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
@@ -30,12 +31,13 @@ export function LessonList({ onOpen }: Props) {
         <View style={styles.list}>
           {LESSONS.map((lesson, index) => {
             const complete = done.has(lesson.id);
+            const label = `${lesson.title}${complete ? ', done' : ''}`;
             return (
               <Pressable
                 key={lesson.id}
-                accessibilityRole="button"
-                accessibilityState={{ checked: complete }}
-                accessibilityLabel={`${lesson.title}${complete ? ', done' : ''}`}
+                {...controlA11y('button', label, complete)}
+                accessibilityState={{ selected: complete, checked: complete }}
+                aria-checked={complete}
                 testID={`lesson-open-${lesson.id}`}
                 onPress={() => onOpen(lesson.id)}
                 style={({ pressed }) => [styles.row, pressed && styles.rowOn]}>

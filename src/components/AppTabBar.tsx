@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 
+import { controlA11y } from '@/src/components/ui/a11y';
 import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts, fontSizes, layout, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
@@ -84,8 +85,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
             return (
               <Pressable
                 key={route.key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: focused }}
+                {...controlA11y('tab', label, focused)}
                 onPress={onPress}
                 style={(press) => {
                   const hovered = 'hovered' in press && Boolean(press.hovered);

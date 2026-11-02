@@ -1,17 +1,21 @@
-import { useMemo, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
-import Svg, { Polygon } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { playMoveSound, unlockMoveSounds } from '@/src/audio/playMoveSound';
 import { soundForSan } from '@/src/audio/moveSound';
-import { Piece, pieceCodeFrom } from '@/src/components/Board/Piece';
+import { BoardArrows } from '@/src/components/Board/BoardArrows';
+import { BoardSquare } from '@/src/components/Board/BoardSquare';
+import { squareAt } from '@/src/components/Board/boardCoords';
+import { chessBoardPropsEqual } from '@/src/components/Board/boardProps';
+import { buildBoardRows } from '@/src/components/Board/boardSquares';
+import type { BoardArrow, BoardMoveEvent, ChessBoardProps } from '@/src/components/Board/boardTypes';
+import { Piece } from '@/src/components/Board/Piece';
+import { squareSizeForFrame } from '@/src/components/Board/boardGeometry';
+import { pieceCodeFrom } from '@/src/components/Board/pieceCode';
+import { useLayout } from '@/src/components/ui/useLayout';
 import {
   createGame,
   getLegalTargets,
@@ -20,57 +24,11 @@ import {
   tryMove,
   type GameSnapshot,
 } from '@/src/logic/game';
-import { squareSizeForFrame } from '@/src/components/Board/boardGeometry';
-import { legalMoveInk, squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
-import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
-const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
-const RANKS_WHITE = [8, 7, 6, 5, 4, 3, 2, 1] as const;
-const RANKS_BLACK = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export type { BoardArrow, BoardMoveEvent };
 
-export type BoardArrow = {
-  from: Square;
-  to: Square;
-  color?: string;
-  /** Short mark drawn on the arrow, such as A or B for a two-move choice. */
-  label?: string;
-};
-
-export type BoardMoveEvent = {
-  from: Square;
-  to: Square;
-  beforeFen: string;
-  afterFen: string;
-  san: string;
-};
-
-type Props = {
-  fen?: string;
-  orientation?: 'white' | 'black';
-  interactive?: boolean;
-  highlightSquares?: Square[];
-  /** Danger (red) is a blunder. Success (green) is a save. */
-  highlightTone?: HighlightTone;
-  /** Softer amber attention (e.g. your hanging piece to save). */
-  attentionSquares?: Square[];
-  lastMove?: { from: Square; to: Square } | null;
-  arrows?: BoardArrow[];
-  /** Black-to-move drills flip the board. Say so next to the turn. */
-  flipCue?: boolean;
-  /**
-   * The screen already says whose move it is. Hide that line, and still
-   * surface check, mate, and the flip cue.
-   */
-  hideTurn?: boolean;
-  /**
-   * Border-box width of the frame, in px. Comes from the layout that sizes
-   * the slot, so the squares match the frame before onLayout runs.
-   */
-  size?: number;
-  onMove?: (event: BoardMoveEvent) => boolean | void;
-  onPositionChange?: (snap: GameSnapshot) => void;
-};
+const EMPTY_ARROWS: BoardArrow[] = [];
 
 function turnStatus(snap: GameSnapshot, hideTurn: boolean): string | null {
   if (snap.isCheckmate) return 'Checkmate';
@@ -80,13 +38,7 @@ function turnStatus(snap: GameSnapshot, hideTurn: boolean): string | null {
   return `${snap.turn === 'w' ? 'White' : 'Black'} to move`;
 }
 
-function squareAt(fileIndex: number, rankIndex: number, orientation: 'white' | 'black'): Square {
-  const files = orientation === 'white' ? FILES : [...FILES].reverse();
-  const ranks = orientation === 'white' ? RANKS_WHITE : RANKS_BLACK;
-  return `${files[fileIndex]}${ranks[rankIndex]}` as Square;
-}
-
-export function ChessBoard({
+function ChessBoardView({
   fen,
   orientation = 'white',
   interactive = true,
@@ -100,7 +52,7 @@ export function ChessBoard({
   size,
   onMove,
   onPositionChange,
-}: Props) {
+}: ChessBoardProps) {
   const { phone } = useLayout();
   const [measured, setMeasured] = useState(0);
   const [gameFen, setGameFen] = useState(() => fen ?? createGame().fen());
@@ -111,134 +63,202 @@ export function ChessBoard({
   const activeFen = fen ?? gameFen;
   const game = useMemo(() => createGame(activeFen), [activeFen]);
   const snap = snapshot(game);
-  // Prefer the slot width. A measurement from the previous size would keep
-  // the grid small for a frame after every resize.
   const outer = size && size > 0 ? Math.round(size) : measured;
   const squareSize = squareSizeForFrame(outer);
-  const inner = squareSize * 8;
 
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
+  const dragFrom = useRef<Square | null>(null);
+  const latest = useRef({
+    interactive,
+    game,
+    snap,
+    selected,
+    legal,
+    fen,
+    onMove,
+    onPositionChange,
+    orientation,
+    squareSize,
+  });
+  latest.current = {
+    interactive,
+    game,
+    snap,
+    selected,
+    legal,
+    fen,
+    onMove,
+    onPositionChange,
+    orientation,
+    squareSize,
+  };
 
   const dragStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: dragX.value - squareSize / 2 },
-      { translateY: dragY.value - squareSize / 2 },
-    ],
+    transform: [{ translateX: dragX.value - squareSize / 2 }, { translateY: dragY.value - squareSize / 2 }],
   }));
 
-  const onLayout = (e: LayoutChangeEvent) => {
-    const next = Math.round(e.nativeEvent.layout.width);
+  const onLayout = (event: LayoutChangeEvent) => {
+    const next = Math.round(event.nativeEvent.layout.width);
     setMeasured((prev) => (prev === next ? prev : next));
   };
 
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelected(null);
     setLegal([]);
-  };
+  }, []);
 
-  const commitMove = (from: Square, to: Square) => {
-    if (!interactive) return;
-    const beforeFen = game.fen();
-    const probe = createGame(beforeFen);
-    const moved = tryMove(probe, from, to);
-    if (!moved) {
-      clearSelection();
-      playMoveSound('fail');
-      return;
-    }
-    const afterFen = probe.fen();
-    const allowed = onMove?.({
-      from,
-      to,
-      beforeFen,
-      afterFen,
-      san: moved.san,
-    });
-    if (allowed === false) {
-      clearSelection();
-      playMoveSound('fail');
-      return;
-    }
-    playMoveSound(soundForSan(moved.san));
-    if (fen === undefined) {
-      setGameFen(afterFen);
-    }
-    onPositionChange?.(snapshot(probe));
-    clearSelection();
-  };
-
-  const onSquarePress = (square: Square) => {
-    if (!interactive) return;
-    const piece = pieceAt(game, square);
-
-    if (selected) {
-      if (legal.includes(square)) {
-        commitMove(selected, square);
+  const commitMove = useCallback(
+    (from: Square, to: Square) => {
+      const now = latest.current;
+      if (!now.interactive) return;
+      const beforeFen = now.game.fen();
+      const probe = createGame(beforeFen);
+      const moved = tryMove(probe, from, to);
+      if (!moved) {
+        clearSelection();
+        playMoveSound('fail');
         return;
       }
-      if (piece && piece.color === snap.turn) {
+      const afterFen = probe.fen();
+      const allowed = now.onMove?.({ from, to, beforeFen, afterFen, san: moved.san });
+      if (allowed === false) {
+        clearSelection();
+        playMoveSound('fail');
+        return;
+      }
+      playMoveSound(soundForSan(moved.san));
+      if (now.fen === undefined) setGameFen(afterFen);
+      now.onPositionChange?.(snapshot(probe));
+      clearSelection();
+    },
+    [clearSelection],
+  );
+
+  const onSquarePress = useCallback(
+    (square: Square) => {
+      const now = latest.current;
+      if (!now.interactive) return;
+      const piece = pieceAt(now.game, square);
+      if (now.selected) {
+        if (now.legal.includes(square)) {
+          commitMove(now.selected, square);
+          return;
+        }
+        if (piece && piece.color === now.snap.turn) {
+          setSelected(square);
+          setLegal(getLegalTargets(now.game, square));
+          return;
+        }
+        clearSelection();
+        playMoveSound('fail');
+        return;
+      }
+      if (piece && piece.color === now.snap.turn) {
         setSelected(square);
-        setLegal(getLegalTargets(game, square));
-        return;
+        setLegal(getLegalTargets(now.game, square));
       }
-      clearSelection();
-      playMoveSound('fail');
-      return;
-    }
+    },
+    [clearSelection, commitMove],
+  );
 
-    if (piece && piece.color === snap.turn) {
-      setSelected(square);
-      setLegal(getLegalTargets(game, square));
-    }
-  };
-
-  const startDrag = (square: Square) => {
-    if (!interactive) return;
-    const piece = pieceAt(game, square);
-    if (!piece || piece.color !== snap.turn) return;
+  const startDrag = useCallback((square: Square) => {
+    const now = latest.current;
+    if (!now.interactive) return;
+    const piece = pieceAt(now.game, square);
+    if (!piece || piece.color !== now.snap.turn) return;
     setSelected(square);
-    setLegal(getLegalTargets(game, square));
+    setLegal(getLegalTargets(now.game, square));
+    dragFrom.current = square;
     setDragSquare(square);
-  };
+  }, []);
 
-  const endDrag = (x: number, y: number) => {
-    const from = dragSquare;
+  const endDrag = useCallback(
+    (x: number, y: number) => {
+      const from = dragFrom.current;
+      dragFrom.current = null;
+      setDragSquare(null);
+      const now = latest.current;
+      if (!from || now.squareSize <= 0) return;
+      const fileIndex = Math.max(0, Math.min(7, Math.floor(x / now.squareSize)));
+      const rankIndex = Math.max(0, Math.min(7, Math.floor(y / now.squareSize)));
+      const to = squareAt(fileIndex, rankIndex, now.orientation);
+      if (to !== from && getLegalTargets(now.game, from).includes(to)) {
+        commitMove(from, to);
+      } else if (to !== from) {
+        clearSelection();
+        playMoveSound('fail');
+      } else {
+        clearSelection();
+      }
+    },
+    [clearSelection, commitMove],
+  );
+
+  const finishDrag = useCallback(() => {
+    dragFrom.current = null;
     setDragSquare(null);
-    if (!from || squareSize <= 0) return;
-    const fileIndex = Math.max(0, Math.min(7, Math.floor(x / squareSize)));
-    const rankIndex = Math.max(0, Math.min(7, Math.floor(y / squareSize)));
-    const to = squareAt(fileIndex, rankIndex, orientation);
-    if (to !== from && getLegalTargets(game, from).includes(to)) {
-      commitMove(from, to);
-    } else if (to !== from) {
-      clearSelection();
-      playMoveSound('fail');
-    } else {
-      clearSelection();
-    }
-  };
+  }, []);
 
-  const pan = Gesture.Pan()
-    .onBegin((e) => {
-      if (squareSize <= 0) return;
-      const fileIndex = Math.max(0, Math.min(7, Math.floor(e.x / squareSize)));
-      const rankIndex = Math.max(0, Math.min(7, Math.floor(e.y / squareSize)));
-      const square = squareAt(fileIndex, rankIndex, orientation);
-      dragX.value = e.x;
-      dragY.value = e.y;
-      runOnJS(startDrag)(square);
-    })
-    .onUpdate((e) => {
-      dragX.value = e.x;
-      dragY.value = e.y;
-    })
-    .onEnd((e) => {
-      runOnJS(endDrag)(e.x, e.y);
-    })
-    .onFinalize(() => {
-      runOnJS(setDragSquare)(null);
-    });
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .onBegin((event) => {
+          if (squareSize <= 0) return;
+          const fileIndex = Math.max(0, Math.min(7, Math.floor(event.x / squareSize)));
+          const rankIndex = Math.max(0, Math.min(7, Math.floor(event.y / squareSize)));
+          dragX.value = event.x;
+          dragY.value = event.y;
+          runOnJS(startDrag)(squareAt(fileIndex, rankIndex, orientation));
+        })
+        .onUpdate((event) => {
+          dragX.value = event.x;
+          dragY.value = event.y;
+        })
+        .onEnd((event) => {
+          runOnJS(endDrag)(event.x, event.y);
+        })
+        .onFinalize(() => {
+          runOnJS(finishDrag)();
+        }),
+    [dragX, dragY, endDrag, finishDrag, orientation, squareSize, startDrag],
+  );
+
+  const rowKey = [
+    activeFen,
+    orientation,
+    selected ?? '',
+    legal.join(','),
+    highlightSquares.join(','),
+    attentionSquares.join(','),
+    highlightTone,
+    lastMove ? `${lastMove.from}${lastMove.to}` : '',
+    dragSquare ?? '',
+    squareSize,
+  ].join('|');
+  const rows = useMemo(
+    () =>
+      buildBoardRows({
+        game,
+        orientation,
+        selected,
+        legal,
+        highlightSquares,
+        attentionSquares,
+        highlightTone,
+        lastMove,
+        dragSquare,
+        squareSize,
+      }),
+    // rowKey digests every visual input. A new array with the same squares
+    // must not rebuild the grid.
+    [rowKey],
+  );
+
+  const arrowKey = arrows
+    .map((arrow) => `${arrow.from}${arrow.to}${arrow.color ?? ''}${arrow.label ?? ''}`)
+    .join('|');
+  const arrowDraw = useMemo(() => (arrows.length ? arrows : EMPTY_ARROWS), [arrowKey]);
 
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
   const turnLine = turnStatus(snap, hideTurn);
@@ -260,141 +280,20 @@ export function ChessBoard({
         </View>
       ) : null}
       <GestureDetector gesture={pan}>
-        <View
-          style={[styles.board, outer > 0 ? { height: outer } : styles.boardSquare]}
-          onLayout={onLayout}>
-          {Array.from({ length: 8 }).map((_, rankIndex) => (
+        <View style={[styles.board, outer > 0 ? { height: outer } : styles.boardSquare]} onLayout={onLayout}>
+          {rows.map((row, rankIndex) => (
             <View key={`r-${rankIndex}`} style={styles.row}>
-              {Array.from({ length: 8 }).map((__, fileIndex) => {
-                const square = squareAt(fileIndex, rankIndex, orientation);
-                const isDark = (fileIndex + rankIndex) % 2 === 1;
-                const piece = pieceAt(game, square);
-                const isSelected = selected === square;
-                const isLegal = legal.includes(square);
-                const isHighlight = highlightSquares.includes(square);
-                const isAttention = attentionSquares.includes(square);
-                const isLast =
-                  lastMove != null && (lastMove.from === square || lastMove.to === square);
-                const hideForDrag = dragSquare === square;
-
-                const bg = squareBackground({
-                  isDark,
-                  isLast,
-                  isAttention,
-                  isSelected,
-                  isHighlight,
-                  highlightTone,
-                });
-
-                return (
-                  <Pressable
-                    key={square}
-                    onPress={() => onSquarePress(square)}
-                    style={[
-                      styles.square,
-                      {
-                        width: squareSize,
-                        height: squareSize,
-                        backgroundColor: bg,
-                      },
-                    ]}>
-                    {isLegal ? (
-                      <View
-                        style={[
-                          styles.legalDot,
-                          piece ? styles.legalCapture : null,
-                          {
-                            width: squareSize * (piece ? 0.9 : 0.32),
-                            height: squareSize * (piece ? 0.9 : 0.32),
-                            backgroundColor: piece ? colors.transparent : legalMoveInk(isDark),
-                            borderColor: piece ? legalMoveInk(isDark) : colors.transparent,
-                          },
-                        ]}
-                      />
-                    ) : null}
-                    {piece && !hideForDrag ? (
-                      <Piece code={pieceCodeFrom(piece.color, piece.type)} size={squareSize} />
-                    ) : null}
-                    {rankIndex === 7 ? (
-                      <Text
-                        style={[
-                          styles.coord,
-                          styles.fileCoord,
-                          { color: isDark ? colors.boardLight : colors.boardDark },
-                        ]}>
-                        {square[0]}
-                      </Text>
-                    ) : null}
-                    {fileIndex === 0 ? (
-                      <Text
-                        style={[
-                          styles.coord,
-                          styles.rankCoord,
-                          { color: isDark ? colors.boardLight : colors.boardDark },
-                        ]}>
-                        {square[1]}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
+              {row.map((model) => (
+                <BoardSquare key={model.square} {...model} onPress={onSquarePress} />
+              ))}
             </View>
           ))}
-          {arrows.length && squareSize > 0 ? (
-            <Svg
-              pointerEvents="none"
-              width={inner}
-              height={inner}
-              style={styles.arrows}
-              viewBox={`0 0 ${inner} ${inner}`}>
-              {arrows.map((arrow) => (
-                <ArrowShape
-                  key={`${arrow.from}${arrow.to}${arrow.label ?? ''}`}
-                  from={centerOf(arrow.from, orientation, squareSize)}
-                  to={centerOf(arrow.to, orientation, squareSize)}
-                  color={arrow.color ?? colors.danger}
-                  square={squareSize}
-                />
-              ))}
-            </Svg>
-          ) : null}
-          {arrows.map((arrow) => {
-            if (!arrow.label || squareSize <= 0) return null;
-            const badge = Math.max(22, Math.min(32, squareSize * 0.34));
-            const at = labelAnchor(arrow.to, orientation, squareSize);
-            return (
-              <View
-                key={`label-${arrow.from}${arrow.to}${arrow.label}`}
-                pointerEvents="none"
-                style={[
-                  styles.arrowLabel,
-                  {
-                    width: badge,
-                    height: badge,
-                    borderRadius: badge / 2,
-                    left: at.x - badge / 2,
-                    top: at.y - badge / 2,
-                    borderColor: arrow.color ?? colors.danger,
-                  },
-                ]}>
-                <Text style={[styles.arrowLabelText, { color: arrow.color ?? colors.danger, fontSize: badge * 0.48 }]}>
-                  {arrow.label}
-                </Text>
-              </View>
-            );
-          })}
+          <BoardArrows arrows={arrowDraw} orientation={orientation} squareSize={squareSize} />
           {dragPiece ? (
             <Animated.View
               pointerEvents="none"
-              style={[
-                styles.dragGhost,
-                { width: squareSize, height: squareSize },
-                dragStyle,
-              ]}>
-              <Piece
-                code={pieceCodeFrom(dragPiece.color, dragPiece.type)}
-                size={squareSize}
-              />
+              style={[styles.dragGhost, { width: squareSize, height: squareSize }, dragStyle]}>
+              <Piece code={pieceCodeFrom(dragPiece.color, dragPiece.type)} size={squareSize} />
             </Animated.View>
           ) : null}
         </View>
@@ -403,69 +302,7 @@ export function ChessBoard({
   );
 }
 
-function labelAnchor(
-  square: Square,
-  orientation: 'white' | 'black',
-  squareSize: number,
-): { x: number; y: number } {
-  const center = centerOf(square, orientation, squareSize);
-  const nudge = squareSize * 0.22;
-  return {
-    x: Math.min(center.x + nudge, squareSize * 8 - squareSize * 0.18),
-    y: Math.max(center.y - nudge, squareSize * 0.18),
-  };
-}
-
-function centerOf(
-  square: Square,
-  orientation: 'white' | 'black',
-  squareSize: number,
-): { x: number; y: number } {
-  const file = square.charCodeAt(0) - 97;
-  const rank = Number(square[1]) - 1;
-  const col = orientation === 'white' ? file : 7 - file;
-  const row = orientation === 'white' ? 7 - rank : rank;
-  return { x: (col + 0.5) * squareSize, y: (row + 0.5) * squareSize };
-}
-
-function ArrowShape({
-  from,
-  to,
-  color,
-  square,
-}: {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  color: string;
-  square: number;
-}) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const ux = dx / len;
-  const uy = dy / len;
-  const startX = from.x + ux * square * 0.28;
-  const startY = from.y + uy * square * 0.28;
-  const tipX = to.x - ux * square * 0.18;
-  const tipY = to.y - uy * square * 0.18;
-  const head = square * 0.28;
-  const baseX = tipX - ux * head;
-  const baseY = tipY - uy * head;
-  const px = -uy;
-  const py = ux;
-  const wing = head * 0.55;
-  const points = `${tipX},${tipY} ${baseX + px * wing},${baseY + py * wing} ${baseX - px * wing},${baseY - py * wing}`;
-  return (
-    <>
-      <Polygon
-        points={`${startX + px * 3},${startY + py * 3} ${baseX + px * 3},${baseY + py * 3} ${baseX - px * 3},${baseY - py * 3} ${startX - px * 3},${startY - py * 3}`}
-        fill={color}
-        opacity={0.95}
-      />
-      <Polygon points={points} fill={color} />
-    </>
-  );
-}
+export const ChessBoard = memo(ChessBoardView, chessBoardPropsEqual);
 
 const styles = StyleSheet.create({
   wrap: {
@@ -527,50 +364,6 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-  },
-  square: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  legalDot: {
-    position: 'absolute',
-    borderRadius: radii.pill,
-    zIndex: 1,
-  },
-  legalCapture: {
-    backgroundColor: colors.transparent,
-    borderWidth: 4,
-  },
-  arrows: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    zIndex: 4,
-  },
-  arrowLabel: {
-    position: 'absolute',
-    zIndex: 6,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowLabelText: {
-    fontFamily: fonts.bodyExtra,
-    textAlign: 'center',
-  },
-  coord: {
-    position: 'absolute',
-    fontSize: fontSizes[14],
-    fontFamily: fonts.bodyBold,
-  },
-  fileCoord: {
-    right: spacing[3],
-    bottom: spacing[1],
-  },
-  rankCoord: {
-    left: spacing[3],
-    top: spacing[1],
   },
   dragGhost: {
     position: 'absolute',

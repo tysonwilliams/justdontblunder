@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { controlA11y } from '@/src/components/ui/a11y';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
@@ -18,8 +19,7 @@ export function Chip({ label, selected = false, onPress, testID, size = 'md', fi
   const { phone } = useLayout();
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
+      {...controlA11y('button', label, selected)}
       testID={testID}
       onPress={onPress}
       style={(state) => {

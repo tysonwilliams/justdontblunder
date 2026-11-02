@@ -1,0 +1,108 @@
+import { Text, View } from 'react-native';
+
+import { ChessBoard } from '@/src/components/Board/ChessBoard';
+import { highlightsForRound } from '@/src/components/Board/highlight';
+import { DrillToolbar } from '@/src/components/DrillToolbar';
+import type { DrillRunSummary } from '@/src/components/drills/useDrillSession';
+import { Button } from '@/src/components/ui/Button';
+import { ScoreFrame } from '@/src/components/ui/PlayFrame';
+import { play } from '@/src/components/ui/playStyles';
+import { text } from '@/src/components/ui/text';
+import { themeFilterLabel, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
+
+type Toolbar = {
+  mode: DrillMode;
+  theme: ThemeFilter;
+  onMode: (mode: DrillMode) => void;
+  onTheme: (theme: ThemeFilter) => void;
+};
+
+export function DrillRunSummary({
+  summary,
+  toolbar,
+  onAgain,
+}: {
+  summary: DrillRunSummary;
+  toolbar: Toolbar;
+  onAgain: () => void;
+}) {
+  const marks = highlightsForRound('streakEnd', summary.lastMove, summary.atRisk);
+  return (
+    <ScoreFrame
+      toolbar={<DrillToolbar mode={toolbar.mode} theme={toolbar.theme} onMode={toolbar.onMode} onTheme={toolbar.onTheme} />}
+      board={
+        <ChessBoard
+          fen={summary.fen}
+          orientation={summary.orientation}
+          flipCue={summary.orientation === 'black'}
+          interactive={false}
+          lastMove={summary.lastMove}
+          highlightSquares={marks.squares}
+          highlightTone={marks.tone}
+        />
+      }>
+      <View style={play.done}>
+        <Text style={text.eyebrow}>Drills</Text>
+        <Text style={text.title}>Streak over</Text>
+        <Text style={text.hero}>{summary.saved}</Text>
+        <Text style={text.muted}>saved this run · best {summary.best}</Text>
+        <View style={play.miss}>
+          <Text style={text.section}>The miss</Text>
+          {summary.playedSan ? <Text style={text.body}>You played {summary.playedSan}.</Text> : null}
+          <Text style={text.body}>{summary.missText}</Text>
+        </View>
+        <Button label="Start again" onPress={onAgain} />
+      </View>
+    </ScoreFrame>
+  );
+}
+
+export function DrillDone({
+  toolbar,
+  reviewing,
+  streak,
+  emptyReview,
+  correct,
+  total,
+  best,
+  onRestart,
+}: {
+  toolbar: Toolbar;
+  reviewing: boolean;
+  streak: boolean;
+  emptyReview: boolean;
+  correct: number;
+  total: number;
+  best: number;
+  onRestart: () => void;
+}) {
+  const pct = total ? Math.round((correct / total) * 100) : 0;
+  return (
+    <ScoreFrame toolbar={<DrillToolbar {...toolbar} />}>
+      <View style={play.done}>
+        <Text style={text.eyebrow}>Drills</Text>
+        <Text style={text.title}>
+          {emptyReview ? 'Nothing to review' : streak ? 'Clean run' : "That's the set"}
+        </Text>
+        {emptyReview ? (
+          <Text style={text.muted}>
+            {toolbar.theme === 'all'
+              ? 'You have no misses saved for today.'
+              : `No missed ${themeFilterLabel(toolbar.theme).toLowerCase()} puzzles today.`}
+          </Text>
+        ) : (
+          <>
+            <Text style={text.hero}>{streak ? correct : `${correct}/${total}`}</Text>
+            <Text style={text.muted}>
+              {streak ? `in a row · best ${best}` : `${pct}% saved on the first try`}
+            </Text>
+          </>
+        )}
+        <Button
+          label={streak ? 'Run again' : reviewing ? 'Review again' : 'Practice again'}
+          onPress={onRestart}
+        />
+      </View>
+    </ScoreFrame>
+  );
+}

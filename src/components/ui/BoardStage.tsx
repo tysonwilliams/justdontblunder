@@ -16,10 +16,6 @@ type Props = {
   asideFirst?: boolean;
 };
 
-export function boardStageIsWide(width: number): boolean {
-  return width >= 720;
-}
-
 export function BoardStage({ board, aside, intro, footer, asideFirst = false }: Props) {
   const metrics = useLayout();
   const [box, setBox] = useState({ w: 0, h: 0 });

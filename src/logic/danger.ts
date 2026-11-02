@@ -1,7 +1,7 @@
 import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js';
 
 import type { DrillTheme } from '@/src/logic/drills';
-import { materialIsReachable, moveOutcome } from '@/src/logic/safety';
+import { moveOutcome } from '@/src/logic/safety';
 
 const FILES = 'abcdefgh';
 const RANKS = '12345678';
@@ -183,8 +183,4 @@ export function moveRemovesDanger(drill: DangerDrill, from: Square, to: Square):
   const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
   if (outcome === null) return false;
   return outcome >= 0;
-}
-
-export function positionMaterialOk(fen: string): boolean {
-  return materialIsReachable(fen);
 }

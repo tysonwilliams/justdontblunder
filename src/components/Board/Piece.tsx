@@ -1,9 +1,11 @@
 import { StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
+import { pieceCodeFrom, type PieceCode } from '@/src/components/Board/pieceCode';
 import { PIECE_SVG } from '@/src/components/Board/pieceSvgs';
 
-export type PieceCode = 'wK' | 'wQ' | 'wR' | 'wB' | 'wN' | 'wP' | 'bK' | 'bQ' | 'bR' | 'bB' | 'bN' | 'bP';
+export type { PieceCode };
+export { pieceCodeFrom };
 
 type Props = {
   code: PieceCode;
@@ -20,10 +22,6 @@ export function Piece({ code, size }: Props) {
       <SvgXml xml={PIECE_SVG[code]} width={draw} height={draw} />
     </View>
   );
-}
-
-export function pieceCodeFrom(color: 'w' | 'b', type: string): PieceCode {
-  return `${color}${type.toUpperCase()}` as PieceCode;
 }
 
 const styles = StyleSheet.create({

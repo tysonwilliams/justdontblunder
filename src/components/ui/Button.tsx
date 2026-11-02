@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
+import { controlA11y } from '@/src/components/ui/a11y';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
@@ -12,6 +13,7 @@ type Props = {
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+  selected?: boolean;
 };
 
 export function Button({
@@ -21,11 +23,12 @@ export function Button({
   fullWidth = true,
   style,
   testID,
+  selected = false,
 }: Props) {
   const { phone } = useLayout();
   return (
     <Pressable
-      accessibilityRole="button"
+      {...controlA11y('button', label, selected)}
       testID={testID}
       onPress={onPress}
       style={(state) => {

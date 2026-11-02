@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { controlA11y } from '@/src/components/ui/a11y';
 import { FilterChips } from '@/src/components/ui/Chip';
 import { useLayout } from '@/src/components/ui/useLayout';
 import {
@@ -35,9 +36,7 @@ export function DrillToolbar({ mode, theme, onMode, onTheme }: Props) {
             return (
               <Pressable
                 key={item.id}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-                accessibilityState={{ selected }}
+                {...controlA11y('button', item.label, selected)}
                 testID={`drill-mode-${item.id}`}
                 onPress={() => onMode(item.id)}
                 style={[styles.segment, selected && styles.segmentOn]}>
@@ -54,8 +53,7 @@ export function DrillToolbar({ mode, theme, onMode, onTheme }: Props) {
             return (
               <Pressable
                 key={item.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
+                {...controlA11y('button', item.label, selected)}
                 testID={`drill-theme-${item.id}`}
                 onPress={() => onTheme(item.id)}
                 style={[styles.theme, selected && styles.themeOn]}>

@@ -46,16 +46,3 @@ export function tryMove(
 export function pieceAt(game: Chess, square: Square) {
   return game.get(square);
 }
-
-export function cloneFromFen(fen: string): Chess {
-  return new Chess(fen);
-}
-
-export function undo(game: Chess): Move | null {
-  return game.undo();
-}
-
-export function lastMove(game: Chess): Move | undefined {
-  const history = game.history({ verbose: true });
-  return history[history.length - 1];
-}

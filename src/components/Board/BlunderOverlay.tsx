@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { liveA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
 import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
 import { text } from '@/src/components/ui/text';
@@ -43,7 +44,7 @@ export function BlunderOverlay({
   const rowActions = phone || contentHeight < 800;
 
   return (
-    <View style={[styles.card, phone && styles.cardPhone, { borderColor: toneColor.accent }]}>
+    <View {...liveA11y()} style={[styles.card, phone && styles.cardPhone, { borderColor: toneColor.accent }]}>
       <View style={styles.head}>
         <View style={[styles.badge, phone && styles.badgePhone, { backgroundColor: toneColor.soft }]}>
           <ToneIcon tone={tone} color={toneColor.accent} size={iconSize} />
