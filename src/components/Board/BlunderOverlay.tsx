@@ -4,7 +4,7 @@ import { Button } from '@/src/components/ui/Button';
 import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 type Tone = 'danger' | 'success' | 'warn';
 
@@ -108,7 +108,7 @@ function toneColors(tone: Tone): { accent: string; soft: string } {
     case 'success':
       return { accent: colors.success, soft: colors.successSoft };
     case 'warn':
-      return { accent: colors.warn, soft: colors.warnSoft };
+      return { accent: colors.warning, soft: colors.warningSoft };
     case 'danger':
       return { accent: colors.danger, soft: colors.dangerSoft };
     default: {
@@ -120,7 +120,7 @@ function toneColors(tone: Tone): { accent: string; soft: string } {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderLeftWidth: 4,
@@ -128,82 +128,82 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   cardPhone: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 4,
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
     borderRadius: radii.md,
   },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   badge: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radii.circleLg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgePhone: {
     width: 26,
     height: 26,
-    borderRadius: 13,
+    borderRadius: radii.circleSm,
   },
   title: {
     flex: 1,
     fontFamily: fonts.display,
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: fontSizes[22],
+    lineHeight: lineHeights[28],
     color: colors.text,
-    letterSpacing: -0.3,
+    letterSpacing: letterSpacing.tight,
   },
   titlePhone: {
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: fontSizes[16],
+    lineHeight: lineHeights[20],
   },
   messagePhone: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[17],
   },
   actions: {
     flexDirection: 'row',
-    gap: 6,
+    gap: spacing[6],
   },
   action: {
     flex: 1,
     flexBasis: 0,
   },
   hintBox: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.background,
     borderRadius: radii.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 2,
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[10],
+    gap: spacing.xxs,
   },
   hintBoxPhone: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing[6],
   },
   hintLabel: {
     fontFamily: fonts.bodyBold,
-    fontSize: 14,
-    letterSpacing: 0.6,
+    fontSize: fontSizes[14],
+    letterSpacing: letterSpacing.pill,
     textTransform: 'uppercase',
     color: colors.textDim,
   },
   hint: {
     fontFamily: fonts.bodyBold,
-    fontSize: 14,
+    fontSize: fontSizes[14],
     color: colors.text,
   },
   waiting: {
     fontFamily: fonts.bodyBold,
-    fontSize: 15,
+    fontSize: fontSizes[15],
     color: colors.textMuted,
   },
   waitingPhone: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[17],
   },
 });

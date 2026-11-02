@@ -28,7 +28,7 @@ import { isCorrectDrillMove } from '@/src/logic/drills';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { feedbackForRound, type DrillRound } from '@/src/logic/saveFeedback';
 import { useProgressStore } from '@/src/store/progress';
-import { colors } from '@/src/theme';
+import { colors, fontSizes, letterSpacing, lineHeights, spacing } from '@/src/theme';
 
 type Phase = { kind: 'card'; index: number } | { kind: 'try'; index: number } | { kind: 'done' };
 
@@ -190,7 +190,7 @@ function Lead({
         <Text style={[text.eyebrow, phone && styles.eyebrowPhone]} numberOfLines={1}>
           Lesson {place} of 6 · {kicker}
         </Text>
-        <Pressable accessibilityRole="button" testID="lesson-all" onPress={onBack} hitSlop={8}>
+        <Pressable accessibilityRole="button" testID="lesson-all" onPress={onBack} hitSlop={spacing.sm}>
           <Text style={[text.meta, phone && text.metaPhone]}>All lessons</Text>
         </Pressable>
       </View>
@@ -263,7 +263,7 @@ function LessonCardView({
   const marks = squaresForBeat(beat);
   const arrows: BoardArrow[] =
     beat.tone === 'setup'
-      ? (card.arrows ?? []).map((arrow) => ({ from: arrow.from, to: arrow.to, color: colors.warn }))
+      ? (card.arrows ?? []).map((arrow) => ({ from: arrow.from, to: arrow.to, color: colors.warning }))
       : [];
   const lastCard = cardIndex + 1 >= lesson.cards.length;
 
@@ -515,14 +515,14 @@ function TryResult({
 
 const styles = StyleSheet.create({
   guidePhone: {
-    padding: 8,
-    gap: 4,
+    padding: spacing.sm,
+    gap: spacing.xs,
   },
   eyebrowPhone: {
     flex: 1,
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 0.6,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    letterSpacing: letterSpacing.pill,
   },
 });
 

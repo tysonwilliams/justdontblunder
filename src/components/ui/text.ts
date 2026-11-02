@@ -1,106 +1,56 @@
 import { StyleSheet } from 'react-native';
 
-import { colors, fonts } from '@/src/theme';
+import { colors, typeRole } from '@/src/theme';
 
 export const text = StyleSheet.create({
   eyebrow: {
-    fontFamily: fonts.bodyBold,
+    ...typeRole.eyebrow,
     color: colors.accent,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 1.15,
-    textTransform: 'uppercase',
   },
   display: {
-    fontFamily: fonts.display,
+    ...typeRole.display,
     color: colors.text,
-    fontSize: 36,
-    lineHeight: 42,
-    letterSpacing: -0.7,
   },
   title: {
-    fontFamily: fonts.display,
+    ...typeRole.title,
     color: colors.text,
-    fontSize: 26,
-    lineHeight: 32,
-    letterSpacing: -0.45,
   },
-  titlePhone: {
-    fontSize: 18,
-    lineHeight: 22,
-    letterSpacing: -0.3,
-  },
+  titlePhone: typeRole.titleCompact,
   habit: {
-    fontFamily: fonts.bodyBold,
-    color: colors.warn,
-    fontSize: 16,
-    lineHeight: 22,
+    ...typeRole.habit,
+    color: colors.warning,
   },
-  habitPhone: {
-    fontSize: 13,
-    lineHeight: 17,
-  },
+  habitPhone: typeRole.habitCompact,
   body: {
-    fontFamily: fonts.body,
+    ...typeRole.body,
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
   },
-  bodyPhone: {
-    fontSize: 13,
-    lineHeight: 17,
-  },
+  bodyPhone: typeRole.bodyCompact,
   bodyStrong: {
-    fontFamily: fonts.bodyBold,
+    ...typeRole.bodyStrong,
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
   },
   muted: {
-    fontFamily: fonts.body,
+    ...typeRole.muted,
     color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
   },
-  mutedPhone: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
+  mutedPhone: typeRole.mutedCompact,
   meta: {
-    fontFamily: fonts.bodyBold,
+    ...typeRole.meta,
     color: colors.text,
-    fontSize: 14,
-    lineHeight: 20,
   },
-  metaPhone: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
+  metaPhone: typeRole.metaCompact,
   section: {
-    fontFamily: fonts.bodyBold,
+    ...typeRole.section,
     color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
   },
   hero: {
-    fontFamily: fonts.display,
+    ...typeRole.hero,
     color: colors.text,
-    fontSize: 56,
-    lineHeight: 60,
-    letterSpacing: -1.4,
   },
-  heroPhone: {
-    fontSize: 36,
-    lineHeight: 40,
-    letterSpacing: -0.8,
-  },
+  heroPhone: typeRole.heroCompact,
   stat: {
-    fontFamily: fonts.display,
+    ...typeRole.stat,
     color: colors.text,
-    fontSize: 30,
-    lineHeight: 34,
-    letterSpacing: -0.6,
   },
 });

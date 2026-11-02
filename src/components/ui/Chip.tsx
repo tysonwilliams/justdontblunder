@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, radii } from '@/src/theme';
+import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 type ChipProps = {
   label: string;
@@ -85,11 +85,11 @@ export function StatusPill({ children }: { children: ReactNode }) {
 const styles = StyleSheet.create({
   chip: {
     minHeight: 36,
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing[12],
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     flexGrow: 0,
@@ -98,38 +98,38 @@ const styles = StyleSheet.create({
   },
   chipPhone: {
     minHeight: 28,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
   },
   chipSm: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
   },
   chipFill: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 0,
     minWidth: 0,
-    paddingHorizontal: 3,
+    paddingHorizontal: spacing[3],
   },
   chipOn: {
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
   chipHover: {
-    backgroundColor: colors.bgSoft,
+    backgroundColor: colors.surfaceRaised,
   },
   chipText: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[18],
   },
   chipTextPhone: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[15],
   },
   chipTextSm: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
   },
   chipTextOn: {
     color: colors.accentText,
@@ -141,38 +141,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   oneRow: {
     flexWrap: 'nowrap',
-    gap: 4,
+    gap: spacing.xs,
   },
   pill: {
     alignSelf: 'flex-start',
     backgroundColor: colors.accentSoft,
     borderRadius: radii.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[5],
     minHeight: 28,
     justifyContent: 'center',
     flexShrink: 1,
   },
   pillPhone: {
     minHeight: 22,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
   },
   pillText: {
     fontFamily: fonts.bodyBold,
     color: colors.accent,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.6,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    letterSpacing: letterSpacing.pill,
     textTransform: 'uppercase',
   },
   pillTextPhone: {
-    fontSize: 10,
-    lineHeight: 14,
-    letterSpacing: 0.4,
+    fontSize: fontSizes[10],
+    lineHeight: lineHeights[14],
+    letterSpacing: letterSpacing.pillCompact,
   },
 });

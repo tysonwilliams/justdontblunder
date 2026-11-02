@@ -20,7 +20,7 @@ import { createGame, snapshot } from '@/src/logic/game';
 import { chooseBlackReply } from '@/src/logic/reply';
 import { countRetriedMove } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors } from '@/src/theme';
+import { useTheme } from '@/src/theme';
 
 const REPLY_DELAY_MS = 700;
 
@@ -41,6 +41,7 @@ function gameResultLine(fen: string): string | null {
 }
 
 export default function PracticeScreen() {
+  const { colors } = useTheme();
   const { split, phone, tight } = useLayout();
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
 
@@ -179,7 +180,7 @@ export default function PracticeScreen() {
     arrow.push({
       from: marked[1],
       to: marked[0],
-      color: arrowIsWarn ? colors.warn : colors.danger,
+      color: arrowIsWarn ? colors.warning : colors.danger,
     });
   }
 

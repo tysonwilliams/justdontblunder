@@ -2,11 +2,12 @@ import { Tabs } from 'expo-router';
 import { useWindowDimensions } from 'react-native';
 
 import { AppTabBar } from '@/src/components/AppTabBar';
-import { colors, layout } from '@/src/theme';
+import { layout, useTheme } from '@/src/theme';
 
 const WIDE = layout.nav;
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const wide = width >= WIDE;
 
@@ -15,7 +16,7 @@ export default function TabLayout() {
       tabBar={(props) => <AppTabBar {...props} wide={wide} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: colors.bg },
+        sceneStyle: { backgroundColor: colors.background },
         tabBarPosition: wide ? 'top' : 'bottom',
       }}>
       <Tabs.Screen name="index" options={{ title: 'Home' }} />

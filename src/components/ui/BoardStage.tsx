@@ -3,6 +3,7 @@ import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { withBoardSize } from '@/src/components/Board/boardGeometry';
 import { useLayout } from '@/src/components/ui/useLayout';
+import { radii, shadows } from '@/src/theme';
 
 type Props = {
   board: ReactNode;
@@ -106,11 +107,8 @@ const styles = StyleSheet.create({
   board: {
     maxWidth: '100%',
     flexShrink: 0,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
+    borderRadius: radii.md,
+    ...shadows.board,
   },
   side: {
     flexShrink: 1,

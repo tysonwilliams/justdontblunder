@@ -32,11 +32,9 @@ import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/sr
 import { feedbackForRound, type DrillRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors, fonts, radii } from '@/src/theme';
+import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry';
-
-const CANDIDATE = '#8EB4E8';
 
 function resultCard(round: RoundState): { title: string; tone: 'success' | 'danger' } | null {
   switch (round) {
@@ -220,7 +218,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
       ? presented.options.map((option) => ({
           from: option.from,
           to: option.to,
-          color: CANDIDATE,
+          color: colors.info,
           label: option.key,
         }))
       : playback.arrow
@@ -348,7 +346,7 @@ function ChoiceButtons({
 const styles = StyleSheet.create({
   choices: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing[10],
   },
   choice: {
     flex: 1,
@@ -357,39 +355,39 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.bg,
-    paddingHorizontal: 14,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing[14],
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing[12],
     cursor: 'pointer',
   },
   choiceCompact: {
     minHeight: 48,
-    paddingHorizontal: 10,
-    gap: 8,
+    paddingHorizontal: spacing[10],
+    gap: spacing.sm,
   },
   choiceOn: {
-    backgroundColor: colors.bgSoft,
+    backgroundColor: colors.surfaceRaised,
   },
   choiceKey: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: CANDIDATE,
+    borderRadius: radii.circleMd,
+    backgroundColor: colors.info,
     alignItems: 'center',
     justifyContent: 'center',
   },
   choiceKeyText: {
     fontFamily: fonts.bodyExtra,
-    color: '#142033',
-    fontSize: 18,
+    color: colors.onInfo,
+    fontSize: fontSizes[18],
   },
   choiceSan: {
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.3,
+    fontSize: fontSizes[22],
+    lineHeight: lineHeights[28],
+    letterSpacing: letterSpacing.tight,
   },
 });

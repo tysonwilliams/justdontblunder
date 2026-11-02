@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, radii } from '@/src/theme';
+import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -53,13 +53,13 @@ function variantStyle(variant: Variant, pressed: boolean, hovered: boolean): Vie
       };
     case 'secondary':
       return {
-        backgroundColor: pressed || hovered ? colors.bgSoft : colors.bgElevated,
+        backgroundColor: pressed || hovered ? colors.surfaceRaised : colors.surface,
         borderWidth: 1,
         borderColor: colors.borderStrong,
       };
     case 'ghost':
       return {
-        backgroundColor: pressed || hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+        backgroundColor: pressed || hovered ? colors.hover : colors.transparent,
       };
     case 'danger':
       return {
@@ -80,7 +80,7 @@ function labelColor(variant: Variant) {
     case 'ghost':
       return { color: colors.text };
     case 'danger':
-      return { color: '#FFFFFF' };
+      return { color: colors.onDanger };
     default: {
       const _exhaustive: never = variant;
       return _exhaustive;
@@ -91,8 +91,8 @@ function labelColor(variant: Variant) {
 const styles = StyleSheet.create({
   base: {
     minHeight: 48,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: spacing[18],
+    paddingVertical: spacing[12],
     borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -100,21 +100,21 @@ const styles = StyleSheet.create({
   },
   basePhone: {
     minHeight: 36,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[6],
   },
   full: {
     alignSelf: 'stretch',
   },
   label: {
     fontFamily: fonts.bodyExtra,
-    fontSize: 16,
-    lineHeight: 22,
-    letterSpacing: 0.1,
+    fontSize: fontSizes[16],
+    lineHeight: lineHeights[22],
+    letterSpacing: letterSpacing.button,
     textAlign: 'center',
   },
   labelPhone: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[18],
   },
 });

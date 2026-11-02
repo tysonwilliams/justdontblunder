@@ -1,4 +1,4 @@
-import { layout } from '@/src/theme';
+import { layout, spacing } from '@/src/theme';
 
 /** Turn line above the squares. Matches the board meta row at each size. */
 export const TURN_ROW_PHONE = 22;
@@ -6,7 +6,7 @@ export const TURN_ROW_DESKTOP = 36;
 
 const ASIDE_MIN = layout.asideMin;
 const ASIDE_MAX = layout.asideMax;
-const SPLIT_GAP = 20;
+const SPLIT_GAP = spacing[20];
 const SPLIT_BOARD_MIN = 480;
 
 export type StageMetrics = {
@@ -35,13 +35,13 @@ export function stageMetrics(
   const topNav = width >= layout.nav;
   const narrow = width < layout.split;
   const padX = narrow ? layout.padPhone : width >= 1280 ? layout.padDesktop : layout.padTablet;
-  const padTop = topNav ? 10 : 4;
-  const padBottom = topNav ? 12 : 2;
+  const padTop = topNav ? spacing[10] : spacing.xs;
+  const padBottom = topNav ? spacing[12] : spacing.xxs;
   const tabBar = topNav ? layout.tabBar + insetTop : layout.tabBarPhone + insetBottom;
   const rawW = Math.max(280, width - padX * 2);
   const contentHeight = Math.max(240, height - tabBar - padTop - padBottom);
   const turnRow = narrow ? TURN_ROW_PHONE : TURN_ROW_DESKTOP;
-  const heightBoard = Math.floor(contentHeight - turnRow - 4);
+  const heightBoard = Math.floor(contentHeight - turnRow - spacing.xs);
   const splitCandidate = Math.min(heightBoard, layout.boardMax, rawW - ASIDE_MIN - SPLIT_GAP);
   const split =
     !narrow &&
@@ -66,7 +66,7 @@ export function stageMetrics(
       padBottom,
       contentW,
       contentHeight,
-      gap: 6,
+      gap: spacing[6],
       boardWidth,
       asideWidth: contentW,
       turnRow,

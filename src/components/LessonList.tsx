@@ -6,7 +6,7 @@ import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { LESSONS, type LessonId } from '@/src/logic/lessons';
 import { useProgressStore } from '@/src/store/progress';
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 type Props = {
   onOpen: (id: LessonId) => void;
@@ -77,63 +77,63 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   intro: {
-    gap: 6,
+    gap: spacing[6],
   },
   introSide: {
     width: 280,
     flexShrink: 0,
-    paddingTop: 4,
+    paddingTop: spacing.xs,
   },
   list: {
     flex: 1,
     minWidth: 0,
-    gap: 8,
+    gap: spacing.sm,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing[12],
     minHeight: 58,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing[12],
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     cursor: 'pointer',
   },
   rowOn: {
-    backgroundColor: colors.bgSoft,
+    backgroundColor: colors.surfaceRaised,
   },
   index: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.bgSoft,
+    borderRadius: radii.badge,
+    backgroundColor: colors.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
   indexText: {
     fontFamily: fonts.bodyExtra,
     color: colors.text,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[18],
   },
   copy: {
     flex: 1,
     minWidth: 0,
-    gap: 1,
+    gap: spacing.hairline,
   },
   title: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: fontSizes[16],
+    lineHeight: lineHeights[22],
   },
   check: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radii.badge,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',

@@ -28,7 +28,7 @@ import { learnCard } from '@/src/logic/lessons';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors } from '@/src/theme';
+import { colors, fontSizes, lineHeights, spacing } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry';
 type EntryId = 'learn' | 'drills' | 'practice';
@@ -329,45 +329,45 @@ const styles = StyleSheet.create({
     minHeight: 22,
   },
   guidePhone: {
-    padding: 8,
-    gap: 4,
+    padding: spacing.sm,
+    gap: spacing.xs,
   },
   linkPhone: {
     minHeight: 32,
-    paddingHorizontal: 10,
+    paddingHorizontal: spacing[10],
   },
   linkTextPhone: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
   },
   cardPhone: {
     minHeight: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   cardTitlePhone: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
   },
   cardBodyPhone: {
-    marginTop: 2,
-    fontSize: 11,
-    lineHeight: 14,
+    marginTop: spacing.xxs,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
   },
   entryStack: {
     width: '100%',
-    gap: 8,
+    gap: spacing.sm,
   },
   entryRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 8,
+    gap: spacing.sm,
   },
   entryGrid: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 8,
+    gap: spacing.sm,
   },
   entryFull: {
     width: '100%',

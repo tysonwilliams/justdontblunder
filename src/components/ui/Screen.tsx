@@ -53,7 +53,7 @@ export function Screen({ children, variant = 'page', maxWidth }: Props) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.background,
     overflow: 'hidden',
   },
   content: {

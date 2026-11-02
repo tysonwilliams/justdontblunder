@@ -23,7 +23,7 @@ import {
 import { squareSizeForFrame } from '@/src/components/Board/boardGeometry';
 import { legalMoveInk, squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, radii } from '@/src/theme';
+import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
 const RANKS_WHITE = [8, 7, 6, 5, 4, 3, 2, 1] as const;
@@ -306,8 +306,8 @@ export function ChessBoard({
                           {
                             width: squareSize * (piece ? 0.9 : 0.32),
                             height: squareSize * (piece ? 0.9 : 0.32),
-                            backgroundColor: piece ? 'transparent' : legalMoveInk(isDark),
-                            borderColor: piece ? legalMoveInk(isDark) : 'transparent',
+                            backgroundColor: piece ? colors.transparent : legalMoveInk(isDark),
+                            borderColor: piece ? legalMoveInk(isDark) : colors.transparent,
                           },
                         ]}
                       />
@@ -473,46 +473,46 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   meta: {
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     minHeight: 28,
     flexDirection: 'row',
     flexWrap: 'nowrap',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   metaPhone: {
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     minHeight: 18,
     height: 18,
   },
   turn: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[20],
     flexShrink: 1,
   },
   turnPhone: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
   },
   flip: {
     fontFamily: fonts.bodyBold,
     color: colors.accentText,
-    backgroundColor: colors.warn,
-    fontSize: 14,
-    lineHeight: 18,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: colors.warning,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[18],
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing.xs,
     borderRadius: radii.pill,
     overflow: 'hidden',
   },
   flipPhone: {
-    fontSize: 11,
-    lineHeight: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 1,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing[1],
   },
   board: {
     borderRadius: radii.sm,
@@ -534,11 +534,11 @@ const styles = StyleSheet.create({
   },
   legalDot: {
     position: 'absolute',
-    borderRadius: 999,
+    borderRadius: radii.pill,
     zIndex: 1,
   },
   legalCapture: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.transparent,
     borderWidth: 4,
   },
   arrows: {
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   arrowLabel: {
     position: 'absolute',
     zIndex: 6,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -561,16 +561,16 @@ const styles = StyleSheet.create({
   },
   coord: {
     position: 'absolute',
-    fontSize: 14,
+    fontSize: fontSizes[14],
     fontFamily: fonts.bodyBold,
   },
   fileCoord: {
-    right: 3,
-    bottom: 1,
+    right: spacing[3],
+    bottom: spacing[1],
   },
   rankCoord: {
-    left: 3,
-    top: 1,
+    left: spacing[3],
+    top: spacing[1],
   },
   dragGhost: {
     position: 'absolute',

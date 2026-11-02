@@ -1,19 +1,21 @@
-const tintColorLight = '#3DDC97';
-const tintColorDark = '#3DDC97';
+import { expoStarter } from '@/src/theme';
+
+const light = expoStarter.light;
+const dark = expoStarter.dark;
 
 export default {
   light: {
-    text: '#0E1116',
-    background: '#F2F5F9',
-    tint: tintColorLight,
-    tabIconDefault: '#6B7785',
-    tabIconSelected: tintColorLight,
+    text: light.text,
+    background: light.background,
+    tint: light.tint,
+    tabIconDefault: light.tabIconDefault,
+    tabIconSelected: light.tabIconSelected,
   },
   dark: {
-    text: '#F2F5F9',
-    background: '#0E1116',
-    tint: tintColorDark,
-    tabIconDefault: '#6B7785',
-    tabIconSelected: tintColorDark,
+    text: dark.text,
+    background: dark.background,
+    tint: dark.tint,
+    tabIconDefault: dark.tabIconDefault,
+    tabIconSelected: dark.tabIconSelected,
   },
 };

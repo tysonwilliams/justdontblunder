@@ -5,6 +5,7 @@ import { MonoText } from './StyledText';
 import { Text, View } from './Themed';
 
 import Colors from '@/constants/Colors';
+import { expoStarter, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 export default function EditScreenInfo({ path }: { path: string }) {
   return (
@@ -12,22 +13,22 @@ export default function EditScreenInfo({ path }: { path: string }) {
       <View style={styles.getStartedContainer}>
         <Text
           style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
+          lightColor={expoStarter.light.textSoft}
+          darkColor={expoStarter.dark.textSoft}>
           Open up the code for this screen:
         </Text>
 
         <View
           style={[styles.codeHighlightContainer, styles.homeScreenFilename]}
-          darkColor="rgba(255,255,255,0.05)"
-          lightColor="rgba(0,0,0,0.05)">
+          darkColor={expoStarter.dark.code}
+          lightColor={expoStarter.light.code}>
           <MonoText>{path}</MonoText>
         </View>
 
         <Text
           style={styles.getStartedText}
-          lightColor="rgba(0,0,0,0.8)"
-          darkColor="rgba(255,255,255,0.8)">
+          lightColor={expoStarter.light.textSoft}
+          darkColor={expoStarter.dark.textSoft}>
           Change any of the text, save the file, and your app will automatically update.
         </Text>
       </View>
@@ -48,27 +49,27 @@ export default function EditScreenInfo({ path }: { path: string }) {
 const styles = StyleSheet.create({
   getStartedContainer: {
     alignItems: 'center',
-    marginHorizontal: 50,
+    marginHorizontal: spacing[50],
   },
   homeScreenFilename: {
-    marginVertical: 7,
+    marginVertical: spacing[7],
   },
   codeHighlightContainer: {
-    borderRadius: 3,
-    paddingHorizontal: 4,
+    borderRadius: radii.swatch,
+    paddingHorizontal: spacing.xs,
   },
   getStartedText: {
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: fontSizes[17],
+    lineHeight: lineHeights[24],
     textAlign: 'center',
   },
   helpContainer: {
-    marginTop: 15,
-    marginHorizontal: 20,
+    marginTop: spacing[15],
+    marginHorizontal: spacing[20],
     alignItems: 'center',
   },
   helpLink: {
-    paddingVertical: 15,
+    paddingVertical: spacing[15],
   },
   helpLinkText: {
     textAlign: 'center',

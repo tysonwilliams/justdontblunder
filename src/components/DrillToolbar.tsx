@@ -8,7 +8,7 @@ import {
   type DrillMode,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
-import { colors, fonts, radii } from '@/src/theme';
+import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 type Props = {
   mode: DrillMode;
@@ -88,21 +88,21 @@ export function DrillToolbar({ mode, theme, onMode, onTheme }: Props) {
 
 const styles = StyleSheet.create({
   toolbar: {
-    gap: 6,
+    gap: spacing[6],
   },
   segments: {
     flexDirection: 'row',
-    gap: 4,
+    gap: spacing.xs,
   },
   segment: {
     flex: 1,
     minWidth: 0,
     minHeight: 32,
-    paddingHorizontal: 4,
+    paddingHorizontal: spacing.xs,
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
@@ -114,8 +114,8 @@ const styles = StyleSheet.create({
   segmentText: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
   },
   segmentTextOn: {
     color: colors.accentText,
@@ -125,18 +125,18 @@ const styles = StyleSheet.create({
     flexWrap: 'nowrap',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 4,
+    gap: spacing.xs,
   },
   theme: {
     flexGrow: 0,
     flexShrink: 1,
     minWidth: 0,
     minHeight: 28,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing[6],
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
@@ -148,8 +148,8 @@ const styles = StyleSheet.create({
   themeText: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
   },
   themeTextOn: {
     color: colors.accentText,

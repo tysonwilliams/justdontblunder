@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 export const play = StyleSheet.create({
   metaRow: {
@@ -18,7 +18,7 @@ export const play = StyleSheet.create({
     flexShrink: 1,
   },
   guide: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
@@ -26,17 +26,17 @@ export const play = StyleSheet.create({
     gap: spacing.sm,
   },
   guideTight: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 6,
+    paddingVertical: spacing[10],
+    paddingHorizontal: spacing[12],
+    gap: spacing[6],
   },
   phoneTitle: {
     width: '100%',
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 20,
-    lineHeight: 26,
-    letterSpacing: -0.3,
+    fontSize: fontSizes[20],
+    lineHeight: lineHeights[26],
+    letterSpacing: letterSpacing.tight,
   },
   progressGrow: {
     flex: 1,
@@ -48,14 +48,14 @@ export const play = StyleSheet.create({
   linkRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   link: {
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.bgElevated,
-    paddingHorizontal: 14,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing[14],
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -64,8 +64,8 @@ export const play = StyleSheet.create({
   linkText: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[20],
   },
   cards: {
     width: '100%',
@@ -77,35 +77,35 @@ export const play = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
+    paddingVertical: spacing[14],
     minHeight: 84,
     justifyContent: 'center',
     cursor: 'pointer',
   },
   cardOn: {
-    backgroundColor: colors.bgSoft,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.borderStrong,
   },
   cardTitle: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: fontSizes[16],
+    lineHeight: lineHeights[22],
   },
   cardBody: {
-    marginTop: 4,
+    marginTop: spacing.xs,
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[20],
   },
   done: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderRadius: radii.xl,
     borderWidth: 1,
     borderColor: colors.border,
@@ -113,7 +113,7 @@ export const play = StyleSheet.create({
     gap: spacing.sm,
   },
   miss: {
-    gap: 4,
+    gap: spacing.xs,
     marginBottom: spacing.xs,
   },
 });

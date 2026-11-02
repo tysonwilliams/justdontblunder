@@ -1,6 +1,11 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { ReactNode } from 'react';
 
+import { palettes } from '@/src/theme';
+
+const background = palettes.dark.background;
+const foreground = palettes.dark.text;
+
 // This file is web-only and used to configure the root HTML for every
 // web page during static rendering.
 // The contents of this function only run in Node.js environments and
@@ -33,8 +38,8 @@ export default function Root({ children }: { children: ReactNode }) {
 
 const responsiveBackground = `
 html, body {
-  background-color: #1C1B19;
-  color: #F6F3EE;
+  background-color: ${background};
+  color: ${foreground};
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -46,6 +51,6 @@ body > div:first-child {
 }
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #1C1B19;
+    background-color: ${background};
   }
 }`;

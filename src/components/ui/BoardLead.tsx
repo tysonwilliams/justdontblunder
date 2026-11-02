@@ -16,6 +16,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   leadPhone: {
-    gap: 3,
+    gap: spacing[3],
   },
 });

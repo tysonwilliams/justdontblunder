@@ -12,7 +12,7 @@ import { themeLabel, type DrillTheme } from '@/src/logic/drills';
 import { LESSONS } from '@/src/logic/lessons';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
-import { colors, fonts, radii, spacing } from '@/src/theme';
+import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
 
@@ -159,7 +159,7 @@ function Grid({ columns, children }: { columns: number; children: ReactNode }) {
   return (
     <View style={styles.grid}>
       {Children.map(children, (child, index) => (
-        <View key={index} style={{ width: `${100 / columns}%`, padding: 6 }}>
+        <View key={index} style={{ width: `${100 / columns}%`, padding: spacing[6] }}>
           {child}
         </View>
       ))}
@@ -200,19 +200,19 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   page: {
     width: '100%',
-    gap: 12,
+    gap: spacing[12],
     paddingBottom: spacing.xs,
   },
   header: {
-    gap: 6,
+    gap: spacing[6],
   },
   banner: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: spacing[12],
     minHeight: 56,
     justifyContent: 'center',
   },
@@ -222,27 +222,27 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
+    marginHorizontal: -spacing[6],
   },
   tile: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: spacing[14],
+    paddingVertical: spacing[14],
     minHeight: 90,
     justifyContent: 'space-between',
-    gap: 10,
+    gap: spacing[10],
   },
   tileCopy: {
-    gap: 2,
+    gap: spacing.xxs,
   },
   tileLabel: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[20],
   },
   dim: {
     color: colors.textDim,
@@ -250,20 +250,20 @@ const styles = StyleSheet.create({
   badge: {
     minHeight: 108,
     justifyContent: 'flex-start',
-    gap: 4,
+    gap: spacing.xs,
   },
   badgeOn: {
     borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
   },
   badgeOff: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
   },
   badgeState: {
     fontFamily: fonts.bodyExtra,
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 0.7,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    letterSpacing: letterSpacing.badge,
     textTransform: 'uppercase',
   },
   badgeStateOn: {
@@ -275,14 +275,14 @@ const styles = StyleSheet.create({
   badgeTitle: {
     fontFamily: fonts.bodyExtra,
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: fontSizes[16],
+    lineHeight: lineHeights[22],
   },
   badgeDetail: {
     fontFamily: fonts.body,
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[20],
   },
   badgeDetailOn: {
     color: colors.text,
@@ -298,16 +298,16 @@ const styles = StyleSheet.create({
   },
   dialogTitle: {
     fontFamily: fonts.display,
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: fontSizes[24],
+    lineHeight: lineHeights[30],
     color: colors.text,
     textAlign: 'center',
-    letterSpacing: -0.3,
+    letterSpacing: letterSpacing.tight,
   },
   dialogBody: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[22],
     color: colors.textMuted,
     textAlign: 'center',
     marginBottom: spacing.sm,

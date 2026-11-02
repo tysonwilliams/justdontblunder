@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors } from '@/src/theme';
+import { colors, radii } from '@/src/theme';
 
 export function ProgressTrack({ progress }: { progress: number }) {
   const { phone } = useLayout();
@@ -20,14 +20,14 @@ export function ProgressTrack({ progress }: { progress: number }) {
 const styles = StyleSheet.create({
   track: {
     height: 6,
-    borderRadius: 99,
-    backgroundColor: colors.bgSoft,
+    borderRadius: radii.track,
+    backgroundColor: colors.surfaceRaised,
     overflow: 'hidden',
     width: '100%',
   },
   fill: {
     height: 6,
-    borderRadius: 99,
+    borderRadius: radii.track,
     backgroundColor: colors.accent,
   },
 });

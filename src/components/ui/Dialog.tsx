@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
 
-import { colors, radii } from '@/src/theme';
+import { colors, radii, shadows, spacing } from '@/src/theme';
 
 type Props = {
   visible: boolean;
@@ -24,24 +24,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: spacing[20],
   },
   card: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing[28],
+    paddingBottom: spacing[20],
     alignItems: 'center',
-    gap: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 12,
+    gap: spacing[10],
+    ...shadows.dialog,
   },
 });

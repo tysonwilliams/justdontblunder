@@ -15,7 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
-import { colors } from '@/src/theme';
+import { useTheme } from '@/src/theme';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -26,6 +26,7 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const { colors } = useTheme();
   const [loaded, error] = useFonts({
     Nunito_500Medium,
     Nunito_700Bold,
@@ -50,13 +51,13 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: colors.bg },
+          headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
-          contentStyle: { backgroundColor: colors.bg },
+          contentStyle: { backgroundColor: colors.background },
           headerShadowVisible: false,
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

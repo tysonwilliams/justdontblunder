@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { colors, fonts, radii } from '@/src/theme';
+import { colors, fonts, fontSizes, radii, spacing } from '@/src/theme';
 
 type Props = {
   streak: number;
@@ -47,35 +47,35 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.bgElevated,
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
     borderColor: colors.borderStrong,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[6],
     minHeight: 36,
     borderRadius: radii.pill,
   },
   dot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: radii.dot,
     backgroundColor: colors.accent,
   },
   count: {
     fontFamily: fonts.display,
     color: colors.text,
-    fontSize: 18,
+    fontSize: fontSizes[18],
   },
   label: {
     fontFamily: fonts.bodyBold,
     color: colors.textMuted,
-    fontSize: 15,
+    fontSize: fontSizes[15],
   },
   badgeCompact: {
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
     minHeight: 22,
   },
   dotCompact: {
@@ -83,9 +83,9 @@ const styles = StyleSheet.create({
     height: 6,
   },
   countCompact: {
-    fontSize: 13,
+    fontSize: fontSizes[13],
   },
   labelCompact: {
-    fontSize: 11,
+    fontSize: fontSizes[11],
   },
 });
