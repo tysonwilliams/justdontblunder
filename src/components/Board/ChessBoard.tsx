@@ -22,6 +22,7 @@ import {
 } from '@/src/logic/game';
 import { squareSizeForFrame } from '@/src/components/Board/boardGeometry';
 import { legalMoveInk, squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
+import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts, radii } from '@/src/theme';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
@@ -100,6 +101,7 @@ export function ChessBoard({
   onMove,
   onPositionChange,
 }: Props) {
+  const { phone } = useLayout();
   const [measured, setMeasured] = useState(0);
   const [gameFen, setGameFen] = useState(() => fen ?? createGame().fen());
   const [selected, setSelected] = useState<Square | null>(null);
@@ -244,9 +246,17 @@ export function ChessBoard({
   return (
     <View style={styles.wrap} onPointerDown={unlockMoveSounds}>
       {turnLine || flipCue ? (
-        <View style={styles.meta}>
-          {turnLine ? <Text style={styles.turn}>{turnLine}</Text> : null}
-          {flipCue ? <Text style={styles.flip}>You're playing Black. Board flipped.</Text> : null}
+        <View style={[styles.meta, phone && styles.metaPhone]}>
+          {turnLine ? (
+            <Text style={[styles.turn, phone && styles.turnPhone]} numberOfLines={1}>
+              {turnLine}
+            </Text>
+          ) : null}
+          {flipCue ? (
+            <Text style={[styles.flip, phone && styles.flipPhone]} numberOfLines={1}>
+              {phone ? 'Playing Black' : "You're playing Black. Board flipped."}
+            </Text>
+          ) : null}
         </View>
       ) : null}
       <GestureDetector gesture={pan}>
@@ -463,17 +473,29 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   meta: {
-    marginBottom: 10,
+    marginBottom: 8,
+    minHeight: 28,
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
+  },
+  metaPhone: {
+    marginBottom: 4,
+    minHeight: 18,
+    height: 18,
   },
   turn: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
     fontSize: 15,
+    lineHeight: 20,
+    flexShrink: 1,
+  },
+  turnPhone: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   flip: {
     fontFamily: fonts.bodyBold,
@@ -485,6 +507,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: radii.pill,
     overflow: 'hidden',
+  },
+  flipPhone: {
+    fontSize: 11,
+    lineHeight: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
   },
   board: {
     borderRadius: radii.sm,

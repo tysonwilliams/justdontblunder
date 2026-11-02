@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
+import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts, radii } from '@/src/theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -21,6 +22,7 @@ export function Button({
   style,
   testID,
 }: Props) {
+  const { phone } = useLayout();
   return (
     <Pressable
       accessibilityRole="button"
@@ -30,12 +32,15 @@ export function Button({
         const hovered = 'hovered' in state && Boolean(state.hovered);
         return [
           styles.base,
+          phone && styles.basePhone,
           fullWidth && styles.full,
           variantStyle(variant, state.pressed, hovered),
           style,
         ];
       }}>
-      <Text style={[styles.label, labelColor(variant)]}>{label}</Text>
+      <Text style={[styles.label, phone && styles.labelPhone, labelColor(variant)]} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -93,6 +98,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     cursor: 'pointer',
   },
+  basePhone: {
+    minHeight: 36,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   full: {
     alignSelf: 'stretch',
   },
@@ -102,5 +112,9 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     letterSpacing: 0.1,
     textAlign: 'center',
+  },
+  labelPhone: {
+    fontSize: 14,
+    lineHeight: 18,
   },
 });

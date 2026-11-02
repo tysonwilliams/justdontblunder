@@ -25,17 +25,30 @@ export const text = StyleSheet.create({
     lineHeight: 32,
     letterSpacing: -0.45,
   },
+  titlePhone: {
+    fontSize: 18,
+    lineHeight: 22,
+    letterSpacing: -0.3,
+  },
   habit: {
     fontFamily: fonts.bodyBold,
     color: colors.warn,
     fontSize: 16,
     lineHeight: 22,
   },
+  habitPhone: {
+    fontSize: 13,
+    lineHeight: 17,
+  },
   body: {
     fontFamily: fonts.body,
     color: colors.text,
     fontSize: 16,
     lineHeight: 24,
+  },
+  bodyPhone: {
+    fontSize: 13,
+    lineHeight: 17,
   },
   bodyStrong: {
     fontFamily: fonts.bodyBold,
@@ -49,11 +62,19 @@ export const text = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
+  mutedPhone: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
   meta: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
     fontSize: 14,
     lineHeight: 20,
+  },
+  metaPhone: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   section: {
     fontFamily: fonts.bodyBold,
@@ -69,6 +90,11 @@ export const text = StyleSheet.create({
     fontSize: 56,
     lineHeight: 60,
     letterSpacing: -1.4,
+  },
+  heroPhone: {
+    fontSize: 36,
+    lineHeight: 40,
+    letterSpacing: -0.8,
   },
   stat: {
     fontFamily: fonts.display,

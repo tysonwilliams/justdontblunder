@@ -6,14 +6,33 @@ import { colors, layout } from '@/src/theme';
 
 type Props = {
   children: ReactNode;
-  /** Board stages use the wide frame. Pages (progress, results) use a calmer measure. */
+  /** Board stages fill the viewport. Pages (progress, results) scroll. */
   variant?: 'board' | 'page';
   maxWidth?: number;
 };
 
 export function Screen({ children, variant = 'page', maxWidth }: Props) {
-  const { padX, padTop, padBottom } = useLayout();
-  const cap = maxWidth ?? (variant === 'board' ? layout.stageMax : layout.pageMax);
+  const { padX, padTop, padBottom, contentW } = useLayout();
+  const cap = maxWidth ?? (variant === 'board' ? contentW + padX * 2 : layout.pageMax);
+
+  if (variant === 'board') {
+    return (
+      <View style={styles.screen}>
+        <View
+          style={[
+            styles.boardFrame,
+            {
+              paddingTop: padTop,
+              paddingBottom: padBottom,
+              paddingHorizontal: padX,
+              maxWidth: cap,
+            },
+          ]}>
+          {children}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -35,6 +54,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
+    overflow: 'hidden',
   },
   content: {
     flexGrow: 1,
@@ -45,5 +65,12 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 0,
     flexGrow: 1,
+  },
+  boardFrame: {
+    flex: 1,
+    width: '100%',
+    alignSelf: 'center',
+    minHeight: 0,
+    minWidth: 0,
   },
 });

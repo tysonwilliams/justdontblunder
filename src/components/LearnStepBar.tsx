@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Chip } from '@/src/components/ui/Chip';
+import { useLayout } from '@/src/components/ui/useLayout';
 
 export type LearnStep = 'pick' | 'play';
 
@@ -16,13 +17,15 @@ export function LearnStepBar({
   step: LearnStep;
   onChange: (step: LearnStep) => void;
 }) {
+  const { phone } = useLayout();
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, phone && styles.rowPhone]}>
       {STEPS.map((item) => (
         <Chip
           key={item.id}
           label={item.label}
           selected={item.id === step}
+          fill={phone}
           testID={`learn-step-${item.id}`}
           onPress={() => onChange(item.id)}
         />
@@ -36,5 +39,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  rowPhone: {
+    flexWrap: 'nowrap',
+    gap: 4,
   },
 });

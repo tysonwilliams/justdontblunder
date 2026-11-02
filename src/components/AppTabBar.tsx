@@ -43,19 +43,19 @@ type Props = {
 };
 
 export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, wide }: Props) {
-  const { padX } = useLayout();
+  const { padX, contentW } = useLayout();
 
   return (
     <View
       style={[
         wide ? styles.top : styles.bottom,
-        wide ? { paddingTop: insets.top } : { paddingBottom: Math.max(insets.bottom, 8) },
+        wide ? { paddingTop: insets.top } : { paddingBottom: Math.max(insets.bottom, 4) },
       ]}>
       <View
         style={[
           styles.inner,
           wide && styles.innerWide,
-          wide && { paddingHorizontal: padX, maxWidth: layout.stageMax + padX * 2 },
+          wide && { paddingHorizontal: padX, maxWidth: contentW + padX * 2 },
         ]}>
         {wide ? (
           <View style={styles.brand}>
@@ -96,7 +96,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
                     press.pressed && styles.pressed,
                   ];
                 }}>
-                {wide ? null : <Icon color={color} size={22} />}
+                {wide ? null : <Icon color={color} size={18} />}
                 <Text style={[wide ? styles.labelWide : styles.label, { color }]}>{label}</Text>
               </Pressable>
             );
@@ -134,11 +134,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 6,
+    paddingTop: 2,
   },
   inner: {
-    minHeight: 56,
-    paddingHorizontal: 6,
+    minHeight: 48,
+    paddingHorizontal: 4,
     justifyContent: 'center',
   },
   innerWide: {
@@ -196,11 +196,11 @@ const styles = StyleSheet.create({
   },
   link: {
     flex: 1,
-    minHeight: 48,
+    minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    borderRadius: 14,
+    gap: 1,
+    borderRadius: 12,
     cursor: 'pointer',
   },
   linkOn: {
@@ -225,8 +225,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 11,
+    lineHeight: 13,
   },
   labelWide: {
     fontFamily: fonts.bodyBold,

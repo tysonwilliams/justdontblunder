@@ -13,9 +13,10 @@ type Props = {
   streak: number;
   label?: string;
   celebrate?: boolean;
+  compact?: boolean;
 };
 
-export function StreakBadge({ streak, label = 'day streak', celebrate = false }: Props) {
+export function StreakBadge({ streak, label = 'day streak', celebrate = false, compact = false }: Props) {
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -30,10 +31,10 @@ export function StreakBadge({ streak, label = 'day streak', celebrate = false }:
 
   return (
     <View style={styles.wrap}>
-      <Animated.View style={[styles.badge, anim]}>
-        <View style={styles.dot} />
-        <Text style={styles.count}>{streak}</Text>
-        <Text style={styles.label}>{label}</Text>
+      <Animated.View style={[styles.badge, compact && styles.badgeCompact, anim]}>
+        <View style={[styles.dot, compact && styles.dotCompact]} />
+        <Text style={[styles.count, compact && styles.countCompact]}>{streak}</Text>
+        <Text style={[styles.label, compact && styles.labelCompact]}>{label}</Text>
       </Animated.View>
     </View>
   );
@@ -70,5 +71,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     color: colors.textMuted,
     fontSize: 15,
+  },
+  badgeCompact: {
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minHeight: 22,
+  },
+  dotCompact: {
+    width: 6,
+    height: 6,
+  },
+  countCompact: {
+    fontSize: 13,
+  },
+  labelCompact: {
+    fontSize: 11,
   },
 });

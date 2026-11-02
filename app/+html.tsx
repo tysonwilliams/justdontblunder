@@ -11,7 +11,10 @@ export default function Root({ children }: { children: ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
+        />
 
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
@@ -29,9 +32,17 @@ export default function Root({ children }: { children: ReactNode }) {
 }
 
 const responsiveBackground = `
-body {
+html, body {
   background-color: #1C1B19;
   color: #F6F3EE;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+body > div:first-child {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 @media (prefers-color-scheme: dark) {
   body {

@@ -78,6 +78,9 @@ type Props = {
   reviewing?: boolean;
   /** Learn only. Switches between the two-choice step and playing the move. */
   onStep?: (step: LearnStep) => void;
+  /** Controlled theme filter. Omit to keep the filter inside this session. */
+  setId?: SessionSet;
+  onSetChange?: (set: SessionSet) => void;
 };
 
 function playedSan(fen: string, from: Square, to: Square): string | null {
@@ -85,8 +88,8 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
   return moved?.san ?? null;
 }
 
-export function DrillSession({ mode, reviewing = false, onStep }: Props) {
-  const { split } = useLayout();
+export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp, onSetChange }: Props) {
+  const { split, phone, tight } = useLayout();
   const router = useRouter();
   const learn = mode === 'learn';
 
@@ -98,7 +101,8 @@ export function DrillSession({ mode, reviewing = false, onStep }: Props) {
   const missedDate = useProgressStore((s) => s.missedDate);
   const missedIds = useProgressStore((s) => s.missedIds);
 
-  const [setId, setSetId] = useState<SessionSet>('daily');
+  const [internalSet, setInternalSet] = useState<SessionSet>('daily');
+  const setId = setIdProp ?? internalSet;
   const [session, setSession] = useState<DrillSessionData>(() => createAllSession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
@@ -185,9 +189,20 @@ export function DrillSession({ mode, reviewing = false, onStep }: Props) {
     if (reviewing) {
       router.setParams({ review: '' });
     }
-    setSetId(next);
+    if (setIdProp !== undefined) {
+      onSetChange?.(next);
+      return;
+    }
+    setInternalSet(next);
     begin(sessionFor(next));
   };
+
+  useEffect(() => {
+    if (setIdProp === undefined) return;
+    begin(sessionFor(setIdProp));
+    // Restart only when the parent filter changes. `begin` closes over the latest setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setIdProp]);
 
   const restart = () => {
     begin(reviewing ? createReviewSession(missesForDate(missedDate, missedIds)) : sessionFor(setId));
@@ -331,8 +346,8 @@ export function DrillSession({ mode, reviewing = false, onStep }: Props) {
         }>
         <View style={play.done}>
           <Text style={text.eyebrow}>Drills</Text>
-          <Text style={text.title}>Streak over</Text>
-          <Text style={text.hero}>{runSummary.saved}</Text>
+          <Text style={[text.title, phone && text.titlePhone]}>Streak over</Text>
+          <Text style={[text.hero, phone && text.heroPhone]}>{runSummary.saved}</Text>
           <Text style={text.muted}>saved this run · best {runSummary.best}</Text>
           <View style={play.miss}>
             <Text style={text.section}>The miss</Text>
@@ -361,14 +376,14 @@ export function DrillSession({ mode, reviewing = false, onStep }: Props) {
         }>
         <View style={play.done}>
           <Text style={text.eyebrow}>{mode === 'streak' ? 'Drills' : 'Learn'}</Text>
-          <Text style={text.title}>
+          <Text style={[text.title, phone && text.titlePhone]}>
             {emptyReview ? 'Nothing to review' : mode === 'streak' ? 'Clean run' : "That's the set"}
           </Text>
           {emptyReview ? (
-            <Text style={text.muted}>You have no misses saved for today.</Text>
+            <Text style={[text.muted, phone && text.mutedPhone]}>You have no misses saved for today.</Text>
           ) : (
             <>
-              <Text style={text.hero}>
+              <Text style={[text.hero, phone && text.heroPhone]}>
                 {mode === 'streak' ? score.correct : `${score.correct}/${score.total}`}
               </Text>
               <Text style={text.muted}>
@@ -396,10 +411,13 @@ export function DrillSession({ mode, reviewing = false, onStep }: Props) {
       ? [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }]
       : [];
   const watchingReply = replayActive && !playback.done;
+  const feedback = round !== 'playing';
+  const showExtra = !tight;
+  const showTitle = !(tight && feedback);
 
   return (
     <PlayFrame
-      asideFirst={!split && round !== 'playing' && !watchingReply}
+      asideFirst={!split && feedback && !watchingReply}
       intro={
         <BoardLead>
           <SessionToolbar
@@ -413,19 +431,26 @@ export function DrillSession({ mode, reviewing = false, onStep }: Props) {
             <StatusPill>
               {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
             </StatusPill>
-            <Text style={text.meta}>
+            <Text style={[text.meta, phone && text.metaPhone]} numberOfLines={1}>
               {index + 1} / {session.positions.length}
               {mode === 'streak' ? ` · ${score.correct} in a row` : ''}
             </Text>
           </View>
-          <ProgressTrack progress={progress} />
-          {learn && round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
-          {learn ? (
-            <Text style={text.title}>{drill.prompt}</Text>
-          ) : round === 'playing' ? (
-            <Text style={text.title}>{turnPrompt(drill.sideToMove)}</Text>
+          {showTitle ? <ProgressTrack progress={progress} /> : null}
+          {learn && showExtra && round === 'playing' ? (
+            <Text style={[text.habit, phone && text.habitPhone]}>{HABIT_PROMPT}</Text>
           ) : null}
-          {learn && round === 'playing' ? <ColorLegend /> : null}
+          {showTitle && learn ? (
+            <Text style={[text.title, phone && text.titlePhone]} numberOfLines={phone ? 2 : undefined}>
+              {drill.prompt}
+            </Text>
+          ) : null}
+          {showTitle && !learn && round === 'playing' ? (
+            <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>
+              {turnPrompt(drill.sideToMove)}
+            </Text>
+          ) : null}
+          {learn && showExtra && round === 'playing' ? <ColorLegend /> : null}
         </BoardLead>
       }
       board={
@@ -449,14 +474,22 @@ export function DrillSession({ mode, reviewing = false, onStep }: Props) {
         aside={
           round === 'playing' ? (
             learn ? (
-              <View style={play.guide}>
-                <Text style={text.body}>{themeInstruction(drill.theme)}</Text>
-                <Text style={text.muted}>The amber square is the piece under fire.</Text>
+              <View style={[play.guide, phone && styles.guidePhone]}>
+                {showExtra ? (
+                  <Text style={[text.body, phone && text.bodyPhone]}>{themeInstruction(drill.theme)}</Text>
+                ) : null}
+                {showExtra ? (
+                  <Text style={[text.muted, phone && text.mutedPhone]}>
+                    The amber square is the piece under fire.
+                  </Text>
+                ) : null}
                 <Button label="Show the idea" variant="secondary" onPress={revealIdea} />
               </View>
             ) : (
-              <View style={play.guide}>
-                <Text style={text.muted}>No hints. One miss ends the run.</Text>
+              <View style={[play.guide, phone && styles.guidePhone]}>
+                {showExtra ? (
+                  <Text style={[text.muted, phone && text.mutedPhone]}>No hints. One miss ends the run.</Text>
+                ) : null}
                 <Button
                   label="Show the answer"
                   variant="secondary"
@@ -534,8 +567,9 @@ function SessionToolbar({
   reviewing: boolean;
   onSet: (set: SessionSet) => void;
 }) {
+  const { phone } = useLayout();
   return (
-    <View style={styles.toolbar}>
+    <View style={[styles.toolbar, phone && styles.toolbarPhone]}>
       {step && onStep ? <LearnStepBar step={step} onChange={onStep} /> : null}
       {reviewing ? (
         <Text style={text.eyebrow}>Reviewing today's misses</Text>
@@ -549,5 +583,12 @@ function SessionToolbar({
 const styles = StyleSheet.create({
   toolbar: {
     gap: 8,
+  },
+  toolbarPhone: {
+    gap: 4,
+  },
+  guidePhone: {
+    padding: 8,
+    gap: 6,
   },
 });

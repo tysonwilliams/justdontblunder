@@ -1,6 +1,6 @@
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
@@ -30,24 +30,36 @@ import { useProgressStore } from '@/src/store/progress';
 import { colors } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry';
-type Dest = '/learn' | '/drills' | '/practice';
+type EntryId = 'learn' | 'drills' | 'practice';
 
-const RESULT_LINKS: { href: Dest; label: string }[] = [
-  { href: '/drills', label: 'Drills' },
-  { href: '/learn', label: 'Learn' },
-  { href: '/practice', label: 'Practice' },
+const RESULT_LINKS: { id: EntryId; label: string }[] = [
+  { id: 'drills', label: 'Drills' },
+  { id: 'learn', label: 'Learn' },
+  { id: 'practice', label: 'Practice' },
 ];
 
-const ENTRY_CARDS: { href: string; title: string; body: string }[] = [
-  {
-    href: '/learn?pick=1',
-    title: 'Pick the safe move',
-    body: 'Two moves. One blunders. Tap the safe one.',
-  },
-  { href: '/learn', title: 'Learn', body: 'Save the piece. The idea is there if you want it.' },
-  { href: '/drills', title: 'Drills', body: 'One miss ends the run.' },
-  { href: '/practice', title: 'Practice', body: 'Play White. Black takes what you hang.' },
+const ENTRY_CARDS: { id: EntryId; title: string; body: string }[] = [
+  { id: 'learn', title: 'Learn', body: 'Save the piece. The idea is there if you want it.' },
+  { id: 'drills', title: 'Drills', body: 'One miss ends the run.' },
+  { id: 'practice', title: 'Practice', body: 'Play White. Black takes what you hang.' },
 ];
+
+function entryHref(id: EntryId): string {
+  switch (id) {
+    case 'learn':
+      // Pick step + All (the default filter). A fresh entry token resets a filter
+      // the player may have changed earlier on the Learn tab.
+      return `/learn?pick=1&entry=${Date.now()}`;
+    case 'drills':
+      return '/drills';
+    case 'practice':
+      return '/practice';
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
+}
 
 function resultCard(round: RoundState): { title: string; tone: 'success' | 'danger' } | null {
   switch (round) {
@@ -66,7 +78,7 @@ function resultCard(round: RoundState): { title: string; tone: 'success' | 'dang
 
 export function HomeTrainer() {
   const router = useRouter();
-  const { split, contentW } = useLayout();
+  const { split, phone, tight } = useLayout();
   const [session] = useState(() => createHomeSession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
@@ -100,8 +112,8 @@ export function HomeTrainer() {
     };
   }, []);
 
-  const open = (href: string) => {
-    router.push(href as Href);
+  const open = (id: EntryId) => {
+    router.push(entryHref(id) as Href);
   };
 
   const next = () => {
@@ -156,31 +168,36 @@ export function HomeTrainer() {
     ? [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }]
     : [];
   const watchingReply = replayActive && !playback.done;
+  const feedback = round !== 'playing';
+  const showExtra = !(tight && feedback);
+  const showGuide = !tight;
 
   return (
     <PlayFrame
-      asideFirst={!split && round !== 'playing' && !watchingReply}
+      asideFirst={!split && feedback && !watchingReply}
       intro={
         <BoardLead>
           <View style={play.metaRow}>
             <StatusPill>Daily trainer</StatusPill>
             <View style={play.metaRight}>
-              <Text style={text.meta}>
+              <Text style={[text.meta, phone && text.metaPhone]}>
                 {index + 1} / {total}
               </Text>
               {hydrated && streak > 0 ? (
-                <StreakBadge streak={streak} celebrate />
+                <StreakBadge streak={streak} celebrate compact={phone} />
               ) : hydrated ? (
-                <Text style={text.muted}>No streak yet</Text>
+                <Text style={[text.muted, phone && text.mutedPhone]}>No streak yet</Text>
               ) : (
                 <View style={styles.streakSlot} />
               )}
             </View>
           </View>
           <ProgressTrack progress={progress} />
-          <Text style={text.title}>Stop hanging pieces.</Text>
-          <Text style={text.habit}>{homePlayPrompt(drill)}</Text>
-          <ColorLegend />
+          <Text style={[text.title, phone && text.titlePhone]}>Stop hanging pieces.</Text>
+          {showExtra ? (
+            <Text style={[text.habit, phone && text.habitPhone]}>{homePlayPrompt(drill)}</Text>
+          ) : null}
+          {showExtra ? <ColorLegend /> : null}
         </BoardLead>
       }
       board={
@@ -215,62 +232,50 @@ export function HomeTrainer() {
                 secondaryLabel={card.tone === 'danger' && replyReady ? 'Next puzzle' : undefined}
                 onSecondary={card.tone === 'danger' && replyReady ? next : undefined}
               />
-              <View style={play.linkRow}>
-                {RESULT_LINKS.map((item) => (
-                  <Pressable
-                    key={item.href}
-                    accessibilityRole="button"
-                    onPress={() => open(item.href)}
-                    style={play.link}>
-                    <Text style={play.linkText}>{item.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
+              {showExtra ? (
+                <View style={play.linkRow}>
+                  {RESULT_LINKS.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      accessibilityRole="button"
+                      onPress={() => open(item.id)}
+                      style={[play.link, phone && styles.linkPhone]}>
+                      <Text style={[play.linkText, phone && styles.linkTextPhone]}>{item.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
-          ) : (
-            <View style={play.guide}>
-              {drill.theme === 'hanging' ? <Text style={text.body}>{drill.prompt}</Text> : null}
-              <Text style={drill.theme === 'hanging' ? text.muted : text.body}>
+          ) : showGuide ? (
+            <View style={[play.guide, phone && styles.guidePhone]}>
+              {drill.theme === 'hanging' ? (
+                <Text style={[text.body, phone && text.bodyPhone]}>{drill.prompt}</Text>
+              ) : null}
+              <Text style={[drill.theme === 'hanging' ? text.muted : text.body, phone && text.mutedPhone]}>
                 {themeInstruction(drill.theme)}
               </Text>
             </View>
-          )
+          ) : null
         }
-      footer={<EntryCards split={split} contentW={contentW} onOpen={open} />}
+      footer={<EntryCards split={split} hidden={tight && feedback} onOpen={open} />}
     />
   );
 }
 
-const CARD_PEEK = 28;
-
 function EntryCards({
   split,
-  contentW,
+  hidden,
   onOpen,
 }: {
   split: boolean;
-  contentW: number;
-  onOpen: (href: string) => void;
+  hidden: boolean;
+  onOpen: (id: EntryId) => void;
 }) {
-  const mode = split ? 'stack' : contentW >= 640 ? 'row' : 'slide';
-  const slideW = Math.max(220, contentW - CARD_PEEK);
+  if (hidden) return null;
+  const mode = split ? 'stack' : 'row';
   const cards = ENTRY_CARDS.map((item) => (
-    <EntryCard key={item.href} item={item} mode={mode} slideW={slideW} onPress={() => onOpen(item.href)} />
+    <EntryCard key={item.id} item={item} mode={mode} onPress={() => onOpen(item.id)} />
   ));
-
-  if (mode === 'slide') {
-    return (
-      <ScrollView
-        horizontal
-        nestedScrollEnabled
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        style={{ width: contentW }}
-        contentContainerStyle={[styles.entryRow, { paddingRight: CARD_PEEK }]}>
-        {cards}
-      </ScrollView>
-    );
-  }
 
   return <View style={mode === 'stack' ? styles.entryStack : styles.entryGrid}>{cards}</View>;
 }
@@ -279,26 +284,27 @@ function EntryCard({
   item,
   onPress,
   mode,
-  slideW,
 }: {
   item: (typeof ENTRY_CARDS)[number];
   onPress: () => void;
-  mode: 'stack' | 'row' | 'slide';
-  slideW: number;
+  mode: 'stack' | 'row';
 }) {
+  const { phone } = useLayout();
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
         play.card,
+        phone && styles.cardPhone,
         mode === 'stack' && styles.entryFull,
         mode === 'row' && styles.entryCell,
-        mode === 'slide' && { width: slideW, flexBasis: slideW, flexGrow: 0, flexShrink: 0 },
         pressed && play.cardOn,
       ]}>
-      <Text style={play.cardTitle}>{item.title}</Text>
-      <Text style={play.cardBody} numberOfLines={3}>
+      <Text style={[play.cardTitle, phone && styles.cardTitlePhone]} numberOfLines={1}>
+        {item.title}
+      </Text>
+      <Text style={[play.cardBody, phone && styles.cardBodyPhone]} numberOfLines={3}>
         {item.body}
       </Text>
     </Pressable>
@@ -307,8 +313,34 @@ function EntryCard({
 
 const styles = StyleSheet.create({
   streakSlot: {
-    minWidth: 108,
-    minHeight: 36,
+    minWidth: 72,
+    minHeight: 22,
+  },
+  guidePhone: {
+    padding: 8,
+    gap: 4,
+  },
+  linkPhone: {
+    minHeight: 32,
+    paddingHorizontal: 10,
+  },
+  linkTextPhone: {
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  cardPhone: {
+    minHeight: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  cardTitlePhone: {
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  cardBodyPhone: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 14,
   },
   entryStack: {
     width: '100%',

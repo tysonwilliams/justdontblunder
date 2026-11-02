@@ -10,9 +10,12 @@ type ChipProps = {
   onPress?: () => void;
   testID?: string;
   size?: 'sm' | 'md';
+  /** Share a single row equally. */
+  fill?: boolean;
 };
 
-export function Chip({ label, selected = false, onPress, testID, size = 'md' }: ChipProps) {
+export function Chip({ label, selected = false, onPress, testID, size = 'md', fill = false }: ChipProps) {
+  const { phone } = useLayout();
   return (
     <Pressable
       accessibilityRole="button"
@@ -23,13 +26,20 @@ export function Chip({ label, selected = false, onPress, testID, size = 'md' }: 
         const hovered = 'hovered' in state && Boolean(state.hovered);
         return [
           styles.chip,
+          phone && styles.chipPhone,
           size === 'sm' && styles.chipSm,
+          fill && styles.chipFill,
           selected && styles.chipOn,
           (state.pressed || hovered) && !selected && styles.chipHover,
         ];
       }}>
       <Text
-        style={[styles.chipText, size === 'sm' && styles.chipTextSm, selected && styles.chipTextOn]}
+        style={[
+          styles.chipText,
+          phone && styles.chipTextPhone,
+          size === 'sm' && styles.chipTextSm,
+          selected && styles.chipTextOn,
+        ]}
         numberOfLines={1}>
         {label}
       </Text>
@@ -46,32 +56,34 @@ export function FilterChips<T extends string>({
   value: T;
   onChange: (id: T) => void;
 }) {
-  const { contentW } = useLayout();
-  const compact = contentW < 520;
+  const { phone } = useLayout();
   const items = options.map((item) => (
     <Chip
       key={item.id}
       label={item.label}
-      size={compact ? 'sm' : 'md'}
+      size="sm"
       selected={item.id === value}
       onPress={() => onChange(item.id)}
     />
   ));
 
-  return <View style={[styles.wrap, compact && styles.wrapTight]}>{items}</View>;
+  return <View style={[styles.wrap, phone && styles.oneRow]}>{items}</View>;
 }
 
 export function StatusPill({ children }: { children: ReactNode }) {
+  const { phone } = useLayout();
   return (
-    <View style={styles.pill}>
-      <Text style={styles.pillText}>{children}</Text>
+    <View style={[styles.pill, phone && styles.pillPhone]}>
+      <Text style={[styles.pillText, phone && styles.pillTextPhone]} numberOfLines={1}>
+        {children}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 40,
+    minHeight: 36,
     paddingHorizontal: 12,
     borderRadius: radii.pill,
     borderWidth: 1,
@@ -83,8 +95,19 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     cursor: 'pointer',
   },
+  chipPhone: {
+    minHeight: 28,
+    paddingHorizontal: 8,
+  },
   chipSm: {
     paddingHorizontal: 8,
+  },
+  chipFill: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    paddingHorizontal: 3,
   },
   chipOn: {
     backgroundColor: colors.accent,
@@ -99,9 +122,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
   },
+  chipTextPhone: {
+    fontSize: 12,
+    lineHeight: 15,
+  },
   chipTextSm: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
   },
   chipTextOn: {
     color: colors.accentText,
@@ -115,7 +142,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  wrapTight: {
+  oneRow: {
+    flexWrap: 'nowrap',
     gap: 4,
   },
   pill: {
@@ -126,6 +154,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     minHeight: 28,
     justifyContent: 'center',
+    flexShrink: 1,
+  },
+  pillPhone: {
+    minHeight: 22,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   pillText: {
     fontFamily: fonts.bodyBold,
@@ -134,5 +168,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
+  },
+  pillTextPhone: {
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 0.4,
   },
 });

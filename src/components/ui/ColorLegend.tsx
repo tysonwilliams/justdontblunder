@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts } from '@/src/theme';
 
 const ITEMS = [
@@ -9,12 +10,13 @@ const ITEMS = [
 ] as const;
 
 export function ColorLegend() {
+  const { phone } = useLayout();
   return (
-    <View style={styles.row} accessibilityRole="text">
+    <View style={[styles.row, phone && styles.rowPhone]} accessibilityRole="text">
       {ITEMS.map((item) => (
         <View key={item.label} style={styles.item}>
-          <View style={[styles.swatch, { backgroundColor: item.color }]} />
-          <Text style={styles.label}>{item.label}</Text>
+          <View style={[styles.swatch, phone && styles.swatchPhone, { backgroundColor: item.color }]} />
+          <Text style={[styles.label, phone && styles.labelPhone]}>{item.label}</Text>
         </View>
       ))}
     </View>
@@ -28,6 +30,10 @@ const styles = StyleSheet.create({
     gap: 8,
     rowGap: 6,
   },
+  rowPhone: {
+    flexWrap: 'nowrap',
+    gap: 8,
+  },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -39,10 +45,18 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 3,
   },
+  swatchPhone: {
+    width: 8,
+    height: 8,
+  },
   label: {
     fontFamily: fonts.bodyBold,
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  labelPhone: {
+    fontSize: 11,
+    lineHeight: 14,
   },
 });

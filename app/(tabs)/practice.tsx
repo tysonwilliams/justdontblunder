@@ -41,7 +41,7 @@ function gameResultLine(fen: string): string | null {
 }
 
 export default function PracticeScreen() {
-  const { split } = useLayout();
+  const { split, phone, tight } = useLayout();
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
 
   const [fen, setFen] = useState(() => createGame().fen());
@@ -191,18 +191,23 @@ export default function PracticeScreen() {
         : sentence(feedback.message)
     : '';
 
+  const showFeedback = feedback != null && (tone === 'danger' || !gameOver);
+  const showExtra = !(tight && showFeedback);
+
   return (
     <PlayFrame
-      asideFirst={!split && feedback != null && tone !== 'danger'}
+      asideFirst={!split && showFeedback && tone !== 'danger'}
       intro={
         <BoardLead>
           <Text style={text.eyebrow}>Practice</Text>
-          <Text style={text.title}>Your game</Text>
-          <Text style={text.habit}>{HABIT_PROMPT}</Text>
-          <Text style={text.body}>
-            You play White. Black answers. If you leave a piece hanging, they take it.
-          </Text>
-          <ColorLegend />
+          <Text style={[text.title, phone && text.titlePhone]}>Your game</Text>
+          {showExtra ? <Text style={[text.habit, phone && text.habitPhone]}>{HABIT_PROMPT}</Text> : null}
+          {showExtra ? (
+            <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
+              You play White. Black answers. If you leave a piece hanging, they take it.
+            </Text>
+          ) : null}
+          {showExtra ? <ColorLegend /> : null}
         </BoardLead>
       }
       board={
@@ -243,7 +248,7 @@ export default function PracticeScreen() {
               </View>
             ) : status ? (
               <View style={play.guide}>
-                <Text style={text.bodyStrong}>{status}</Text>
+                <Text style={[text.bodyStrong, phone && text.bodyPhone]}>{status}</Text>
               </View>
             ) : hangingNow[0] ? (
               <BlunderOverlay

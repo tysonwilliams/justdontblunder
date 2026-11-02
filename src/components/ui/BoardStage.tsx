@@ -3,7 +3,6 @@ import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { withBoardSize } from '@/src/components/Board/boardGeometry';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { layout, spacing } from '@/src/theme';
 
 type Props = {
   board: ReactNode;
@@ -16,31 +15,36 @@ type Props = {
   asideFirst?: boolean;
 };
 
-const TURN_ROW = 46;
-const MIN_BOARD = 244;
-
 export function boardStageIsWide(width: number): boolean {
-  return width >= layout.split;
+  return width >= 720;
 }
 
 export function BoardStage({ board, aside, intro, footer, asideFirst = false }: Props) {
-  const { split, boardWidth, asideWidth, gap, contentHeight, contentW } = useLayout();
-  const [introH, setIntroH] = useState(0);
-  const [asideH, setAsideH] = useState(0);
-  const [footerH, setFooterH] = useState(0);
+  const metrics = useLayout();
+  const [box, setBox] = useState({ w: 0, h: 0 });
 
-  const remember = (setter: (value: number) => void) => (event: LayoutChangeEvent) => {
-    const next = Math.round(event.nativeEvent.layout.height);
-    setter(next);
+  const onBox = (event: LayoutChangeEvent) => {
+    const next = {
+      w: Math.round(event.nativeEvent.layout.width),
+      h: Math.round(event.nativeEvent.layout.height),
+    };
+    setBox((prev) => (prev.w === next.w && prev.h === next.h ? prev : next));
   };
 
-  if (split) {
-    const rowWidth = Math.min(contentW, boardWidth + gap + asideWidth);
+  const boxW = box.w || metrics.contentW;
+  const boxH = box.h || metrics.contentHeight;
+  const boardWidth = resolveBoardWidth(metrics.split, metrics.boardWidth, metrics.asideWidth, metrics.gap, metrics.turnRow, boxW, boxH);
+  const asideWidth = metrics.split
+    ? Math.min(metrics.asideWidth, Math.max(0, boxW - boardWidth - metrics.gap))
+    : boxW;
+
+  if (metrics.split) {
+    const rowWidth = Math.min(boxW, boardWidth + metrics.gap + asideWidth);
     return (
-      <View style={styles.center}>
-        <View style={[styles.row, { width: rowWidth, gap }]}>
+      <View style={styles.fill} onLayout={onBox}>
+        <View style={[styles.row, { width: rowWidth, gap: metrics.gap }]}>
           <View style={[styles.board, { width: boardWidth }]}>{withBoardSize(board, boardWidth)}</View>
-          <View style={styles.side}>
+          <View style={[styles.side, { width: asideWidth, gap: metrics.gap }]}>
             {intro}
             {aside}
             {footer}
@@ -50,52 +54,37 @@ export function BoardStage({ board, aside, intro, footer, asideFirst = false }: 
     );
   }
 
-  const introMeasured = intro ? introH || 200 : 0;
-  const asideMeasured = aside ? asideH || 140 : 0;
-  const footerMeasured = footer ? footerH || 168 : 0;
-  const blocks = 1 + (intro ? 1 : 0) + (aside ? 1 : 0) + (footer ? 1 : 0);
-  const available =
-    contentHeight -
-    introMeasured -
-    asideMeasured -
-    footerMeasured -
-    Math.max(0, blocks - 1) * spacing.md -
-    TURN_ROW -
-    8;
-  const narrowBoard = Math.round(
-    Math.min(contentW, layout.boardMax, Math.max(available, MIN_BOARD)),
-  );
-
   return (
-    <View style={styles.stack}>
-      {intro ? (
-        <View onLayout={remember(setIntroH)} style={styles.full}>
-          {intro}
-        </View>
-      ) : null}
-      {aside && asideFirst ? (
-        <View onLayout={remember(setAsideH)} style={styles.full}>
-          {aside}
-        </View>
-      ) : null}
-      <View style={[styles.board, { width: narrowBoard }]}>{withBoardSize(board, narrowBoard)}</View>
-      {aside && !asideFirst ? (
-        <View onLayout={remember(setAsideH)} style={styles.full}>
-          {aside}
-        </View>
-      ) : null}
-      {footer ? (
-        <View onLayout={remember(setFooterH)} style={styles.full}>
-          {footer}
-        </View>
-      ) : null}
+    <View style={[styles.stack, { gap: metrics.gap }]} onLayout={onBox}>
+      {intro ? <View style={styles.full}>{intro}</View> : null}
+      {aside && asideFirst ? <View style={styles.full}>{aside}</View> : null}
+      <View style={[styles.board, { width: boardWidth }]}>{withBoardSize(board, boardWidth)}</View>
+      {aside && !asideFirst ? <View style={styles.full}>{aside}</View> : null}
+      {footer ? <View style={styles.full}>{footer}</View> : null}
     </View>
   );
 }
 
+function resolveBoardWidth(
+  split: boolean,
+  planned: number,
+  aside: number,
+  gap: number,
+  turnRow: number,
+  boxW: number,
+  boxH: number,
+): number {
+  if (!split) return Math.max(220, Math.min(planned, boxW));
+  const byHeight = boxH - turnRow;
+  const byWidth = boxW - gap - aside;
+  return Math.max(240, Math.round(Math.min(planned, byHeight, byWidth)));
+}
+
 const styles = StyleSheet.create({
-  center: {
+  fill: {
+    flex: 1,
     width: '100%',
+    minHeight: 0,
     alignItems: 'center',
   },
   row: {
@@ -104,9 +93,10 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   stack: {
+    flex: 1,
     width: '100%',
+    minHeight: 0,
     alignItems: 'center',
-    gap: spacing.md,
   },
   full: {
     width: '100%',
@@ -119,12 +109,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     shadowColor: '#000',
     shadowOpacity: 0.28,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 14 },
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
   },
   side: {
-    flex: 1,
+    flexShrink: 1,
     minWidth: 0,
-    gap: spacing.md,
   },
 });

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/src/components/ui/Button';
 import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
 import { text } from '@/src/components/ui/text';
+import { useLayout } from '@/src/components/ui/useLayout';
 import { colors, fonts, radii, spacing } from '@/src/theme';
 
 type Tone = 'danger' | 'success' | 'warn';
@@ -35,43 +36,66 @@ export function BlunderOverlay({
   onSecondary,
   waiting,
 }: Props) {
+  const { phone, tight, contentHeight } = useLayout();
   if (!visible) return null;
   const toneColor = toneColors(tone);
+  const iconSize = phone ? 16 : 22;
+  const rowActions = phone || contentHeight < 800;
 
   return (
-    <View style={[styles.card, { borderColor: toneColor.accent }]}>
+    <View style={[styles.card, phone && styles.cardPhone, { borderColor: toneColor.accent }]}>
       <View style={styles.head}>
-        <View style={[styles.badge, { backgroundColor: toneColor.soft }]}>
-          <ToneIcon tone={tone} color={toneColor.accent} />
+        <View style={[styles.badge, phone && styles.badgePhone, { backgroundColor: toneColor.soft }]}>
+          <ToneIcon tone={tone} color={toneColor.accent} size={iconSize} />
         </View>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, phone && styles.titlePhone]} numberOfLines={1}>
+          {title}
+        </Text>
       </View>
-      <Text style={text.body}>{message}</Text>
+      <Text style={[text.body, phone && styles.messagePhone]} numberOfLines={tight ? 3 : phone ? 4 : undefined}>
+        {message}
+      </Text>
       {hint ? (
-        <View style={styles.hintBox}>
+        <View style={[styles.hintBox, phone && styles.hintBoxPhone]}>
           <Text style={styles.hintLabel}>Try</Text>
           <Text style={styles.hint}>{hint}</Text>
         </View>
       ) : null}
-      {waiting && !onDismiss ? <Text style={styles.waiting}>{waiting}</Text> : null}
-      {onDismiss ? (
-        <Button label={actionLabel} onPress={onDismiss} testID={actionTestID} />
-      ) : null}
-      {onSecondary && secondaryLabel ? (
-        <Button label={secondaryLabel} onPress={onSecondary} variant="secondary" />
-      ) : null}
+      {waiting && !onDismiss ? <Text style={[styles.waiting, phone && styles.waitingPhone]}>{waiting}</Text> : null}
+      {rowActions && (onDismiss || (onSecondary && secondaryLabel)) ? (
+        <View style={styles.actions}>
+          {onDismiss ? (
+            <Button
+              label={actionLabel}
+              onPress={onDismiss}
+              testID={actionTestID}
+              style={styles.action}
+            />
+          ) : null}
+          {onSecondary && secondaryLabel ? (
+            <Button label={secondaryLabel} onPress={onSecondary} variant="secondary" style={styles.action} />
+          ) : null}
+        </View>
+      ) : (
+        <>
+          {onDismiss ? <Button label={actionLabel} onPress={onDismiss} testID={actionTestID} /> : null}
+          {onSecondary && secondaryLabel ? (
+            <Button label={secondaryLabel} onPress={onSecondary} variant="secondary" />
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
 
-function ToneIcon({ tone, color }: { tone: Tone; color: string }) {
+function ToneIcon({ tone, color, size }: { tone: Tone; color: string; size: number }) {
   switch (tone) {
     case 'success':
-      return <IconCheck color={color} size={22} />;
+      return <IconCheck color={color} size={size} />;
     case 'warn':
-      return <IconInfo color={color} size={22} />;
+      return <IconInfo color={color} size={size} />;
     case 'danger':
-      return <IconX color={color} size={22} />;
+      return <IconX color={color} size={size} />;
     default: {
       const _exhaustive: never = tone;
       return _exhaustive;
@@ -103,10 +127,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
+  cardPhone: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 4,
+    borderRadius: radii.md,
+  },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   badge: {
     width: 40,
@@ -114,6 +144,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  badgePhone: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
   title: {
     flex: 1,
@@ -123,12 +158,32 @@ const styles = StyleSheet.create({
     color: colors.text,
     letterSpacing: -0.3,
   },
+  titlePhone: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  messagePhone: {
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  action: {
+    flex: 1,
+    flexBasis: 0,
+  },
   hintBox: {
     backgroundColor: colors.bg,
     borderRadius: radii.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 2,
+  },
+  hintBoxPhone: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   hintLabel: {
     fontFamily: fonts.bodyBold,
@@ -146,5 +201,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 15,
     color: colors.textMuted,
+  },
+  waitingPhone: {
+    fontSize: 13,
+    lineHeight: 17,
   },
 });

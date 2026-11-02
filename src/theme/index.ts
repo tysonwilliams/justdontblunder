@@ -63,15 +63,18 @@ export const layout = {
   splitMinHeight: 640,
   /** Top navigation instead of the bottom tab bar. */
   nav: 900,
-  stageMax: 1180,
+  stageMax: 1680,
   pageMax: 1040,
-  asideMin: 280,
-  asideMax: 420,
-  boardMax: 720,
+  asideMin: 300,
+  asideMax: 440,
+  /** Safety cap for very tall windows. Normal desktops are height-limited first. */
+  boardMax: 1040,
   tabBar: 64,
-  padPhone: 16,
-  padTablet: 24,
-  padDesktop: 32,
+  /** Bottom tab bar without a home-indicator inset: padding + row + minimum inset. */
+  tabBarPhone: 54,
+  padPhone: 4,
+  padTablet: 20,
+  padDesktop: 28,
 } as const;
 
 export const fonts = {

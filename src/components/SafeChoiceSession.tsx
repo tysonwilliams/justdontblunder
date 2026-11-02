@@ -87,14 +87,17 @@ function roundKind(round: RoundState): DrillRound {
 
 type Props = {
   onStep: (step: LearnStep) => void;
+  setId?: SessionSet;
+  onSetChange?: (set: SessionSet) => void;
 };
 
-export function SafeChoiceSession({ onStep }: Props) {
-  const { split } = useLayout();
+export function SafeChoiceSession({ onStep, setId: setIdProp, onSetChange }: Props) {
+  const { split, phone, tight } = useLayout();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
 
-  const [setId, setSetId] = useState<SessionSet>('daily');
+  const [internalSet, setInternalSet] = useState<SessionSet>('daily');
+  const setId = setIdProp ?? internalSet;
   const [session, setSession] = useState<DrillSessionData>(() => createAllSession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
@@ -152,9 +155,20 @@ export function SafeChoiceSession({ onStep }: Props) {
   }, [drill?.id, drill?.fen]);
 
   const chooseSet = (next: SessionSet) => {
-    setSetId(next);
+    if (setIdProp !== undefined) {
+      onSetChange?.(next);
+      return;
+    }
+    setInternalSet(next);
     begin(sessionFor(next));
   };
+
+  useEffect(() => {
+    if (setIdProp === undefined) return;
+    begin(sessionFor(setIdProp));
+    // Restart only when the parent filter changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setIdProp]);
 
   const next = () => {
     resultCounted.current = false;
@@ -217,8 +231,8 @@ export function SafeChoiceSession({ onStep }: Props) {
       <ScoreFrame toolbar={<SessionToolbar setId={setId} onStep={onStep} onSet={chooseSet} />}>
         <View style={play.done}>
           <Text style={text.eyebrow}>Learn</Text>
-          <Text style={text.title}>That's the set</Text>
-          <Text style={text.hero}>
+          <Text style={[text.title, phone && text.titlePhone]}>That's the set</Text>
+          <Text style={[text.hero, phone && text.heroPhone]}>
             {score.correct}/{score.total}
           </Text>
           <Text style={text.muted}>{pct}% safe on the first try</Text>
@@ -248,24 +262,35 @@ export function SafeChoiceSession({ onStep }: Props) {
         ? [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }]
         : [];
   const watchingReply = replayActive && !playback.done;
+  const feedback = round !== 'playing';
+  const showExtra = !tight;
+  const showTitle = !(tight && feedback);
 
   return (
     <PlayFrame
-      asideFirst={!split && round !== 'playing' && !watchingReply}
+      asideFirst={!split && feedback && !watchingReply}
       intro={
         <BoardLead>
           <SessionToolbar setId={setId} onStep={onStep} onSet={chooseSet} />
           <View style={play.metaRow}>
             <StatusPill>{themeLabel(drill.theme)}</StatusPill>
-            <Text style={text.meta}>
+            <Text style={[text.meta, phone && text.metaPhone]}>
               {index + 1} / {session.positions.length}
             </Text>
           </View>
-          <ProgressTrack progress={progress} />
-          {round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
-          <Text style={text.title}>Which move is safe?</Text>
-          {round === 'playing' ? <Text style={text.body}>{drill.prompt}</Text> : null}
-          {round === 'playing' ? <ColorLegend /> : null}
+          {showTitle ? <ProgressTrack progress={progress} /> : null}
+          {showExtra && round === 'playing' ? (
+            <Text style={[text.habit, phone && text.habitPhone]}>{HABIT_PROMPT}</Text>
+          ) : null}
+          {showTitle ? (
+            <Text style={[text.title, phone && text.titlePhone]}>Which move is safe?</Text>
+          ) : null}
+          {showExtra && round === 'playing' ? (
+            <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
+              {drill.prompt}
+            </Text>
+          ) : null}
+          {showExtra && round === 'playing' ? <ColorLegend /> : null}
         </BoardLead>
       }
       board={
@@ -299,8 +324,12 @@ export function SafeChoiceSession({ onStep }: Props) {
               onSecondary={card.tone === 'danger' && replyReady ? next : undefined}
             />
           ) : (
-            <View style={play.guide}>
-              <Text style={text.body}>Blue arrows mark the two moves. One of them blunders.</Text>
+            <View style={[play.guide, phone && styles.guidePhone]}>
+              {showExtra ? (
+                <Text style={[text.body, phone && text.bodyPhone]}>
+                  Blue arrows mark the two moves. One of them blunders.
+                </Text>
+              ) : null}
               <ChoiceButtons presented={presented} onChoose={choose} />
             </View>
           )
@@ -316,6 +345,7 @@ function ChoiceButtons({
   presented: PresentedSafeChoice;
   onChoose: (key: 'A' | 'B') => void;
 }) {
+  const { phone } = useLayout();
   return (
     <View style={styles.choices}>
       {presented.options.map((option) => (
@@ -325,11 +355,13 @@ function ChoiceButtons({
           accessibilityLabel={`Move ${option.key}, ${option.san}`}
           testID={`choice-${option.key}`}
           onPress={() => onChoose(option.key)}
-          style={({ pressed }) => [styles.choice, pressed && styles.choiceOn]}>
-          <View style={styles.choiceKey}>
-            <Text style={styles.choiceKeyText}>{option.key}</Text>
+          style={({ pressed }) => [styles.choice, phone && styles.choicePhone, pressed && styles.choiceOn]}>
+          <View style={[styles.choiceKey, phone && styles.choiceKeyPhone]}>
+            <Text style={[styles.choiceKeyText, phone && styles.choiceKeyTextPhone]}>{option.key}</Text>
           </View>
-          <Text style={styles.choiceSan}>{option.san}</Text>
+          <Text style={[styles.choiceSan, phone && styles.choiceSanPhone]} numberOfLines={1}>
+            {option.san}
+          </Text>
         </Pressable>
       ))}
     </View>
@@ -345,8 +377,9 @@ function SessionToolbar({
   onStep: (step: LearnStep) => void;
   onSet: (set: SessionSet) => void;
 }) {
+  const { phone } = useLayout();
   return (
-    <View style={styles.toolbar}>
+    <View style={[styles.toolbar, phone && styles.toolbarPhone]}>
       <LearnStepBar step="pick" onChange={onStep} />
       <FilterChips options={SETS} value={setId} onChange={onSet} />
     </View>
@@ -356,6 +389,13 @@ function SessionToolbar({
 const styles = StyleSheet.create({
   toolbar: {
     gap: 8,
+  },
+  toolbarPhone: {
+    gap: 4,
+  },
+  guidePhone: {
+    padding: 8,
+    gap: 6,
   },
   choices: {
     flexDirection: 'row',
@@ -375,6 +415,12 @@ const styles = StyleSheet.create({
     gap: 12,
     cursor: 'pointer',
   },
+  choicePhone: {
+    minHeight: 40,
+    paddingHorizontal: 8,
+    gap: 8,
+    borderRadius: radii.md,
+  },
   choiceOn: {
     backgroundColor: colors.bgSoft,
   },
@@ -386,10 +432,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  choiceKeyPhone: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+  },
   choiceKeyText: {
     fontFamily: fonts.bodyExtra,
     color: '#142033',
     fontSize: 18,
+  },
+  choiceKeyTextPhone: {
+    fontSize: 14,
   },
   choiceSan: {
     fontFamily: fonts.display,
@@ -397,5 +451,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.3,
+  },
+  choiceSanPhone: {
+    fontSize: 16,
+    lineHeight: 20,
   },
 });
