@@ -1,15 +1,14 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
-import { type LearnStep, LearnStepBar } from '@/src/components/LearnStepBar';
+import { DrillToolbar } from '@/src/components/DrillToolbar';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { FilterChips, StatusPill } from '@/src/components/ui/Chip';
+import { StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
 import { PlayFrame, ScoreFrame } from '@/src/components/ui/PlayFrame';
@@ -18,9 +17,13 @@ import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import {
-  createAllSession,
-  createReviewSession,
-  createThemeSession,
+  reviewForTheme,
+  sessionForTheme,
+  themeFilterLabel,
+  type DrillMode,
+  type ThemeFilter,
+} from '@/src/logic/drillLink';
+import {
   HABIT_PROMPT,
   isCorrectDrillMove,
   themeInstruction,
@@ -28,7 +31,6 @@ import {
   turnPrompt,
   type DrillPosition,
   type DrillSession as DrillSessionData,
-  type DrillTheme,
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
@@ -38,22 +40,7 @@ import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
-type SessionMode = 'learn' | 'streak';
-type SessionSet = 'daily' | DrillTheme;
-
-const SETS: { id: SessionSet; label: string }[] = [
-  { id: 'daily', label: 'All' },
-  { id: 'hanging', label: 'Hanging' },
-  { id: 'fork', label: 'Fork' },
-  { id: 'pin', label: 'Pin' },
-  { id: 'back_rank', label: 'Back rank' },
-  { id: 'missed_mate', label: 'Mate' },
-];
-
-function sessionFor(set: SessionSet): DrillSessionData {
-  if (set === 'daily') return createAllSession();
-  return createThemeSession(set);
-}
+type PlayMode = 'streak' | 'play' | 'review';
 
 type RunSummary = {
   saved: number;
@@ -74,13 +61,10 @@ type MissedPlay = {
 };
 
 type Props = {
-  mode: SessionMode;
-  reviewing?: boolean;
-  /** Learn only. Switches between the two-choice step and playing the move. */
-  onStep?: (step: LearnStep) => void;
-  /** Controlled theme filter. Omit to keep the filter inside this session. */
-  setId?: SessionSet;
-  onSetChange?: (set: SessionSet) => void;
+  mode: PlayMode;
+  theme: ThemeFilter;
+  onMode: (mode: DrillMode) => void;
+  onTheme: (theme: ThemeFilter) => void;
 };
 
 function playedSan(fen: string, from: Square, to: Square): string | null {
@@ -88,10 +72,10 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
   return moved?.san ?? null;
 }
 
-export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp, onSetChange }: Props) {
-  const { split, phone, tight } = useLayout();
-  const router = useRouter();
-  const learn = mode === 'learn';
+export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
+  const { split, phone } = useLayout();
+  const guided = mode === 'play' || mode === 'review';
+  const reviewing = mode === 'review';
 
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
@@ -101,9 +85,14 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
   const missedDate = useProgressStore((s) => s.missedDate);
   const missedIds = useProgressStore((s) => s.missedIds);
 
-  const [internalSet, setInternalSet] = useState<SessionSet>('daily');
-  const setId = setIdProp ?? internalSet;
-  const [session, setSession] = useState<DrillSessionData>(() => createAllSession());
+  const [session, setSession] = useState<DrillSessionData>(() =>
+    reviewing
+      ? reviewForTheme(
+          missesForDate(useProgressStore.getState().missedDate, useProgressStore.getState().missedIds),
+          theme,
+        )
+      : sessionForTheme(theme),
+  );
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
@@ -167,8 +156,8 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
     }
     if (!hydrated || reviewStarted.current) return;
     reviewStarted.current = true;
-    begin(createReviewSession(missesForDate(missedDate, missedIds)));
-  }, [reviewing, hydrated, missedDate, missedIds]);
+    begin(reviewForTheme(missesForDate(missedDate, missedIds), theme));
+  }, [reviewing, hydrated, missedDate, missedIds, theme]);
 
   useEffect(() => {
     if (!drill) return;
@@ -185,27 +174,8 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
     recordPuzzleRun(score.correct);
   }, [done, mode, recordPuzzleRun, score.correct]);
 
-  const chooseSet = (next: SessionSet) => {
-    if (reviewing) {
-      router.setParams({ review: '' });
-    }
-    if (setIdProp !== undefined) {
-      onSetChange?.(next);
-      return;
-    }
-    setInternalSet(next);
-    begin(sessionFor(next));
-  };
-
-  useEffect(() => {
-    if (setIdProp === undefined) return;
-    begin(sessionFor(setIdProp));
-    // Restart only when the parent filter changes. `begin` closes over the latest setters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setIdProp]);
-
   const restart = () => {
-    begin(reviewing ? createReviewSession(missesForDate(missedDate, missedIds)) : sessionFor(setId));
+    begin(reviewing ? reviewForTheme(missesForDate(missedDate, missedIds), theme) : sessionForTheme(theme));
   };
 
   const next = () => {
@@ -324,15 +294,7 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
     const marks = highlightsForRound('streakEnd', runSummary.lastMove, runSummary.atRisk);
     return (
       <ScoreFrame
-        toolbar={
-          <SessionToolbar
-            step={learnStep(mode, reviewing, onStep)}
-            onStep={onStep}
-            setId={setId}
-            reviewing={reviewing}
-            onSet={chooseSet}
-          />
-        }
+        toolbar={<DrillToolbar mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />}
         board={
           <ChessBoard
             fen={runSummary.fen}
@@ -346,17 +308,30 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
         }>
         <View style={play.done}>
           <Text style={text.eyebrow}>Drills</Text>
-          <Text style={[text.title, phone && text.titlePhone]}>Streak over</Text>
-          <Text style={[text.hero, phone && text.heroPhone]}>{runSummary.saved}</Text>
+          <Text style={text.title}>Streak over</Text>
+          <Text style={text.hero}>{runSummary.saved}</Text>
           <Text style={text.muted}>saved this run · best {runSummary.best}</Text>
           <View style={play.miss}>
             <Text style={text.section}>The miss</Text>
             {runSummary.playedSan ? <Text style={text.body}>You played {runSummary.playedSan}.</Text> : null}
             <Text style={text.body}>{runSummary.missText}</Text>
           </View>
-          <Button label="Start again" onPress={() => begin(sessionFor(setId))} />
+          <Button label="Start again" onPress={() => begin(sessionForTheme(theme))} />
         </View>
       </ScoreFrame>
+    );
+  }
+
+  if (reviewing && !hydrated) {
+    return (
+      <PlayFrame
+        intro={
+          <BoardLead>
+            <DrillToolbar mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />
+          </BoardLead>
+        }
+        board={<ChessBoard interactive={false} hideTurn />}
+      />
     );
   }
 
@@ -365,25 +340,21 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
     const emptyReview = reviewing && session.positions.length === 0;
     return (
       <ScoreFrame
-        toolbar={
-          <SessionToolbar
-            step={learnStep(mode, reviewing, onStep)}
-            onStep={onStep}
-            setId={setId}
-            reviewing={reviewing}
-            onSet={chooseSet}
-          />
-        }>
+        toolbar={<DrillToolbar mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />}>
         <View style={play.done}>
-          <Text style={text.eyebrow}>{mode === 'streak' ? 'Drills' : 'Learn'}</Text>
-          <Text style={[text.title, phone && text.titlePhone]}>
+          <Text style={text.eyebrow}>Drills</Text>
+          <Text style={text.title}>
             {emptyReview ? 'Nothing to review' : mode === 'streak' ? 'Clean run' : "That's the set"}
           </Text>
           {emptyReview ? (
-            <Text style={[text.muted, phone && text.mutedPhone]}>You have no misses saved for today.</Text>
+            <Text style={text.muted}>
+              {theme === 'all'
+                ? 'You have no misses saved for today.'
+                : `No missed ${themeFilterLabel(theme).toLowerCase()} puzzles today.`}
+            </Text>
           ) : (
             <>
-              <Text style={[text.hero, phone && text.heroPhone]}>
+              <Text style={text.hero}>
                 {mode === 'streak' ? score.correct : `${score.correct}/${score.total}`}
               </Text>
               <Text style={text.muted}>
@@ -393,7 +364,10 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
               </Text>
             </>
           )}
-          <Button label={mode === 'streak' ? 'Run again' : 'Learn again'} onPress={restart} />
+          <Button
+            label={mode === 'streak' ? 'Run again' : reviewing ? 'Review again' : 'Practice again'}
+            onPress={restart}
+          />
         </View>
       </ScoreFrame>
     );
@@ -411,60 +385,66 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
       ? [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }]
       : [];
   const watchingReply = replayActive && !playback.done;
-  const feedback = round !== 'playing';
-  const showExtra = !tight;
-  const showTitle = !(tight && feedback);
 
   return (
     <PlayFrame
-      asideFirst={!split && feedback && !watchingReply}
+      asideFirst={!split && round !== 'playing' && !watchingReply}
       intro={
-        <BoardLead>
-          <SessionToolbar
-            step={learnStep(mode, reviewing, onStep)}
-            onStep={onStep}
-            setId={setId}
-            reviewing={reviewing}
-            onSet={chooseSet}
-          />
-          <View style={play.metaRow}>
-            <StatusPill>
-              {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
-            </StatusPill>
-            <Text style={[text.meta, phone && text.metaPhone]} numberOfLines={1}>
-              {index + 1} / {session.positions.length}
-              {mode === 'streak' ? ` · ${score.correct} in a row` : ''}
-            </Text>
-          </View>
-          {showTitle ? <ProgressTrack progress={progress} /> : null}
-          {learn && showExtra && round === 'playing' ? (
-            <Text style={[text.habit, phone && text.habitPhone]}>{HABIT_PROMPT}</Text>
-          ) : null}
-          {showTitle && learn ? (
-            <Text style={[text.title, phone && text.titlePhone]} numberOfLines={phone ? 2 : undefined}>
-              {drill.prompt}
-            </Text>
-          ) : null}
-          {showTitle && !learn && round === 'playing' ? (
-            <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>
-              {turnPrompt(drill.sideToMove)}
-            </Text>
-          ) : null}
-          {learn && showExtra && round === 'playing' ? <ColorLegend /> : null}
-        </BoardLead>
+        phone ? (
+          <BoardLead>
+            <DrillToolbar mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />
+            {round === 'playing' ? (
+              <>
+                <Text style={play.phoneTitle} numberOfLines={2}>
+                  {guided ? drill.prompt : turnPrompt(drill.sideToMove)}
+                </Text>
+                <View style={play.metaRow}>
+                  <View style={play.progressGrow}>
+                    <ProgressTrack progress={progress} />
+                  </View>
+                  <Text style={text.meta}>
+                    {index + 1}/{session.positions.length}
+                    {mode === 'streak' ? ` · ${score.correct}` : ''}
+                  </Text>
+                </View>
+              </>
+            ) : null}
+          </BoardLead>
+        ) : (
+          <BoardLead>
+            <DrillToolbar mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />
+            <View style={play.metaRow}>
+              <StatusPill>
+                {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
+              </StatusPill>
+              <Text style={text.meta}>
+                {index + 1} / {session.positions.length}
+                {mode === 'streak' ? ` · ${score.correct} in a row` : ''}
+              </Text>
+            </View>
+            <ProgressTrack progress={progress} />
+            {guided && round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
+            {guided ? (
+              <Text style={text.title}>{drill.prompt}</Text>
+            ) : round === 'playing' ? (
+              <Text style={text.title}>{turnPrompt(drill.sideToMove)}</Text>
+            ) : null}
+            {guided && round === 'playing' ? <ColorLegend /> : null}
+          </BoardLead>
+        )
       }
       board={
           <ChessBoard
             key={boardKey}
             fen={boardFen}
             orientation={orientation}
-            flipCue={orientation === 'black'}
-            hideTurn={!learn && round === 'playing'}
+            flipCue={!phone && orientation === 'black'}
+            hideTurn={phone || (!guided && round === 'playing')}
             interactive={round === 'playing'}
             lastMove={boardLastMove}
             arrows={threatArrow}
             attentionSquares={
-              learn && round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []
+              guided && round === 'playing' && drill.atRiskSquare ? [drill.atRiskSquare] : []
             }
             highlightSquares={marks.squares}
             highlightTone={marks.tone}
@@ -473,23 +453,29 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
         }
         aside={
           round === 'playing' ? (
-            learn ? (
-              <View style={[play.guide, phone && styles.guidePhone]}>
-                {showExtra ? (
-                  <Text style={[text.body, phone && text.bodyPhone]}>{themeInstruction(drill.theme)}</Text>
-                ) : null}
-                {showExtra ? (
-                  <Text style={[text.muted, phone && text.mutedPhone]}>
-                    The amber square is the piece under fire.
-                  </Text>
-                ) : null}
+            guided ? (
+              phone ? (
                 <Button label="Show the idea" variant="secondary" onPress={revealIdea} />
+              ) : (
+                <View style={play.guide}>
+                  <Text style={text.body}>{themeInstruction(drill.theme)}</Text>
+                  <Text style={text.muted}>The amber square is the piece under fire.</Text>
+                  <Button label="Show the idea" variant="secondary" onPress={revealIdea} />
+                </View>
+              )
+            ) : phone ? (
+              <View style={play.stack}>
+                <Text style={text.muted}>No hints. One miss ends the run.</Text>
+                <Button
+                  label="Show the answer"
+                  variant="secondary"
+                  testID="show-answer"
+                  onPress={revealIdea}
+                />
               </View>
             ) : (
-              <View style={[play.guide, phone && styles.guidePhone]}>
-                {showExtra ? (
-                  <Text style={[text.muted, phone && text.mutedPhone]}>No hints. One miss ends the run.</Text>
-                ) : null}
+              <View style={play.guide}>
+                <Text style={text.muted}>No hints. One miss ends the run.</Text>
                 <Button
                   label="Show the answer"
                   variant="secondary"
@@ -544,51 +530,3 @@ export function DrillSession({ mode, reviewing = false, onStep, setId: setIdProp
     />
   );
 }
-
-function learnStep(
-  mode: SessionMode,
-  reviewing: boolean,
-  onStep?: (step: LearnStep) => void,
-): LearnStep | undefined {
-  if (mode !== 'learn' || reviewing || !onStep) return undefined;
-  return 'play';
-}
-
-function SessionToolbar({
-  step,
-  onStep,
-  setId,
-  reviewing,
-  onSet,
-}: {
-  step?: LearnStep;
-  onStep?: (step: LearnStep) => void;
-  setId: SessionSet;
-  reviewing: boolean;
-  onSet: (set: SessionSet) => void;
-}) {
-  const { phone } = useLayout();
-  return (
-    <View style={[styles.toolbar, phone && styles.toolbarPhone]}>
-      {step && onStep ? <LearnStepBar step={step} onChange={onStep} /> : null}
-      {reviewing ? (
-        <Text style={text.eyebrow}>Reviewing today's misses</Text>
-      ) : (
-        <FilterChips options={SETS} value={setId} onChange={onSet} />
-      )}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  toolbar: {
-    gap: 8,
-  },
-  toolbarPhone: {
-    gap: 4,
-  },
-  guidePhone: {
-    padding: 8,
-    gap: 6,
-  },
-});

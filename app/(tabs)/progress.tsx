@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { Children, type ReactNode, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
@@ -7,7 +7,9 @@ import { Button } from '@/src/components/ui/Button';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
+import { drillHref } from '@/src/logic/drillLink';
 import { themeLabel, type DrillTheme } from '@/src/logic/drills';
+import { LESSONS } from '@/src/logic/lessons';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii, spacing } from '@/src/theme';
@@ -34,6 +36,7 @@ export default function ProgressScreen() {
     blundersMade,
     practiceMoves,
     themeStats,
+    completedLessons,
     resetProgress,
   } = useProgressStore();
 
@@ -87,6 +90,7 @@ export default function ProgressScreen() {
         <View style={styles.group}>
           <Text style={text.section}>Totals</Text>
           <Grid columns={statCols}>
+            <Stat label="Lessons" value={`${completedLessons.length}/${LESSONS.length}`} />
             <Stat label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />
             <Stat label="Accuracy" value={`${accuracy}%`} />
             <Stat label="Saves" value={String(blundersAvoided)} />
@@ -104,7 +108,7 @@ export default function ProgressScreen() {
             variant={missCount > 0 ? 'primary' : 'secondary'}
             onPress={() => {
               if (missCount === 0) return;
-              router.push('/learn?review=1');
+              router.push(drillHref('review') as Href);
             }}
           />
           <Button
@@ -119,7 +123,7 @@ export default function ProgressScreen() {
       <Dialog visible={confirmReset}>
         <Text style={styles.dialogTitle}>Reset progress?</Text>
         <Text style={styles.dialogBody}>
-          Streaks, drill results, and practice counts on this device will go back to zero.
+          Streaks, lessons, and drill results on this device will go back to zero.
         </Text>
         <Button
           label="Reset"

@@ -24,6 +24,7 @@ import {
   type DrillPosition,
 } from '@/src/logic/drills';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
+import { learnCard } from '@/src/logic/lessons';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
@@ -44,12 +45,10 @@ const ENTRY_CARDS: { id: EntryId; title: string; body: string }[] = [
   { id: 'practice', title: 'Practice', body: 'Play White. Black takes what you hang.' },
 ];
 
-function entryHref(id: EntryId): string {
+function entryHref(id: EntryId, learnHref: string): string {
   switch (id) {
     case 'learn':
-      // Pick step + All (the default filter). A fresh entry token resets a filter
-      // the player may have changed earlier on the Learn tab.
-      return `/learn?pick=1&entry=${Date.now()}`;
+      return learnHref;
     case 'drills':
       return '/drills';
     case 'practice':
@@ -95,6 +94,10 @@ export function HomeTrainer() {
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
   const streak = useProgressStore((s) => s.dailyStreak);
+  const completedLessons = useProgressStore((s) => s.completedLessons);
+  const learn = hydrated
+    ? learnCard(completedLessons)
+    : { href: '/learn', title: 'Learn', body: 'Six short lessons on blunders.' };
 
   const drill: DrillPosition | undefined = session.positions[index];
   const total = session.positions.length;
@@ -113,7 +116,7 @@ export function HomeTrainer() {
   }, []);
 
   const open = (id: EntryId) => {
-    router.push(entryHref(id) as Href);
+    router.push(entryHref(id, learn.href) as Href);
   };
 
   const next = () => {
@@ -257,16 +260,20 @@ export function HomeTrainer() {
             </View>
           ) : null
         }
-      footer={<EntryCards split={split} hidden={tight && feedback} onOpen={open} />}
+      footer={
+        <EntryCards learnBody={learn.body} split={split} hidden={tight && feedback} onOpen={open} />
+      }
     />
   );
 }
 
 function EntryCards({
+  learnBody,
   split,
   hidden,
   onOpen,
 }: {
+  learnBody: string;
   split: boolean;
   hidden: boolean;
   onOpen: (id: EntryId) => void;
@@ -274,7 +281,12 @@ function EntryCards({
   if (hidden) return null;
   const mode = split ? 'stack' : 'row';
   const cards = ENTRY_CARDS.map((item) => (
-    <EntryCard key={item.id} item={item} mode={mode} onPress={() => onOpen(item.id)} />
+    <EntryCard
+      key={item.id}
+      item={item.id === 'learn' ? { ...item, body: learnBody } : item}
+      mode={mode}
+      onPress={() => onOpen(item.id)}
+    />
   ));
 
   return <View style={mode === 'stack' ? styles.entryStack : styles.entryGrid}>{cards}</View>;

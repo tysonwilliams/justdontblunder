@@ -127,14 +127,15 @@ export function createAllSession(): DrillSession {
   };
 }
 
-export function createReviewSession(ids: string[]): DrillSession {
+export function createReviewSession(ids: string[], theme?: DrillTheme): DrillSession {
   const byId = new Map(ALL.map((drill) => [drill.id, drill]));
   const positions = ids.flatMap((id) => {
     const drill = byId.get(id);
-    return drill ? [drill] : [];
+    if (!drill || (theme && drill.theme !== theme)) return [];
+    return [drill];
   });
   return {
-    id: `review-${ids.join('-')}`,
+    id: theme ? `review-${theme}` : `review-${ids.join('-')}`,
     positions,
     startedAt: new Date().toISOString(),
   };

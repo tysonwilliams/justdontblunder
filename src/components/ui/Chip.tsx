@@ -52,7 +52,7 @@ export function FilterChips<T extends string>({
   value,
   onChange,
 }: {
-  options: readonly { id: T; label: string }[];
+  options: readonly { id: T; label: string; testID?: string }[];
   value: T;
   onChange: (id: T) => void;
 }) {
@@ -63,6 +63,7 @@ export function FilterChips<T extends string>({
       label={item.label}
       size="sm"
       selected={item.id === value}
+      testID={item.testID}
       onPress={() => onChange(item.id)}
     />
   ));

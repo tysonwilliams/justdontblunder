@@ -1,12 +1,10 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useEffect } from 'react';
 
-import { DrillSession } from '@/src/components/DrillSession';
-import { type LearnStep } from '@/src/components/LearnStepBar';
-import { SafeChoiceSession } from '@/src/components/SafeChoiceSession';
-import type { DrillTheme } from '@/src/logic/drills';
-
-type SessionSet = 'daily' | DrillTheme;
+import { LessonList } from '@/src/components/LessonList';
+import { LessonPlayer } from '@/src/components/LessonPlayer';
+import { legacyLearnRedirect } from '@/src/logic/drillLink';
+import { parseLessonId, type LessonId } from '@/src/logic/lessons';
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -14,47 +12,35 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 
 export default function LearnScreen() {
   const params = useLocalSearchParams<{
-    review?: string | string[];
     pick?: string | string[];
-    entry?: string | string[];
+    review?: string | string[];
+    lesson?: string | string[];
   }>();
   const router = useRouter();
-  const reviewing = firstParam(params.review) === '1';
-  const pick = firstParam(params.pick) === '1';
-  const entry = firstParam(params.entry) ?? '';
-  const [step, setStep] = useState<LearnStep>(!reviewing && pick ? 'pick' : 'play');
-  const [setId, setSetId] = useState<SessionSet>('daily');
+  const redirect = legacyLearnRedirect({
+    pick: firstParam(params.pick),
+    review: firstParam(params.review),
+  });
+  const lessonId = parseLessonId(firstParam(params.lesson));
 
   useEffect(() => {
-    setStep(reviewing || !pick ? 'play' : 'pick');
-  }, [pick, reviewing]);
+    if (redirect) router.replace(redirect as Href);
+  }, [redirect, router]);
 
-  useEffect(() => {
-    if (!entry) return;
-    setStep('pick');
-    setSetId('daily');
-    router.setParams({ pick: '1', review: '' });
-  }, [entry, router]);
+  if (redirect) return null;
 
-  const onStep = (next: LearnStep) => {
-    setStep(next);
-    router.setParams({ pick: next === 'pick' ? '1' : '', review: '' });
+  const openLesson = (id: LessonId) => {
+    router.setParams({ lesson: id });
   };
 
-  if (reviewing) {
-    return <DrillSession mode="learn" reviewing />;
-  }
+  if (!lessonId) return <LessonList onOpen={openLesson} />;
 
-  switch (step) {
-    case 'pick':
-      return <SafeChoiceSession onStep={onStep} setId={setId} onSetChange={setSetId} />;
-    case 'play':
-      return (
-        <DrillSession mode="learn" onStep={onStep} setId={setId} onSetChange={setSetId} />
-      );
-    default: {
-      const _exhaustive: never = step;
-      return _exhaustive;
-    }
-  }
+  return (
+    <LessonPlayer
+      key={lessonId}
+      lessonId={lessonId}
+      onBack={() => router.setParams({ lesson: '' })}
+      onPractice={(href) => router.push(href as Href)}
+    />
+  );
 }

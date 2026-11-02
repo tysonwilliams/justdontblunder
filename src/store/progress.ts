@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { DrillTheme } from '@/src/logic/drills';
+import { withLessonComplete } from '@/src/logic/lessons';
 import { applyDrillResult } from '@/src/store/drillStats';
 
 export type ThemeTally = { attempts: number; correct: number };
@@ -20,7 +21,9 @@ export type ProgressState = {
   bestPuzzleStreak: number;
   missedDate: string | null;
   missedIds: string[];
+  completedLessons: string[];
   markDrillResult: (correct: boolean, theme: DrillTheme) => void;
+  completeLesson: (id: string) => void;
   recordMiss: (drillId: string) => void;
   clearMiss: (drillId: string) => void;
   recordPuzzleRun: (length: number) => void;
@@ -76,6 +79,7 @@ export const useProgressStore = create<ProgressState>()(
       bestPuzzleStreak: 0,
       missedDate: null,
       missedIds: [],
+      completedLessons: [],
       markDrillResult: (correct, theme) =>
         set((state) => {
           const streak = bumpStreak(state.lastDrillDate, state.dailyStreak);
@@ -93,6 +97,8 @@ export const useProgressStore = create<ProgressState>()(
             recordStreak: Math.max(state.recordStreak, streak.dailyStreak),
           };
         }),
+      completeLesson: (id) =>
+        set((state) => ({ completedLessons: withLessonComplete(state.completedLessons, id) })),
       recordMiss: (drillId) =>
         set((state) => {
           const today = todayKey();
@@ -132,6 +138,7 @@ export const useProgressStore = create<ProgressState>()(
           bestPuzzleStreak: 0,
           missedDate: null,
           missedIds: [],
+          completedLessons: [],
         }),
     }),
     {
@@ -146,6 +153,7 @@ export const useProgressStore = create<ProgressState>()(
           themeStats: saved.themeStats ?? {},
           missedDate: saved.missedDate ?? null,
           missedIds: saved.missedIds ?? [],
+          completedLessons: saved.completedLessons ?? [],
         };
       },
     },

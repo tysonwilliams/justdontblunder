@@ -25,6 +25,23 @@ export const play = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
+  guideTight: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  phoneTitle: {
+    width: '100%',
+    fontFamily: fonts.display,
+    color: colors.text,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.3,
+  },
+  progressGrow: {
+    flex: 1,
+    minWidth: 0,
+  },
   stack: {
     gap: spacing.sm,
   },

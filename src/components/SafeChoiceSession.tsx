@@ -7,10 +7,10 @@ import { soundForSan } from '@/src/audio/moveSound';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
-import { LearnStepBar, type LearnStep } from '@/src/components/LearnStepBar';
+import { DrillToolbar } from '@/src/components/DrillToolbar';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { FilterChips, StatusPill } from '@/src/components/ui/Chip';
+import { StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
 import { PlayFrame, ScoreFrame } from '@/src/components/ui/PlayFrame';
@@ -18,15 +18,13 @@ import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
+import { sessionForTheme, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 import {
-  createAllSession,
-  createThemeSession,
   HABIT_PROMPT,
   isCorrectDrillMove,
   themeLabel,
   type DrillPosition,
   type DrillSession as DrillSessionData,
-  type DrillTheme,
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
@@ -37,23 +35,8 @@ import { useProgressStore } from '@/src/store/progress';
 import { colors, fonts, radii } from '@/src/theme';
 
 type RoundState = 'playing' | 'correct' | 'retry';
-type SessionSet = 'daily' | DrillTheme;
 
 const CANDIDATE = '#8EB4E8';
-
-const SETS: { id: SessionSet; label: string }[] = [
-  { id: 'daily', label: 'All' },
-  { id: 'hanging', label: 'Hanging' },
-  { id: 'fork', label: 'Fork' },
-  { id: 'pin', label: 'Pin' },
-  { id: 'back_rank', label: 'Back rank' },
-  { id: 'missed_mate', label: 'Mate' },
-];
-
-function sessionFor(set: SessionSet): DrillSessionData {
-  if (set === 'daily') return createAllSession();
-  return createThemeSession(set);
-}
 
 function resultCard(round: RoundState): { title: string; tone: 'success' | 'danger' } | null {
   switch (round) {
@@ -86,19 +69,17 @@ function roundKind(round: RoundState): DrillRound {
 }
 
 type Props = {
-  onStep: (step: LearnStep) => void;
-  setId?: SessionSet;
-  onSetChange?: (set: SessionSet) => void;
+  theme: ThemeFilter;
+  onMode: (mode: DrillMode) => void;
+  onTheme: (theme: ThemeFilter) => void;
 };
 
-export function SafeChoiceSession({ onStep, setId: setIdProp, onSetChange }: Props) {
-  const { split, phone, tight } = useLayout();
+export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
+  const { split, phone } = useLayout();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
 
-  const [internalSet, setInternalSet] = useState<SessionSet>('daily');
-  const setId = setIdProp ?? internalSet;
-  const [session, setSession] = useState<DrillSessionData>(() => createAllSession());
+  const [session, setSession] = useState<DrillSessionData>(() => sessionForTheme(theme));
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
@@ -153,22 +134,6 @@ export function SafeChoiceSession({ onStep, setId: setIdProp, onSetChange }: Pro
     setLastMove(null);
     setReplayLine([]);
   }, [drill?.id, drill?.fen]);
-
-  const chooseSet = (next: SessionSet) => {
-    if (setIdProp !== undefined) {
-      onSetChange?.(next);
-      return;
-    }
-    setInternalSet(next);
-    begin(sessionFor(next));
-  };
-
-  useEffect(() => {
-    if (setIdProp === undefined) return;
-    begin(sessionFor(setIdProp));
-    // Restart only when the parent filter changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setIdProp]);
 
   const next = () => {
     resultCounted.current = false;
@@ -228,15 +193,15 @@ export function SafeChoiceSession({ onStep, setId: setIdProp, onSetChange }: Pro
   if (done) {
     const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
     return (
-      <ScoreFrame toolbar={<SessionToolbar setId={setId} onStep={onStep} onSet={chooseSet} />}>
+      <ScoreFrame toolbar={<DrillToolbar mode="pick" theme={theme} onMode={onMode} onTheme={onTheme} />}>
         <View style={play.done}>
-          <Text style={text.eyebrow}>Learn</Text>
-          <Text style={[text.title, phone && text.titlePhone]}>That's the set</Text>
-          <Text style={[text.hero, phone && text.heroPhone]}>
+          <Text style={text.eyebrow}>Drills</Text>
+          <Text style={text.title}>That's the set</Text>
+          <Text style={text.hero}>
             {score.correct}/{score.total}
           </Text>
           <Text style={text.muted}>{pct}% safe on the first try</Text>
-          <Button label="Play again" onPress={() => begin(sessionFor(setId))} />
+          <Button label="Play again" onPress={() => begin(sessionForTheme(theme))} />
         </View>
       </ScoreFrame>
     );
@@ -262,43 +227,54 @@ export function SafeChoiceSession({ onStep, setId: setIdProp, onSetChange }: Pro
         ? [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }]
         : [];
   const watchingReply = replayActive && !playback.done;
-  const feedback = round !== 'playing';
-  const showExtra = !tight;
-  const showTitle = !(tight && feedback);
 
   return (
     <PlayFrame
-      asideFirst={!split && feedback && !watchingReply}
+      asideFirst={!split && round !== 'playing' && !watchingReply}
       intro={
-        <BoardLead>
-          <SessionToolbar setId={setId} onStep={onStep} onSet={chooseSet} />
-          <View style={play.metaRow}>
-            <StatusPill>{themeLabel(drill.theme)}</StatusPill>
-            <Text style={[text.meta, phone && text.metaPhone]}>
-              {index + 1} / {session.positions.length}
-            </Text>
-          </View>
-          {showTitle ? <ProgressTrack progress={progress} /> : null}
-          {showExtra && round === 'playing' ? (
-            <Text style={[text.habit, phone && text.habitPhone]}>{HABIT_PROMPT}</Text>
-          ) : null}
-          {showTitle ? (
-            <Text style={[text.title, phone && text.titlePhone]}>Which move is safe?</Text>
-          ) : null}
-          {showExtra && round === 'playing' ? (
-            <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
-              {drill.prompt}
-            </Text>
-          ) : null}
-          {showExtra && round === 'playing' ? <ColorLegend /> : null}
-        </BoardLead>
+        phone ? (
+          <BoardLead>
+            <DrillToolbar mode="pick" theme={theme} onMode={onMode} onTheme={onTheme} />
+            {round === 'playing' ? (
+              <>
+                <Text style={play.phoneTitle} numberOfLines={2}>
+                  {drill.prompt}
+                </Text>
+                <View style={play.metaRow}>
+                  <View style={play.progressGrow}>
+                    <ProgressTrack progress={progress} />
+                  </View>
+                  <Text style={text.meta}>
+                    {index + 1}/{session.positions.length}
+                  </Text>
+                </View>
+              </>
+            ) : null}
+          </BoardLead>
+        ) : (
+          <BoardLead>
+            <DrillToolbar mode="pick" theme={theme} onMode={onMode} onTheme={onTheme} />
+            <View style={play.metaRow}>
+              <StatusPill>{themeLabel(drill.theme)}</StatusPill>
+              <Text style={text.meta}>
+                {index + 1} / {session.positions.length}
+              </Text>
+            </View>
+            <ProgressTrack progress={progress} />
+            {round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
+            <Text style={text.title}>Which move is safe?</Text>
+            {round === 'playing' ? <Text style={text.body}>{drill.prompt}</Text> : null}
+            {round === 'playing' ? <ColorLegend /> : null}
+          </BoardLead>
+        )
       }
       board={
           <ChessBoard
             key={`${drill.id}-${boardKey}`}
             fen={boardFen}
             orientation={orientation}
-            flipCue={orientation === 'black'}
+            flipCue={!phone && orientation === 'black'}
+            hideTurn={phone}
             interactive={false}
             lastMove={boardLastMove}
             arrows={arrows}
@@ -323,14 +299,12 @@ export function SafeChoiceSession({ onStep, setId: setIdProp, onSetChange }: Pro
               secondaryLabel={card.tone === 'danger' && replyReady ? 'Next' : undefined}
               onSecondary={card.tone === 'danger' && replyReady ? next : undefined}
             />
+          ) : phone ? (
+            <ChoiceButtons presented={presented} onChoose={choose} compact />
           ) : (
-            <View style={[play.guide, phone && styles.guidePhone]}>
-              {showExtra ? (
-                <Text style={[text.body, phone && text.bodyPhone]}>
-                  Blue arrows mark the two moves. One of them blunders.
-                </Text>
-              ) : null}
-              <ChoiceButtons presented={presented} onChoose={choose} />
+            <View style={play.guide}>
+              <Text style={text.body}>Blue arrows mark the two moves. One of them blunders.</Text>
+              <ChoiceButtons presented={presented} onChoose={choose} compact={false} />
             </View>
           )
         }
@@ -341,11 +315,12 @@ export function SafeChoiceSession({ onStep, setId: setIdProp, onSetChange }: Pro
 function ChoiceButtons({
   presented,
   onChoose,
+  compact,
 }: {
   presented: PresentedSafeChoice;
   onChoose: (key: 'A' | 'B') => void;
+  compact: boolean;
 }) {
-  const { phone } = useLayout();
   return (
     <View style={styles.choices}>
       {presented.options.map((option) => (
@@ -355,48 +330,22 @@ function ChoiceButtons({
           accessibilityLabel={`Move ${option.key}, ${option.san}`}
           testID={`choice-${option.key}`}
           onPress={() => onChoose(option.key)}
-          style={({ pressed }) => [styles.choice, phone && styles.choicePhone, pressed && styles.choiceOn]}>
-          <View style={[styles.choiceKey, phone && styles.choiceKeyPhone]}>
-            <Text style={[styles.choiceKeyText, phone && styles.choiceKeyTextPhone]}>{option.key}</Text>
+          style={({ pressed }) => [
+            styles.choice,
+            compact && styles.choiceCompact,
+            pressed && styles.choiceOn,
+          ]}>
+          <View style={styles.choiceKey}>
+            <Text style={styles.choiceKeyText}>{option.key}</Text>
           </View>
-          <Text style={[styles.choiceSan, phone && styles.choiceSanPhone]} numberOfLines={1}>
-            {option.san}
-          </Text>
+          <Text style={styles.choiceSan}>{option.san}</Text>
         </Pressable>
       ))}
     </View>
   );
 }
 
-function SessionToolbar({
-  setId,
-  onStep,
-  onSet,
-}: {
-  setId: SessionSet;
-  onStep: (step: LearnStep) => void;
-  onSet: (set: SessionSet) => void;
-}) {
-  const { phone } = useLayout();
-  return (
-    <View style={[styles.toolbar, phone && styles.toolbarPhone]}>
-      <LearnStepBar step="pick" onChange={onStep} />
-      <FilterChips options={SETS} value={setId} onChange={onSet} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  toolbar: {
-    gap: 8,
-  },
-  toolbarPhone: {
-    gap: 4,
-  },
-  guidePhone: {
-    padding: 8,
-    gap: 6,
-  },
   choices: {
     flexDirection: 'row',
     gap: 10,
@@ -415,11 +364,10 @@ const styles = StyleSheet.create({
     gap: 12,
     cursor: 'pointer',
   },
-  choicePhone: {
-    minHeight: 40,
-    paddingHorizontal: 8,
+  choiceCompact: {
+    minHeight: 48,
+    paddingHorizontal: 10,
     gap: 8,
-    borderRadius: radii.md,
   },
   choiceOn: {
     backgroundColor: colors.bgSoft,
@@ -432,18 +380,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  choiceKeyPhone: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-  },
   choiceKeyText: {
     fontFamily: fonts.bodyExtra,
     color: '#142033',
     fontSize: 18,
-  },
-  choiceKeyTextPhone: {
-    fontSize: 14,
   },
   choiceSan: {
     fontFamily: fonts.display,
@@ -451,9 +391,5 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.3,
-  },
-  choiceSanPhone: {
-    fontSize: 16,
-    lineHeight: 20,
   },
 });
