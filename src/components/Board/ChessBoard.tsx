@@ -75,8 +75,8 @@ type Props = {
 function turnStatus(snap: GameSnapshot, hideTurn: boolean): string | null {
   if (snap.isCheckmate) return 'Checkmate';
   if (snap.isStalemate) return 'Stalemate';
-  if (snap.isCheck) return `${snap.turn === 'w' ? 'White' : 'Black'} in check`;
   if (hideTurn) return null;
+  if (snap.isCheck) return `${snap.turn === 'w' ? 'White' : 'Black'} in check`;
   return `${snap.turn === 'w' ? 'White' : 'Black'} to move`;
 }
 
