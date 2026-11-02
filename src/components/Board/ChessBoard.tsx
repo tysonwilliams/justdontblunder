@@ -58,6 +58,11 @@ type Props = {
   /** Black-to-move drills flip the board. Say so next to the turn. */
   flipCue?: boolean;
   /**
+   * The screen already says whose move it is. Hide that line, and still
+   * surface check, mate, and the flip cue.
+   */
+  hideTurn?: boolean;
+  /**
    * Border-box width of the frame, in px. Comes from the layout that sizes
    * the slot, so the squares match the frame before onLayout runs.
    */
@@ -65,6 +70,14 @@ type Props = {
   onMove?: (event: BoardMoveEvent) => boolean | void;
   onPositionChange?: (snap: GameSnapshot) => void;
 };
+
+function turnStatus(snap: GameSnapshot, hideTurn: boolean): string | null {
+  if (snap.isCheckmate) return 'Checkmate';
+  if (snap.isStalemate) return 'Stalemate';
+  if (snap.isCheck) return `${snap.turn === 'w' ? 'White' : 'Black'} in check`;
+  if (hideTurn) return null;
+  return `${snap.turn === 'w' ? 'White' : 'Black'} to move`;
+}
 
 function squareAt(fileIndex: number, rankIndex: number, orientation: 'white' | 'black'): Square {
   const files = orientation === 'white' ? FILES : [...FILES].reverse();
@@ -82,6 +95,7 @@ export function ChessBoard({
   lastMove = null,
   arrows = [],
   flipCue = false,
+  hideTurn = false,
   size,
   onMove,
   onPositionChange,
@@ -225,21 +239,16 @@ export function ChessBoard({
     });
 
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
+  const turnLine = turnStatus(snap, hideTurn);
 
   return (
     <View style={styles.wrap} onPointerDown={unlockMoveSounds}>
-      <View style={styles.meta}>
-        <Text style={styles.turn}>
-          {snap.isCheckmate
-            ? 'Checkmate'
-            : snap.isStalemate
-              ? 'Stalemate'
-              : snap.isCheck
-                ? `${snap.turn === 'w' ? 'White' : 'Black'} in check`
-                : `${snap.turn === 'w' ? 'White' : 'Black'} to move`}
-        </Text>
-        {flipCue ? <Text style={styles.flip}>You're playing Black. Board flipped.</Text> : null}
-      </View>
+      {turnLine || flipCue ? (
+        <View style={styles.meta}>
+          {turnLine ? <Text style={styles.turn}>{turnLine}</Text> : null}
+          {flipCue ? <Text style={styles.flip}>You're playing Black. Board flipped.</Text> : null}
+        </View>
+      ) : null}
       <GestureDetector gesture={pan}>
         <View
           style={[styles.board, outer > 0 ? { height: outer } : styles.boardSquare]}

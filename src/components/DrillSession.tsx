@@ -6,7 +6,7 @@ import type { Square } from 'chess.js';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
-import { DrillModeBar, type DrillPlayMode } from '@/src/components/DrillModeBar';
+import { type LearnStep, LearnStepBar } from '@/src/components/LearnStepBar';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { FilterChips, StatusPill } from '@/src/components/ui/Chip';
@@ -25,6 +25,7 @@ import {
   isCorrectDrillMove,
   themeInstruction,
   themeLabel,
+  turnPrompt,
   type DrillPosition,
   type DrillSession as DrillSessionData,
   type DrillTheme,
@@ -75,7 +76,8 @@ type MissedPlay = {
 type Props = {
   mode: SessionMode;
   reviewing?: boolean;
-  onMode?: (mode: DrillPlayMode) => void;
+  /** Learn only. Switches between the two-choice step and playing the move. */
+  onStep?: (step: LearnStep) => void;
 };
 
 function playedSan(fen: string, from: Square, to: Square): string | null {
@@ -83,7 +85,7 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
   return moved?.san ?? null;
 }
 
-export function DrillSession({ mode, reviewing = false, onMode }: Props) {
+export function DrillSession({ mode, reviewing = false, onStep }: Props) {
   const { split } = useLayout();
   const router = useRouter();
   const learn = mode === 'learn';
@@ -307,7 +309,15 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
     const marks = highlightsForRound('streakEnd', runSummary.lastMove, runSummary.atRisk);
     return (
       <ScoreFrame
-        toolbar={<SessionToolbar mode={mode} onMode={onMode} setId={setId} reviewing={reviewing} onSet={chooseSet} />}
+        toolbar={
+          <SessionToolbar
+            step={learnStep(mode, reviewing, onStep)}
+            onStep={onStep}
+            setId={setId}
+            reviewing={reviewing}
+            onSet={chooseSet}
+          />
+        }
         board={
           <ChessBoard
             fen={runSummary.fen}
@@ -340,7 +350,15 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
     const emptyReview = reviewing && session.positions.length === 0;
     return (
       <ScoreFrame
-        toolbar={<SessionToolbar mode={mode} onMode={onMode} setId={setId} reviewing={reviewing} onSet={chooseSet} />}>
+        toolbar={
+          <SessionToolbar
+            step={learnStep(mode, reviewing, onStep)}
+            onStep={onStep}
+            setId={setId}
+            reviewing={reviewing}
+            onSet={chooseSet}
+          />
+        }>
         <View style={play.done}>
           <Text style={text.eyebrow}>{mode === 'streak' ? 'Drills' : 'Learn'}</Text>
           <Text style={text.title}>
@@ -384,7 +402,13 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
       asideFirst={!split && round !== 'playing' && !watchingReply}
       intro={
         <BoardLead>
-          <SessionToolbar mode={mode} onMode={onMode} setId={setId} reviewing={reviewing} onSet={chooseSet} />
+          <SessionToolbar
+            step={learnStep(mode, reviewing, onStep)}
+            onStep={onStep}
+            setId={setId}
+            reviewing={reviewing}
+            onSet={chooseSet}
+          />
           <View style={play.metaRow}>
             <StatusPill>
               {reviewing ? 'Review' : mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
@@ -395,9 +419,13 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
             </Text>
           </View>
           <ProgressTrack progress={progress} />
-          <Text style={text.habit}>{HABIT_PROMPT}</Text>
-          <Text style={text.title}>{drill.prompt}</Text>
-          <ColorLegend />
+          {learn && round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
+          {learn ? (
+            <Text style={text.title}>{drill.prompt}</Text>
+          ) : round === 'playing' ? (
+            <Text style={text.title}>{turnPrompt(drill.sideToMove)}</Text>
+          ) : null}
+          {learn && round === 'playing' ? <ColorLegend /> : null}
         </BoardLead>
       }
       board={
@@ -406,6 +434,7 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
             fen={boardFen}
             orientation={orientation}
             flipCue={orientation === 'black'}
+            hideTurn={!learn && round === 'playing'}
             interactive={round === 'playing'}
             lastMove={boardLastMove}
             arrows={threatArrow}
@@ -419,19 +448,23 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
         }
         aside={
           round === 'playing' ? (
-            <View style={play.guide}>
-              <Text style={text.body}>{themeInstruction(drill.theme)}</Text>
-              <Text style={text.muted}>
-                {learn
-                  ? 'The amber square is the piece under fire.'
-                  : 'One miss ends the run. Showing the idea counts as a miss.'}
-              </Text>
-              <Button
-                label={learn ? 'Show the idea' : 'Show the idea — ends the streak'}
-                variant="secondary"
-                onPress={revealIdea}
-              />
-            </View>
+            learn ? (
+              <View style={play.guide}>
+                <Text style={text.body}>{themeInstruction(drill.theme)}</Text>
+                <Text style={text.muted}>The amber square is the piece under fire.</Text>
+                <Button label="Show the idea" variant="secondary" onPress={revealIdea} />
+              </View>
+            ) : (
+              <View style={play.guide}>
+                <Text style={text.muted}>No hints. One miss ends the run.</Text>
+                <Button
+                  label="Show the answer"
+                  variant="secondary"
+                  testID="show-answer"
+                  onPress={revealIdea}
+                />
+              </View>
+            )
           ) : (
             <>
               <BlunderOverlay
@@ -479,22 +512,31 @@ export function DrillSession({ mode, reviewing = false, onMode }: Props) {
   );
 }
 
+function learnStep(
+  mode: SessionMode,
+  reviewing: boolean,
+  onStep?: (step: LearnStep) => void,
+): LearnStep | undefined {
+  if (mode !== 'learn' || reviewing || !onStep) return undefined;
+  return 'play';
+}
+
 function SessionToolbar({
-  mode,
-  onMode,
+  step,
+  onStep,
   setId,
   reviewing,
   onSet,
 }: {
-  mode: SessionMode;
-  onMode?: (mode: DrillPlayMode) => void;
+  step?: LearnStep;
+  onStep?: (step: LearnStep) => void;
   setId: SessionSet;
   reviewing: boolean;
   onSet: (set: SessionSet) => void;
 }) {
   return (
     <View style={styles.toolbar}>
-      {onMode && mode === 'streak' ? <DrillModeBar mode="streak" onChange={onMode} /> : null}
+      {step && onStep ? <LearnStepBar step={step} onChange={onStep} /> : null}
       {reviewing ? (
         <Text style={text.eyebrow}>Reviewing today's misses</Text>
       ) : (

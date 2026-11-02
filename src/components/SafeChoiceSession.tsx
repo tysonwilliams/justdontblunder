@@ -7,7 +7,7 @@ import { soundForSan } from '@/src/audio/moveSound';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
-import { DrillModeBar, type DrillPlayMode } from '@/src/components/DrillModeBar';
+import { LearnStepBar, type LearnStep } from '@/src/components/LearnStepBar';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { FilterChips, StatusPill } from '@/src/components/ui/Chip';
@@ -86,10 +86,10 @@ function roundKind(round: RoundState): DrillRound {
 }
 
 type Props = {
-  onMode: (mode: DrillPlayMode) => void;
+  onStep: (step: LearnStep) => void;
 };
 
-export function SafeChoiceSession({ onMode }: Props) {
+export function SafeChoiceSession({ onStep }: Props) {
   const { split } = useLayout();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
@@ -214,9 +214,9 @@ export function SafeChoiceSession({ onMode }: Props) {
   if (done) {
     const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
     return (
-      <ScoreFrame toolbar={<SessionToolbar setId={setId} onMode={onMode} onSet={chooseSet} />}>
+      <ScoreFrame toolbar={<SessionToolbar setId={setId} onStep={onStep} onSet={chooseSet} />}>
         <View style={play.done}>
-          <Text style={text.eyebrow}>Pick the safe move</Text>
+          <Text style={text.eyebrow}>Learn</Text>
           <Text style={text.title}>That's the set</Text>
           <Text style={text.hero}>
             {score.correct}/{score.total}
@@ -254,7 +254,7 @@ export function SafeChoiceSession({ onMode }: Props) {
       asideFirst={!split && round !== 'playing' && !watchingReply}
       intro={
         <BoardLead>
-          <SessionToolbar setId={setId} onMode={onMode} onSet={chooseSet} />
+          <SessionToolbar setId={setId} onStep={onStep} onSet={chooseSet} />
           <View style={play.metaRow}>
             <StatusPill>{themeLabel(drill.theme)}</StatusPill>
             <Text style={text.meta}>
@@ -262,10 +262,10 @@ export function SafeChoiceSession({ onMode }: Props) {
             </Text>
           </View>
           <ProgressTrack progress={progress} />
-          <Text style={text.habit}>{HABIT_PROMPT}</Text>
+          {round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
           <Text style={text.title}>Which move is safe?</Text>
-          <Text style={text.body}>{drill.prompt}</Text>
-          <ColorLegend />
+          {round === 'playing' ? <Text style={text.body}>{drill.prompt}</Text> : null}
+          {round === 'playing' ? <ColorLegend /> : null}
         </BoardLead>
       }
       board={
@@ -338,16 +338,16 @@ function ChoiceButtons({
 
 function SessionToolbar({
   setId,
-  onMode,
+  onStep,
   onSet,
 }: {
   setId: SessionSet;
-  onMode: (mode: DrillPlayMode) => void;
+  onStep: (step: LearnStep) => void;
   onSet: (set: SessionSet) => void;
 }) {
   return (
     <View style={styles.toolbar}>
-      <DrillModeBar mode="pick" onChange={onMode} />
+      <LearnStepBar step="pick" onChange={onStep} />
       <FilterChips options={SETS} value={setId} onChange={onSet} />
     </View>
   );

@@ -170,6 +170,20 @@ export function isCorrectDrillMove(drill: DrillPosition, from: Square, to: Squar
 
 export const HABIT_PROMPT = 'Before you move: is anything of yours hanging?';
 
+/** Plain drill prompt: whose move it is, with no tactic hint. */
+export function turnPrompt(side: 'w' | 'b'): string {
+  switch (side) {
+    case 'w':
+      return 'White to move';
+    case 'b':
+      return 'Black to move';
+    default: {
+      const _exhaustive: never = side;
+      return _exhaustive;
+    }
+  }
+}
+
 export function themeInstruction(theme: DrillTheme): string {
   switch (theme) {
     case 'hanging':

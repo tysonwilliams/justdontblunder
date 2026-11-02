@@ -40,7 +40,7 @@ const RESULT_LINKS: { href: Dest; label: string }[] = [
 
 const ENTRY_CARDS: { href: string; title: string; body: string }[] = [
   {
-    href: '/drills?pick=1',
+    href: '/learn?pick=1',
     title: 'Pick the safe move',
     body: 'Two moves. One blunders. Tap the safe one.',
   },

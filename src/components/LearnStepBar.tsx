@@ -2,28 +2,28 @@ import { StyleSheet, View } from 'react-native';
 
 import { Chip } from '@/src/components/ui/Chip';
 
-export type DrillPlayMode = 'streak' | 'pick';
+export type LearnStep = 'pick' | 'play';
 
-const MODES: { id: DrillPlayMode; label: string }[] = [
-  { id: 'streak', label: 'Streak' },
+const STEPS: { id: LearnStep; label: string }[] = [
   { id: 'pick', label: 'Pick the safe move' },
+  { id: 'play', label: 'Play the move' },
 ];
 
-export function DrillModeBar({
-  mode,
+export function LearnStepBar({
+  step,
   onChange,
 }: {
-  mode: DrillPlayMode;
-  onChange: (mode: DrillPlayMode) => void;
+  step: LearnStep;
+  onChange: (step: LearnStep) => void;
 }) {
   return (
     <View style={styles.row}>
-      {MODES.map((item) => (
+      {STEPS.map((item) => (
         <Chip
           key={item.id}
           label={item.label}
-          selected={item.id === mode}
-          testID={`mode-${item.id}`}
+          selected={item.id === step}
+          testID={`learn-step-${item.id}`}
           onPress={() => onChange(item.id)}
         />
       ))}
