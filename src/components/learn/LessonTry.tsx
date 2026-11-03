@@ -19,7 +19,8 @@ import { createGame, tryMove } from '@/src/logic/game';
 import type { Lesson } from '@/src/logic/lessons';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
-import { colors } from '@/src/theme';
+import { markColor } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
 
 type TryRound = 'playing' | 'correct' | 'retry' | 'revealed';
 
@@ -50,6 +51,7 @@ export function LessonTry({
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
     [drill?.sideToMove],
   );
+  const { colors, scheme } = useTheme();
   const { phone } = useLayout();
   const latest = useRef({ drill, round });
   latest.current = { drill, round };
@@ -100,7 +102,7 @@ export function LessonTry({
   const threatFrom = playback.arrow?.from;
   const threatTo = playback.arrow?.to;
   const threatArrow: BoardArrow[] =
-    threatFrom && threatTo ? [{ from: threatFrom, to: threatTo, color: colors.danger }] : [];
+    threatFrom && threatTo ? [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }] : [];
   const copy = feedbackForRound(roundKind(round), drill, lastMove) ?? '';
   const watching = replayActive && !playback.done;
 

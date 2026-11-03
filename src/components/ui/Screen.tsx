@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, layout } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { layout } from '@/src/theme/tokens';
 
 type Props = {
   children: ReactNode;
@@ -12,6 +14,7 @@ type Props = {
 };
 
 export function Screen({ children, variant = 'page', maxWidth }: Props) {
+  useTheme();
   const { padX, padTop, padBottom, contentW } = useLayout();
   const cap = maxWidth ?? (variant === 'board' ? contentW + padX * 2 : layout.pageMax);
 
@@ -50,7 +53,7 @@ export function Screen({ children, variant = 'page', maxWidth }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -73,4 +76,4 @@ const styles = StyleSheet.create({
     minHeight: 0,
     minWidth: 0,
   },
-});
+}));

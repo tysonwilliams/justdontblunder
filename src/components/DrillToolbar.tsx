@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import { FilterChips } from '@/src/components/ui/Chip';
@@ -9,7 +9,9 @@ import {
   type DrillMode,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
-import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 type Props = {
   mode: DrillMode;
@@ -26,6 +28,7 @@ const PHONE_MODE_LABEL: Record<DrillMode, string> = {
 };
 
 export function DrillToolbar({ mode, theme, onMode, onTheme }: Props) {
+  useTheme();
   const { phone } = useLayout();
   if (phone) {
     return (
@@ -84,7 +87,7 @@ export function DrillToolbar({ mode, theme, onMode, onTheme }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   toolbar: {
     gap: spacing[6],
   },
@@ -152,4 +155,4 @@ const styles = StyleSheet.create({
   themeTextOn: {
     color: colors.accentText,
   },
-});
+}));

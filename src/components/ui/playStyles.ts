@@ -1,8 +1,7 @@
-import { StyleSheet } from 'react-native';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
-import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
-
-export const play = StyleSheet.create({
+export const play = themedStyleSheet((colors) => ({
   metaRow: {
     width: '100%',
     flexDirection: 'row',
@@ -116,4 +115,4 @@ export const play = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.xs,
   },
-});
+}));

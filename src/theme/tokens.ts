@@ -1,9 +1,9 @@
 /**
  * Shared design tokens.
  *
- * Colors live on a palette keyed by scheme. Only `dark` is filled in; a `light`
- * palette can be added later with the same keys. `useTheme()` returns the dark
- * scheme until that exists.
+ * Colors live on a palette keyed by scheme. `dark` is the original UI.
+ * `light` uses the same keys. `useTheme()` picks one from the saved preference
+ * and the system scheme.
  *
  * Numeric values match the UI this module was extracted from, so swapping a
  * literal for a token does not move pixels.
@@ -108,9 +108,81 @@ const darkPalette = {
   blackPiece: '#0B1018',
 } satisfies Palette;
 
-export const palettes: { dark: Palette; light?: Palette } = {
+/**
+ * Warm paper and a walnut board. Text tokens clear WCAG AA on the page.
+ * Square colors stay far enough apart that coordinates do too. Board marks
+ * below are the brighter inks arrows need on both light and dark squares.
+ */
+const lightPalette = {
+  background: '#F3EFE6',
+  surface: '#FFFCF7',
+  surfaceRaised: '#E6DFD2',
+  border: 'rgba(28, 25, 21, 0.10)',
+  borderStrong: 'rgba(28, 25, 21, 0.18)',
+  text: '#1C1915',
+  textMuted: '#534E45',
+  textDim: '#5F584E',
+  accent: '#2B6432',
+  accentPressed: '#214E27',
+  accentText: '#F4FBF4',
+  accentSoft: 'rgba(43, 100, 50, 0.14)',
+  warning: '#7C5200',
+  warningSoft: 'rgba(124, 82, 0, 0.16)',
+  danger: '#B4232A',
+  dangerPressed: '#8E1B21',
+  dangerSoft: 'rgba(180, 35, 42, 0.12)',
+  success: '#2B6432',
+  successSoft: 'rgba(43, 100, 50, 0.14)',
+  info: '#1E4E9E',
+  onInfo: '#F5F8FD',
+  onDanger: '#FFFFFF',
+  overlay: 'rgba(28, 25, 21, 0.48)',
+  hover: 'rgba(28, 25, 21, 0.06)',
+  transparent: 'transparent',
+  shadow: '#1C1915',
+  boardLight: '#F0D9B5',
+  boardDark: '#7A4E32',
+  boardSelected: 'rgba(46, 150, 72, 0.48)',
+  boardLegalOnDark: 'rgba(255, 246, 230, 0.92)',
+  boardLegalOnLight: 'rgba(58, 32, 18, 0.72)',
+  boardCaptureOnDark: 'rgba(255, 220, 210, 0.96)',
+  boardCaptureOnLight: 'rgba(132, 24, 28, 0.92)',
+  boardLastMove: 'rgba(214, 150, 40, 0.50)',
+  boardAttention: 'rgba(224, 112, 32, 0.74)',
+  boardBlunder: 'rgba(255, 72, 72, 0.78)',
+  boardSave: 'rgba(36, 150, 64, 0.70)',
+  boardFrame: '#8A5E42',
+  boardFrameBg: '#F6EBDA',
+  boardMeta: '#5C4638',
+  whitePiece: '#FFF6E8',
+  whitePieceStroke: '#1A2230',
+  blackPiece: '#0B1018',
+} satisfies Palette;
+
+export const palettes: { dark: Palette; light: Palette } = {
   dark: darkPalette,
+  light: lightPalette,
 };
+
+/**
+ * Arrow and threat colors. Dark matches the palette so the existing board
+ * does not shift. Light uses brighter inks that stay visible on both squares
+ * while the palette tokens stay dark enough for text and buttons.
+ */
+export const marks = {
+  dark: {
+    danger: darkPalette.danger,
+    warning: darkPalette.warning,
+    info: darkPalette.info,
+    success: darkPalette.success,
+  },
+  light: {
+    danger: '#FF5C5C',
+    warning: '#E07020',
+    info: '#4C8DFF',
+    success: '#3EAD4E',
+  },
+} as const;
 
 /** Steps already in use. Named keys are the original scale; numeric keys fill the gaps. */
 export const spacing = {
@@ -403,9 +475,7 @@ export const expoStarter = {
   },
 } as const;
 
-export const theme = {
-  scheme: 'dark' as const,
-  colors: palettes.dark,
+const themeBase = {
   spacing,
   radii,
   shadows,
@@ -417,8 +487,20 @@ export const theme = {
   typeRole,
   typography,
   layout,
+} as const;
+
+const themes = {
+  dark: { scheme: 'dark' as const, colors: palettes.dark, ...themeBase },
+  light: { scheme: 'light' as const, colors: palettes.light, ...themeBase },
 };
 
-export type Theme = typeof theme;
+/** Stable object per scheme, so style caches and effects can depend on it. */
+export function themeFor(scheme: ColorScheme): Theme {
+  return themes[scheme];
+}
 
-export const colors = theme.colors;
+export const theme = themes.dark;
+
+export type Theme = (typeof themes)['dark'] | (typeof themes)['light'];
+
+export const colors = palettes.dark;

@@ -1,9 +1,12 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, radii } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { radii } from '@/src/theme';
 
 export function ProgressTrack({ progress }: { progress: number }) {
+  useTheme();
   const { phone } = useLayout();
   const pct = Math.max(0, Math.min(100, Math.round(progress * 100)));
   const height = phone ? 4 : 6;
@@ -17,7 +20,7 @@ export function ProgressTrack({ progress }: { progress: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   track: {
     height: 6,
     borderRadius: radii.track,
@@ -30,4 +33,4 @@ const styles = StyleSheet.create({
     borderRadius: radii.track,
     backgroundColor: colors.accent,
   },
-});
+}));

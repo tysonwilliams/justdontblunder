@@ -1,10 +1,13 @@
 import { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Svg, { Polygon } from 'react-native-svg';
 
 import { centerOf, labelAnchor } from '@/src/components/Board/boardCoords';
 import type { BoardArrow } from '@/src/components/Board/boardTypes';
-import { colors, fonts } from '@/src/theme';
+import { markColor } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts } from '@/src/theme';
 
 type Props = {
   arrows: readonly BoardArrow[];
@@ -13,8 +16,10 @@ type Props = {
 };
 
 export const BoardArrows = memo(function BoardArrows({ arrows, orientation, squareSize }: Props) {
+  const { colors, scheme } = useTheme();
   if (!arrows.length || squareSize <= 0) return null;
   const inner = squareSize * 8;
+  const fallback = markColor('danger', scheme, colors);
 
   return (
     <>
@@ -24,7 +29,7 @@ export const BoardArrows = memo(function BoardArrows({ arrows, orientation, squa
             key={`${arrow.from}${arrow.to}${arrow.label ?? ''}`}
             from={centerOf(arrow.from, orientation, squareSize)}
             to={centerOf(arrow.to, orientation, squareSize)}
-            color={arrow.color ?? colors.danger}
+            color={arrow.color ?? fallback}
             square={squareSize}
           />
         ))}
@@ -45,10 +50,10 @@ export const BoardArrows = memo(function BoardArrows({ arrows, orientation, squa
                 borderRadius: badge / 2,
                 left: at.x - badge / 2,
                 top: at.y - badge / 2,
-                borderColor: arrow.color ?? colors.danger,
+                borderColor: arrow.color ?? fallback,
               },
             ]}>
-            <Text style={[styles.arrowLabelText, { color: arrow.color ?? colors.danger, fontSize: badge * 0.48 }]}>
+            <Text style={[styles.arrowLabelText, { color: arrow.color ?? fallback, fontSize: badge * 0.48 }]}>
               {arrow.label}
             </Text>
           </View>
@@ -97,7 +102,7 @@ function ArrowShape({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   arrows: {
     position: 'absolute',
     left: 0,
@@ -116,4 +121,4 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyExtra,
     textAlign: 'center',
   },
-});
+}));

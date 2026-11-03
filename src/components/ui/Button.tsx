@@ -2,7 +2,9 @@ import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'rea
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import type { Palette } from '@/src/theme/tokens';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -25,6 +27,7 @@ export function Button({
   testID,
   selected = false,
 }: Props) {
+  const { colors } = useTheme();
   const { phone } = useLayout();
   return (
     <Pressable
@@ -37,18 +40,18 @@ export function Button({
           styles.base,
           phone && styles.basePhone,
           fullWidth && styles.full,
-          variantStyle(variant, state.pressed, hovered),
+          variantStyle(colors, variant, state.pressed, hovered),
           style,
         ];
       }}>
-      <Text style={[styles.label, phone && styles.labelPhone, labelColor(variant)]} numberOfLines={1}>
+      <Text style={[styles.label, phone && styles.labelPhone, labelColor(colors, variant)]} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
   );
 }
 
-function variantStyle(variant: Variant, pressed: boolean, hovered: boolean): ViewStyle {
+function variantStyle(colors: Palette, variant: Variant, pressed: boolean, hovered: boolean): ViewStyle {
   switch (variant) {
     case 'primary':
       return {
@@ -75,7 +78,7 @@ function variantStyle(variant: Variant, pressed: boolean, hovered: boolean): Vie
   }
 }
 
-function labelColor(variant: Variant) {
+function labelColor(colors: Palette, variant: Variant) {
   switch (variant) {
     case 'primary':
       return { color: colors.accentText };

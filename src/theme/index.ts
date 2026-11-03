@@ -1,14 +1,6 @@
-import { theme } from './tokens';
-
-/**
- * Active tokens. Always the dark scheme until a light palette is added.
- * StyleSheets import the same objects this returns.
- */
-export function useTheme(): typeof theme {
-  return theme;
-}
-
-export type { ColorScheme, Palette, Theme } from './tokens';
+export type { ColorScheme, Palette, Theme } from '@/src/theme/tokens';
+export type { ThemePreference } from '@/src/theme/preference';
+export type { MarkRole } from '@/src/theme/marks';
 export {
   colors,
   expoStarter,
@@ -18,11 +10,15 @@ export {
   layout,
   letterSpacing,
   lineHeights,
+  marks,
   palettes,
   radii,
   shadows,
   spacing,
   theme,
+  themeFor,
   typeRole,
   typography,
-} from './tokens';
+} from '@/src/theme/tokens';
+export { markColor } from '@/src/theme/marks';
+export { THEME_STORAGE_KEY, resolveColorScheme } from '@/src/theme/preference';

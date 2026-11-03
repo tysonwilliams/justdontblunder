@@ -1,8 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import type { PresentedSafeChoice } from '@/src/logic/safeChoice';
-import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 export function ChoiceButtons({
   presented,
@@ -13,6 +15,7 @@ export function ChoiceButtons({
   onChoose: (key: 'A' | 'B') => void;
   compact: boolean;
 }) {
+  useTheme();
   return (
     <View style={styles.choices}>
       {presented.options.map((option) => (
@@ -32,7 +35,7 @@ export function ChoiceButtons({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   choices: {
     flexDirection: 'row',
     gap: spacing[10],
@@ -79,4 +82,4 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights[28],
     letterSpacing: letterSpacing.tight,
   },
-});
+}));

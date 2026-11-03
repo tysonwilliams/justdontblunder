@@ -1,11 +1,14 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { liveA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
 import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import type { Palette } from '@/src/theme/tokens';
 
 type Tone = 'danger' | 'success' | 'warn';
 
@@ -37,9 +40,10 @@ export function BlunderOverlay({
   onSecondary,
   waiting,
 }: Props) {
+  const { colors } = useTheme();
   const { phone, tight, contentHeight } = useLayout();
   if (!visible) return null;
-  const toneColor = toneColors(tone);
+  const toneColor = toneColors(colors, tone);
   const iconSize = phone ? 16 : 22;
   const rowActions = phone || contentHeight < 800;
 
@@ -104,7 +108,7 @@ function ToneIcon({ tone, color, size }: { tone: Tone; color: string; size: numb
   }
 }
 
-function toneColors(tone: Tone): { accent: string; soft: string } {
+function toneColors(colors: Palette, tone: Tone): { accent: string; soft: string } {
   switch (tone) {
     case 'success':
       return { accent: colors.success, soft: colors.successSoft };
@@ -119,7 +123,7 @@ function toneColors(tone: Tone): { accent: string; soft: string } {
   }
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radii.lg,
@@ -207,4 +211,4 @@ const styles = StyleSheet.create({
     fontSize: fontSizes[13],
     lineHeight: lineHeights[17],
   },
-});
+}));

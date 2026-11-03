@@ -7,7 +7,8 @@ import { legalMoveInk } from '@/src/components/Board/highlight';
 import { Piece } from '@/src/components/Board/Piece';
 import { noteSquareRender } from '@/src/components/Board/squareRenderCount';
 import { squareA11y } from '@/src/components/ui/a11y';
-import { colors, fonts, fontSizes, radii, spacing } from '@/src/theme';
+import { getActivePalette } from '@/src/theme/active';
+import { colors, fonts, fontSizes, radii, spacing } from '@/src/theme/tokens';
 
 type Props = BoardSquareModel & {
   onPress: (square: Square) => void;
@@ -28,8 +29,9 @@ export const BoardSquare = memo(function BoardSquare({
   onPress,
 }: Props) {
   noteSquareRender(square);
-  const ink = legalMoveInk(isDark);
-  const coordColor = isDark ? colors.boardLight : colors.boardDark;
+  const palette = getActivePalette();
+  const ink = legalMoveInk(isDark, palette);
+  const coordColor = isDark ? palette.boardLight : palette.boardDark;
 
   return (
     <Pressable

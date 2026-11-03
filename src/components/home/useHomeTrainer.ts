@@ -15,7 +15,8 @@ import { learnCard } from '@/src/logic/lessons';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors } from '@/src/theme';
+import { markColor } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
 
 export type HomeRound = 'playing' | 'correct' | 'retry';
 export type HomeEntryId = 'learn' | 'drills' | 'practice';
@@ -51,6 +52,7 @@ export function homeResultCard(round: HomeRound): { title: string; tone: 'succes
 }
 
 export function useHomeTrainer() {
+  const { colors, scheme } = useTheme();
   const [session] = useState(() => createHomeSession());
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<HomeRound>('playing');
@@ -144,8 +146,8 @@ export function useHomeTrainer() {
   const threatTo = playback.arrow?.to;
   const threatArrow = useMemo<BoardArrow[]>(() => {
     if (!threatFrom || !threatTo) return [];
-    return [{ from: threatFrom, to: threatTo, color: colors.danger }];
-  }, [threatFrom, threatTo]);
+    return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
+  }, [colors, scheme, threatFrom, threatTo]);
   const attentionSquares = useMemo(
     () => (round === 'playing' && drill ? [drill.atRiskSquare] : []),
     [round, drill],

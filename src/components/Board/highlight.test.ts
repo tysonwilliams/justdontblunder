@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { highlightsForRound, legalMoveInk, squareBackground } from '@/src/components/Board/highlight';
-import { colors } from '@/src/theme';
+import { colors } from '@/src/theme/tokens';
 
 const quiet = {
   isDark: true,

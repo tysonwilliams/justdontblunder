@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 type ChipProps = {
   label: string;
@@ -16,6 +18,7 @@ type ChipProps = {
 };
 
 export function Chip({ label, selected = false, onPress, testID, size = 'md', fill = false }: ChipProps) {
+  useTheme();
   const { phone } = useLayout();
   return (
     <Pressable
@@ -72,6 +75,7 @@ export function FilterChips<T extends string>({
 }
 
 export function StatusPill({ children }: { children: ReactNode }) {
+  useTheme();
   const { phone } = useLayout();
   return (
     <View style={[styles.pill, phone && styles.pillPhone]}>
@@ -82,7 +86,7 @@ export function StatusPill({ children }: { children: ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   chip: {
     minHeight: 36,
     paddingHorizontal: spacing[12],
@@ -175,4 +179,4 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights[14],
     letterSpacing: letterSpacing.pillCompact,
   },
-});
+}));

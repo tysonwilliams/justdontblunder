@@ -5,6 +5,7 @@ import { squareBackground, type HighlightTone } from '@/src/components/Board/hig
 import { pieceCodeFrom, type PieceCode } from '@/src/components/Board/pieceCode';
 import { squareLabel } from '@/src/components/Board/squareLabel';
 import { pieceAt } from '@/src/logic/game';
+import { palettes, type Palette } from '@/src/theme/tokens';
 
 export type BoardSquareModel = {
   square: Square;
@@ -31,7 +32,9 @@ export function buildBoardRows(input: {
   lastMove: { from: Square; to: Square } | null;
   dragSquare: Square | null;
   squareSize: number;
+  palette?: Palette;
 }): BoardSquareModel[][] {
+  const palette = input.palette ?? palettes.dark;
   const legal = new Set(input.legal);
   const highlights = new Set(input.highlightSquares);
   const attention = new Set(input.attentionSquares);
@@ -50,14 +53,17 @@ export function buildBoardRows(input: {
       row.push({
         square,
         squareSize: input.squareSize,
-        backgroundColor: squareBackground({
-          isDark,
-          isLast,
-          isAttention,
-          isSelected,
-          isHighlight,
-          highlightTone: input.highlightTone,
-        }),
+        backgroundColor: squareBackground(
+          {
+            isDark,
+            isLast,
+            isAttention,
+            isSelected,
+            isHighlight,
+            highlightTone: input.highlightTone,
+          },
+          palette,
+        ),
         pieceCode: piece ? pieceCodeFrom(piece.color, piece.type) : null,
         isLegal: legal.has(square),
         isDark,

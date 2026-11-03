@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#1C1B19" />
+    <title>%WEB_TITLE%</title>
+    <script>(function(){try{var key="jdb-theme-v1";var pref='system';var raw=localStorage.getItem(key);if(raw){var parsed=JSON.parse(raw);var stored=parsed&&parsed.state&&parsed.state.preference;if(stored==='light'||stored==='dark'||stored==='system')pref=stored;}var darkMq=window.matchMedia('(prefers-color-scheme: dark)').matches;var scheme=pref==='light'||pref==='dark'?pref:(darkMq?'dark':'light');var bg=scheme==='light'?"#F3EFE6":"#1C1B19";var fg=scheme==='light'?"#1C1915":"#F6F3EE";var root=document.documentElement;root.dataset.colorScheme=scheme;root.style.colorScheme=scheme;root.style.setProperty('--jdb-bg',bg);root.style.setProperty('--jdb-fg',fg);root.style.backgroundColor=bg;root.style.color=fg;var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',bg);}catch(e){}})();</script>
+    <!-- The react-native-web recommended style reset. -->
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+    <style id="jdb-theme">
+html, body {
+  background-color: var(--jdb-bg, #1C1B19);
+  color: var(--jdb-fg, #F6F3EE);
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+body > div:first-child {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+@media (prefers-color-scheme: light) {
+  html, body {
+    background-color: var(--jdb-bg, #F3EFE6);
+    color: var(--jdb-fg, #1C1915);
+  }
+}
+
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

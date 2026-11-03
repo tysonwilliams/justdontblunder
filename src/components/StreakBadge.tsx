@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,7 +7,9 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { colors, fonts, fontSizes, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, radii, spacing } from '@/src/theme';
 
 type Props = {
   streak: number;
@@ -17,6 +19,7 @@ type Props = {
 };
 
 export function StreakBadge({ streak, label = 'day streak', celebrate = false, compact = false }: Props) {
+  useTheme();
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -40,7 +43,7 @@ export function StreakBadge({ streak, label = 'day streak', celebrate = false, c
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   wrap: {
     alignItems: 'flex-start',
   },
@@ -88,4 +91,4 @@ const styles = StyleSheet.create({
   labelCompact: {
     fontSize: fontSizes[11],
   },
-});
+}));

@@ -2,7 +2,8 @@ import { Tabs } from 'expo-router';
 import { useWindowDimensions } from 'react-native';
 
 import { AppTabBar } from '@/src/components/AppTabBar';
-import { layout, useTheme } from '@/src/theme';
+import { layout } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
 
 const WIDE = layout.nav;
 

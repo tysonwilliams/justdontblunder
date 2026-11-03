@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
+import { Modal, View } from 'react-native';
 
-import { colors, radii, shadows, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { radii, shadows, spacing } from '@/src/theme';
 
 type Props = {
   visible: boolean;
@@ -9,6 +11,7 @@ type Props = {
 };
 
 export function Dialog({ visible, children }: Props) {
+  useTheme();
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
@@ -18,7 +21,7 @@ export function Dialog({ visible, children }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   backdrop: {
     flex: 1,
     backgroundColor: colors.overlay,
@@ -40,4 +43,4 @@ const styles = StyleSheet.create({
     gap: spacing[10],
     ...shadows.dialog,
   },
-});
+}));
