@@ -1,19 +1,21 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
-
-const ITEMS = [
-  { label: 'Good save', color: colors.success },
-  { label: 'Blunder', color: colors.danger },
-  { label: 'In danger', color: colors.warning },
-] as const;
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 export function ColorLegend() {
+  const { colors } = useTheme();
   const { phone } = useLayout();
+  const items = [
+    { label: 'Good save', color: colors.success },
+    { label: 'Blunder', color: colors.danger },
+    { label: 'In danger', color: colors.warning },
+  ];
   return (
     <View style={[styles.row, phone && styles.rowPhone]} accessibilityRole="text">
-      {ITEMS.map((item) => (
+      {items.map((item) => (
         <View key={item.label} style={styles.item}>
           <View style={[styles.swatch, phone && styles.swatchPhone, { backgroundColor: item.color }]} />
           <Text style={[styles.label, phone && styles.labelPhone]}>{item.label}</Text>
@@ -23,7 +25,7 @@ export function ColorLegend() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -59,4 +61,4 @@ const styles = StyleSheet.create({
     fontSize: fontSizes[11],
     lineHeight: lineHeights[14],
   },
-});
+}));

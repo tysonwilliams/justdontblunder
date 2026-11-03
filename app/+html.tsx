@@ -1,10 +1,8 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { ReactNode } from 'react';
 
-import { palettes } from '@/src/theme';
-
-const background = palettes.dark.background;
-const foreground = palettes.dark.text;
+import { themeBootScript, themeShellCss } from '@/src/theme/chrome';
+import { palettes } from '@/src/theme/tokens';
 
 // This file is web-only and used to configure the root HTML for every
 // web page during static rendering.
@@ -20,6 +18,8 @@ export default function Root({ children }: { children: ReactNode }) {
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
         />
+        <meta name="theme-color" content={palettes.dark.background} />
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript() }} />
 
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
@@ -27,30 +27,10 @@ export default function Root({ children }: { children: ReactNode }) {
         */}
         <ScrollViewStyleReset />
 
-        {/* Using raw CSS styles as an escape-hatch to ensure the background color never flickers in dark-mode. */}
-        <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
-        {/* Add any additional <head> elements that you want globally available on web... */}
+        {/* Paint the page before React so the saved scheme does not flash. */}
+        <style dangerouslySetInnerHTML={{ __html: themeShellCss() }} />
       </head>
       <body>{children}</body>
     </html>
   );
 }
-
-const responsiveBackground = `
-html, body {
-  background-color: ${background};
-  color: ${foreground};
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
-}
-body > div:first-child {
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
-}
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: ${background};
-  }
-}`;

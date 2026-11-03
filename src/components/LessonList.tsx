@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconCheck } from '@/src/components/ui/icons';
@@ -7,13 +7,16 @@ import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { LESSONS, type LessonId } from '@/src/logic/lessons';
 import { useProgressStore } from '@/src/store/progress';
-import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 type Props = {
   onOpen: (id: LessonId) => void;
 };
 
 export function LessonList({ onOpen }: Props) {
+  const { colors } = useTheme();
   const completed = useProgressStore((s) => s.completedLessons);
   const { split } = useLayout();
   const done = new Set(completed);
@@ -68,7 +71,7 @@ export function LessonList({ onOpen }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   page: {
     width: '100%',
     gap: spacing.md,
@@ -144,4 +147,4 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
   },
-});
+}));

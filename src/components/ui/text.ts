@@ -1,8 +1,7 @@
-import { StyleSheet } from 'react-native';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { typeRole } from '@/src/theme/tokens';
 
-import { colors, typeRole } from '@/src/theme';
-
-export const text = StyleSheet.create({
+export const text = themedStyleSheet((colors) => ({
   eyebrow: {
     ...typeRole.eyebrow,
     color: colors.accent,
@@ -53,4 +52,4 @@ export const text = StyleSheet.create({
     ...typeRole.stat,
     color: colors.text,
   },
-});
+}));

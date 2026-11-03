@@ -10,12 +10,17 @@ import {
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
-import { useTheme } from '@/src/theme';
+import { useThemePreference } from '@/src/store/themePreference';
+import { useTheme } from '@/src/theme/useTheme';
+import { applyDocumentTheme } from '@/src/theme/chrome';
+import type { Theme } from '@/src/theme/tokens';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -25,8 +30,36 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
+function useThemeReady(): boolean {
+  const [ready, setReady] = useState(() => {
+    if (Platform.OS === 'web') return true;
+    return useThemePreference.persist.hasHydrated();
+  });
+
+  useEffect(() => {
+    if (useThemePreference.persist.hasHydrated()) {
+      setReady(true);
+      return;
+    }
+    return useThemePreference.persist.onFinishHydration(() => setReady(true));
+  }, []);
+
+  return ready;
+}
+
+function useThemeChrome(theme: Theme) {
+  useEffect(() => {
+    applyDocumentTheme(theme.scheme, theme.colors);
+    if (Platform.OS === 'web') return;
+    void SystemUI.setBackgroundColorAsync(theme.colors.background);
+  }, [theme]);
+}
+
 export default function RootLayout() {
-  const { colors } = useTheme();
+  const theme = useTheme();
+  const themeReady = useThemeReady();
+  useThemeChrome(theme);
+  const { colors } = theme;
   const [loaded, error] = useFonts({
     Nunito_500Medium,
     Nunito_700Bold,
@@ -41,18 +74,18 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded && themeReady) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, themeReady]);
 
-  if (!loaded) {
+  if (!loaded || !themeReady) {
     return null;
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },

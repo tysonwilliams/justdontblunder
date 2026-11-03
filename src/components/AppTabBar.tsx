@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { colors, fonts, fontSizes, layout, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, layout, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 const ICONS = {
   index: IconHome,
@@ -44,6 +46,7 @@ type Props = {
 };
 
 export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, wide }: Props) {
+  const { colors } = useTheme();
   const { padX, contentW } = useLayout();
 
   return (
@@ -122,7 +125,7 @@ function BrandMark() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   top: {
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
@@ -233,4 +236,4 @@ const styles = StyleSheet.create({
     fontSize: fontSizes[15],
     lineHeight: lineHeights[20],
   },
-});
+}));

@@ -1,13 +1,13 @@
 import type { Square } from 'chess.js';
 
 import type { DrillRound } from '@/src/logic/saveFeedback';
-import { colors } from '@/src/theme';
+import { palettes, type Palette } from '@/src/theme/tokens';
 
 export type HighlightTone = 'danger' | 'success';
 
 /** Quiet dots and capture rings share this ink. Red is only for a blunder. */
-export function legalMoveInk(isDark: boolean): string {
-  return isDark ? colors.boardLegalOnDark : colors.boardLegalOnLight;
+export function legalMoveInk(isDark: boolean, palette: Palette = palettes.dark): string {
+  return isDark ? palette.boardLegalOnDark : palette.boardLegalOnLight;
 }
 
 type SquarePaint = {
@@ -20,14 +20,14 @@ type SquarePaint = {
 };
 
 /** Blunder squares stay red. A correct save paints green, even on the last-move squares. */
-export function squareBackground(input: SquarePaint): string {
+export function squareBackground(input: SquarePaint, palette: Palette = palettes.dark): string {
   if (input.isHighlight) {
-    return input.highlightTone === 'success' ? colors.boardSave : colors.boardBlunder;
+    return input.highlightTone === 'success' ? palette.boardSave : palette.boardBlunder;
   }
-  if (input.isSelected) return colors.boardSelected;
-  if (input.isAttention) return colors.boardAttention;
-  if (input.isLast) return colors.boardLastMove;
-  return input.isDark ? colors.boardDark : colors.boardLight;
+  if (input.isSelected) return palette.boardSelected;
+  if (input.isAttention) return palette.boardAttention;
+  if (input.isLast) return palette.boardLastMove;
+  return input.isDark ? palette.boardDark : palette.boardLight;
 }
 
 function uniqueSquares(squares: Square[]): Square[] {

@@ -12,7 +12,8 @@ import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/sr
 import { feedbackForRound, type DrillRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors } from '@/src/theme';
+import { markColor } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
 import { playMoveSound } from '@/src/audio/playMoveSound';
 import { soundForSan } from '@/src/audio/moveSound';
 
@@ -49,6 +50,7 @@ function roundKind(round: SafeRound): DrillRound {
 }
 
 export function useSafeChoiceSession(theme: ThemeFilter) {
+  const { colors, scheme } = useTheme();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
   const [session, setSession] = useState<DrillSessionData>(() => sessionForTheme(theme));
@@ -178,13 +180,13 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
       return presented.options.map((option) => ({
         from: option.from,
         to: option.to,
-        color: colors.info,
+        color: markColor('info', scheme, colors),
         label: option.key,
       }));
     }
-    if (playback.arrow) return [{ from: playback.arrow.from, to: playback.arrow.to, color: colors.danger }];
+    if (playback.arrow) return [{ from: playback.arrow.from, to: playback.arrow.to, color: markColor('danger', scheme, colors) }];
     return [];
-  }, [playback.arrow, presented, round]);
+  }, [colors, playback.arrow, presented, round, scheme]);
   const attentionSquares = useMemo(
     () => (round === 'playing' && drill ? [drill.atRiskSquare] : []),
     [drill, round],

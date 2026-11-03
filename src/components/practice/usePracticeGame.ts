@@ -10,7 +10,8 @@ import { createGame, snapshot } from '@/src/logic/game';
 import { chooseBlackReply } from '@/src/logic/reply';
 import { countRetriedMove } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { colors } from '@/src/theme';
+import { markColor } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
 
 const REPLY_DELAY_MS = 700;
 
@@ -31,6 +32,7 @@ function gameResultLine(fen: string): string | null {
 }
 
 export function usePracticeGame() {
+  const { colors, scheme } = useTheme();
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
   const [fen, setFen] = useState(() => createGame().fen());
   const [boardKey, setBoardKey] = useState(0);
@@ -168,11 +170,11 @@ export function usePracticeGame() {
       drawn.push({
         from: marked[1],
         to: marked[0],
-        color: arrowIsWarn ? colors.warning : colors.danger,
+        color: markColor(arrowIsWarn ? 'warning' : 'danger', scheme, colors),
       });
     }
     return drawn;
-  }, [feedback, hangingNow, status, tone]);
+  }, [colors, feedback, hangingNow, scheme, status, tone]);
 
   const panelMessage = feedback
     ? replySan && tone !== 'warn'

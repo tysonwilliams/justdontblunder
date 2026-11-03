@@ -1,9 +1,10 @@
 import { useRouter, type Href } from 'expo-router';
 import { Children, type ReactNode, useState } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
+import { FilterChips } from '@/src/components/ui/Chip';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
@@ -12,9 +13,19 @@ import { themeLabel, type DrillTheme } from '@/src/logic/drills';
 import { LESSONS } from '@/src/logic/lessons';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
-import { colors, fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import { useThemePreference } from '@/src/store/themePreference';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import type { ThemePreference } from '@/src/theme/preference';
+import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
+
+const APPEARANCE: readonly { id: ThemePreference; label: string; testID: string }[] = [
+  { id: 'system', label: 'System', testID: 'theme-system' },
+  { id: 'light', label: 'Light', testID: 'theme-light' },
+  { id: 'dark', label: 'Dark', testID: 'theme-dark' },
+];
 
 export default function ProgressScreen() {
   const router = useRouter();
@@ -23,6 +34,9 @@ export default function ProgressScreen() {
   const themeCols = width < 560 ? 2 : width < 980 ? 3 : 5;
   const badgeCols = width < 720 ? 2 : 5;
   const statCols = width < 560 ? 2 : width < 980 ? 3 : 4;
+  useTheme();
+  const preference = useThemePreference((state) => state.preference);
+  const setPreference = useThemePreference((state) => state.setPreference);
   const [confirmReset, setConfirmReset] = useState(false);
   const {
     dailyStreak,
@@ -51,6 +65,11 @@ export default function ProgressScreen() {
           <Text style={text.eyebrow}>This device</Text>
           <Text style={text.display}>Progress</Text>
           <Text style={text.muted}>Stored locally. No account.</Text>
+        </View>
+
+        <View style={styles.group}>
+          <Text style={text.section}>Appearance</Text>
+          <FilterChips options={APPEARANCE} value={preference} onChange={setPreference} />
         </View>
 
         <View style={styles.banner}>
@@ -197,7 +216,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   page: {
     width: '100%',
     gap: spacing[12],
@@ -312,4 +331,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
-});
+}));

@@ -19,7 +19,8 @@ import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
-import { colors } from '@/src/theme';
+import { markColor } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
 
 export type DrillPlayMode = 'streak' | 'play' | 'review';
 type RoundState = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
@@ -48,6 +49,7 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
 }
 
 export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
+  const { colors, scheme } = useTheme();
   const guided = mode === 'play' || mode === 'review';
   const reviewing = mode === 'review';
 
@@ -313,8 +315,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
   const threatTo = !shownIdea ? playback.arrow?.to : undefined;
   const threatArrow = useMemo<BoardArrow[]>(() => {
     if (!threatFrom || !threatTo) return [];
-    return [{ from: threatFrom, to: threatTo, color: colors.danger }];
-  }, [threatFrom, threatTo]);
+    return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
+  }, [colors, scheme, threatFrom, threatTo]);
   const attentionSquares = useMemo(
     () => (guided && round === 'playing' && drill ? [drill.atRiskSquare] : []),
     [guided, round, drill],

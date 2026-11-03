@@ -14,7 +14,8 @@ import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import type { Lesson, ResolvedBeat } from '@/src/logic/lessons';
-import { colors } from '@/src/theme';
+import { markColor } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
 
 function useBeatIndex(cardId: string, count: number): number {
   const [state, setState] = useState({ cardId, index: 0 });
@@ -59,13 +60,14 @@ export function LessonCardView({
     playMoveSound(beat.tone === 'blunder' ? 'fail' : soundForSan(beat.san));
   }, [beat?.san, beat?.tone, card?.id, index]);
 
+  const { colors, scheme } = useTheme();
   const { phone } = useLayout();
   if (!card || !beat) return null;
   const orientation = card.sideToMove === 'b' ? 'black' : 'white';
   const marks = squaresForBeat(beat);
   const arrows: BoardArrow[] =
     beat.tone === 'setup'
-      ? (card.arrows ?? []).map((arrow) => ({ from: arrow.from, to: arrow.to, color: colors.warning }))
+      ? (card.arrows ?? []).map((arrow) => ({ from: arrow.from, to: arrow.to, color: markColor('warning', scheme, colors) }))
       : [];
   const lastCard = cardIndex + 1 >= lesson.cards.length;
 

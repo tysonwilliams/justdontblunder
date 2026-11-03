@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "justdontblunder",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
@@ -27,6 +27,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-system-ui",
       [
         "expo-splash-screen",
         {

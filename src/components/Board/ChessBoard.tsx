@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Text, View } from 'react-native';
 import type { Square } from 'chess.js';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -24,7 +24,9 @@ import {
   tryMove,
   type GameSnapshot,
 } from '@/src/logic/game';
-import { colors, fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
+import { useTheme } from '@/src/theme/useTheme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 export type { BoardArrow, BoardMoveEvent };
 
@@ -53,6 +55,7 @@ function ChessBoardView({
   onMove,
   onPositionChange,
 }: ChessBoardProps) {
+  const { colors, scheme } = useTheme();
   const { phone } = useLayout();
   const [measured, setMeasured] = useState(0);
   const [gameFen, setGameFen] = useState(() => fen ?? createGame().fen());
@@ -235,6 +238,7 @@ function ChessBoardView({
     lastMove ? `${lastMove.from}${lastMove.to}` : '',
     dragSquare ?? '',
     squareSize,
+    scheme,
   ].join('|');
   const rows = useMemo(
     () =>
@@ -249,6 +253,7 @@ function ChessBoardView({
         lastMove,
         dragSquare,
         squareSize,
+        palette: colors,
       }),
     // rowKey digests every visual input. A new array with the same squares
     // must not rebuild the grid.
@@ -304,7 +309,7 @@ function ChessBoardView({
 
 export const ChessBoard = memo(ChessBoardView, chessBoardPropsEqual);
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   wrap: {
     width: '100%',
     alignSelf: 'flex-start',
@@ -372,4 +377,4 @@ const styles = StyleSheet.create({
     zIndex: 20,
     opacity: 0.95,
   },
-});
+}));
