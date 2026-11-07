@@ -42,7 +42,6 @@ export function LessonTry({
   const [round, setRound] = useState<TryRound>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [displayFen, setDisplayFen] = useState<string | null>(drill?.fen ?? null);
-  const [boardKey, setBoardKey] = useState(0);
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const replayActive = round === 'retry';
   const playback = usePunishmentPlayback(replayActive, replayLine);
@@ -79,7 +78,6 @@ export function LessonTry({
     setDisplayFen(drill.fen);
     setLastMove(null);
     setRound('playing');
-    setBoardKey((k) => k + 1);
   };
 
   const reveal = () => {
@@ -120,7 +118,6 @@ export function LessonTry({
       }
       board={
         <ChessBoard
-          key={boardKey}
           fen={boardFen}
           orientation={orientation}
           flipCue={!phone && orientation === 'black'}

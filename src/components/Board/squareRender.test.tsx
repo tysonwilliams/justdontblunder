@@ -10,6 +10,7 @@ import { BoardSquare } from '@/src/components/Board/BoardSquare';
 import { buildBoardRows, squareVisualKey, type BoardSquareModel } from '@/src/components/Board/boardSquares';
 import { resetSquareRenderCounts, squareRenderCount } from '@/src/components/Board/squareRenderCount';
 import { createGame, getLegalTargets, tryMove } from '@/src/logic/game';
+import { colors } from '@/src/theme/tokens';
 
 vi.mock('react-native', () => {
   const React = require('react') as typeof import('react');
@@ -106,5 +107,31 @@ describe('board square renders', () => {
     expect(squareRenderCount('a8')).toBe(0);
     expect(squareRenderCount('e2')).toBeGreaterThan(0);
     expect(squareRenderCount('e4')).toBeGreaterThan(0);
+  });
+
+  it('a drop hover changes only the target square', () => {
+    const game = createGame();
+    const legal = getLegalTargets(game, 'e2');
+    const before = buildBoardRows({ ...quiet, game, selected: 'e2', legal });
+    const after = buildBoardRows({ ...quiet, game, selected: 'e2', legal, dropSquare: 'd4' });
+    expect(changedSquares(before, after)).toEqual(['d4']);
+    expect(after.flat().find((square) => square.square === 'd4')?.backgroundColor).toBe(colors.boardSelected);
+    expect(after.flat().find((square) => square.square === 'e2')?.backgroundColor).toBe(colors.boardSelected);
+  });
+
+  it('hiding a destination square redraws only that square and keeps its piece', () => {
+    const moved = createGame();
+    expect(tryMove(moved, 'e2', 'e4')).not.toBeNull();
+    const before = buildBoardRows({ ...quiet, game: moved, lastMove: { from: 'e2', to: 'e4' } });
+    const after = buildBoardRows({
+      ...quiet,
+      game: moved,
+      lastMove: { from: 'e2', to: 'e4' },
+      hiddenSquares: ['e4'],
+    });
+    expect(changedSquares(before, after)).toEqual(['e4']);
+    const landed = after.flat().find((square) => square.square === 'e4');
+    expect(landed?.hidePiece).toBe(true);
+    expect(landed?.pieceCode).toBe(before.flat().find((square) => square.square === 'e4')?.pieceCode);
   });
 });

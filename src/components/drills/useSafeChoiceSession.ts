@@ -58,7 +58,6 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   const [round, setRound] = useState<SafeRound>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [displayFen, setDisplayFen] = useState<string | null>(null);
-  const [boardKey, setBoardKey] = useState(0);
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const resultCounted = useRef(false);
@@ -82,7 +81,6 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     setLastMove(null);
     setDisplayFen(null);
     setReplayLine([]);
-    setBoardKey((k) => k + 1);
   };
 
   const begin = (nextSession: DrillSessionData) => {
@@ -122,7 +120,6 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     setDisplayFen(drill.fen);
     setLastMove(null);
     setRound('playing');
-    setBoardKey((k) => k + 1);
   };
 
   const recordFirst = (correct: boolean) => {
@@ -202,7 +199,6 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     round,
     score,
     orientation,
-    boardKey,
     boardFen,
     boardLastMove,
     progress,

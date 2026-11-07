@@ -74,7 +74,6 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [runSummary, setRunSummary] = useState<DrillRunSummary | null>(null);
   const [displayFen, setDisplayFen] = useState<string | null>(null);
-  const [boardKey, setBoardKey] = useState(0);
   const [shownIdea, setShownIdea] = useState(false);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
@@ -127,7 +126,6 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     setDisplayFen(null);
     setShownIdea(false);
     setReplayLine([]);
-    setBoardKey((k) => k + 1);
   };
 
   const begin = (nextSession: DrillSessionData) => {
@@ -183,7 +181,6 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
 
   const next = () => {
     setIndex((i) => i + 1);
-    setBoardKey((k) => k + 1);
   };
 
   const tryAgain = () => {
@@ -193,7 +190,6 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     setDisplayFen(current.fen);
     setLastMove(null);
     setRound('playing');
-    setBoardKey((k) => k + 1);
   };
 
   /** Persist and score each puzzle once, on its first outcome. */
@@ -334,7 +330,6 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     index,
     round,
     score,
-    boardKey,
     orientation,
     boardFen,
     boardLastMove,

@@ -91,7 +91,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
       }
       board={
         <ChessBoard
-          key={`${drill.id}-${session.boardKey}`}
+          key={`${drill.id}-${session.index}`}
           fen={session.boardFen}
           orientation={session.orientation}
           flipCue={!phone && session.orientation === 'black'}

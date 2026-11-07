@@ -33,6 +33,12 @@ describe('squareBackground', () => {
   it('leaves an unmarked last-move square on the neutral last-move color', () => {
     expect(squareBackground({ ...quiet, isLast: true })).toBe(colors.boardLastMove);
   });
+
+  it('paints a drop target with the selection color, including over a last-move square', () => {
+    expect(squareBackground({ ...quiet, isDropTarget: true })).toBe(colors.boardSelected);
+    expect(squareBackground({ ...quiet, isLast: true, isDropTarget: true })).toBe(colors.boardSelected);
+    expect(squareBackground({ ...quiet, isHighlight: true, isDropTarget: true })).toBe(colors.boardBlunder);
+  });
 });
 
 describe('legalMoveInk', () => {

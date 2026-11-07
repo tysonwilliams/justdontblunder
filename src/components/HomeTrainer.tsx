@@ -68,7 +68,7 @@ export function HomeTrainer() {
       }
       board={
         <ChessBoard
-          key={`${drill.id}-${trainer.boardKey}`}
+          key={`${drill.id}-${trainer.index}`}
           fen={trainer.boardFen}
           orientation={trainer.orientation}
           flipCue={trainer.orientation === 'black'}

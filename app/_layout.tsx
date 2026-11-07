@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import {
   Nunito_500Medium,
   Nunito_700Bold,
