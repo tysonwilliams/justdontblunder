@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Platform, Text, View, type ViewStyle } from 'react-native';
 import type { Square } from 'chess.js';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -130,8 +130,6 @@ function ChessBoardView({
   const sizeSV = useSharedValue(squareSize);
   const orientSV = useSharedValue(orientation);
   const hoverSV = useSharedValue<Square | null>(null);
-  sizeSV.value = squareSize;
-  orientSV.value = orientation;
 
   const phase = useRef<Phase>('idle');
   const dragFrom = useRef<Square | null>(null);
@@ -177,14 +175,22 @@ function ChessBoardView({
     setDragSquare(null);
     phase.current = 'idle';
     dragFrom.current = null;
-    tracking.value = 0;
-    hoverSV.value = null;
     setFlights(skipped ? [] : planFlights(previous, activeFen, squareSize, reduced));
   } else if (placement && placement.fen !== activeFen) {
     const from = placement.from;
     setPlacement(null);
     setRejectedFrom(from);
   }
+
+  useLayoutEffect(() => {
+    sizeSV.value = squareSize;
+    orientSV.value = orientation;
+  }, [orientation, sizeSV, squareSize, orientSV]);
+
+  useLayoutEffect(() => {
+    tracking.value = 0;
+    hoverSV.value = null;
+  }, [activeFen, hoverSV, tracking]);
 
   const finishFlight = useCallback((id: string) => {
     setFlights((current) => (current.some((flight) => flight.id === id) ? current.filter((flight) => flight.id !== id) : current));
