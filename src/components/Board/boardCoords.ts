@@ -23,6 +23,16 @@ export function centerOf(
   return { x: (col + 0.5) * squareSize, y: (row + 0.5) * squareSize };
 }
 
+/** Top-left of a square in the same space as `centerOf`. */
+export function squareOrigin(
+  square: Square,
+  orientation: 'white' | 'black',
+  squareSize: number,
+): { x: number; y: number } {
+  const center = centerOf(square, orientation, squareSize);
+  return { x: center.x - squareSize / 2, y: center.y - squareSize / 2 };
+}
+
 export function labelAnchor(
   square: Square,
   orientation: 'white' | 'black',

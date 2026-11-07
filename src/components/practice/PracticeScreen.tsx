@@ -38,7 +38,6 @@ export function PracticeScreen() {
       }
       board={
         <ChessBoard
-          key={game.boardKey}
           fen={game.fen}
           orientation="white"
           interactive={!game.thinking && !game.gameOver && game.fen.includes(' w ')}

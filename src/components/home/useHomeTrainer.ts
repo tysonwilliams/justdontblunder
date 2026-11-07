@@ -58,7 +58,6 @@ export function useHomeTrainer() {
   const [round, setRound] = useState<HomeRound>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [displayFen, setDisplayFen] = useState<string | null>(null);
-  const [boardKey, setBoardKey] = useState(0);
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
   const resultCounted = useRef(false);
@@ -99,7 +98,6 @@ export function useHomeTrainer() {
     setDisplayFen(null);
     setReplayLine([]);
     setIndex((i) => (i + 1) % total);
-    setBoardKey((k) => k + 1);
   };
 
   const tryAgain = () => {
@@ -107,7 +105,6 @@ export function useHomeTrainer() {
     setRound('playing');
     setLastMove(null);
     setDisplayFen(null);
-    setBoardKey((k) => k + 1);
   };
 
   const recordFirstResult = (correct: boolean) => {
@@ -163,7 +160,6 @@ export function useHomeTrainer() {
     streak,
     learn,
     orientation,
-    boardKey,
     boardFen,
     boardLastMove,
     progress,

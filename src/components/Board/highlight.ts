@@ -15,6 +15,7 @@ type SquarePaint = {
   isLast: boolean;
   isAttention: boolean;
   isSelected: boolean;
+  isDropTarget?: boolean;
   isHighlight: boolean;
   highlightTone: HighlightTone;
 };
@@ -24,7 +25,7 @@ export function squareBackground(input: SquarePaint, palette: Palette = palettes
   if (input.isHighlight) {
     return input.highlightTone === 'success' ? palette.boardSave : palette.boardBlunder;
   }
-  if (input.isSelected) return palette.boardSelected;
+  if (input.isDropTarget || input.isSelected) return palette.boardSelected;
   if (input.isAttention) return palette.boardAttention;
   if (input.isLast) return palette.boardLastMove;
   return input.isDark ? palette.boardDark : palette.boardLight;

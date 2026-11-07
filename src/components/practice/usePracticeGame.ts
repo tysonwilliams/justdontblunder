@@ -35,7 +35,6 @@ export function usePracticeGame() {
   const { colors, scheme } = useTheme();
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
   const [fen, setFen] = useState(() => createGame().fen());
-  const [boardKey, setBoardKey] = useState(0);
   const [feedback, setFeedback] = useState<MoveFeedback | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [tone, setTone] = useState<'danger' | 'success' | 'warn'>('danger');
@@ -64,7 +63,6 @@ export function usePracticeGame() {
   const resetBoard = () => {
     if (replyTimer.current) clearTimeout(replyTimer.current);
     setFen(createGame().fen());
-    setBoardKey((k) => k + 1);
     setFeedback(null);
     setStatus(null);
     setReplySan(null);
@@ -93,7 +91,6 @@ export function usePracticeGame() {
     setStatus(null);
     setReplySan(null);
     setHighlights([]);
-    setBoardKey((k) => k + 1);
   };
 
   const onMove = useCallback(
@@ -186,7 +183,6 @@ export function usePracticeGame() {
 
   return {
     fen,
-    boardKey,
     feedback,
     status,
     tone,

@@ -31,6 +31,8 @@ export function buildBoardRows(input: {
   highlightTone: HighlightTone;
   lastMove: { from: Square; to: Square } | null;
   dragSquare: Square | null;
+  dropSquare?: Square | null;
+  hiddenSquares?: readonly Square[];
   squareSize: number;
   palette?: Palette;
 }): BoardSquareModel[][] {
@@ -38,6 +40,7 @@ export function buildBoardRows(input: {
   const legal = new Set(input.legal);
   const highlights = new Set(input.highlightSquares);
   const attention = new Set(input.attentionSquares);
+  const hidden = new Set(input.hiddenSquares ?? []);
   const rows: BoardSquareModel[][] = [];
 
   for (let rankIndex = 0; rankIndex < 8; rankIndex += 1) {
@@ -47,6 +50,7 @@ export function buildBoardRows(input: {
       const isDark = (fileIndex + rankIndex) % 2 === 1;
       const piece = pieceAt(input.game, square) ?? null;
       const isSelected = input.selected === square;
+      const isDropTarget = input.dropSquare === square && input.dropSquare !== input.selected;
       const isHighlight = highlights.has(square);
       const isAttention = attention.has(square);
       const isLast = input.lastMove != null && (input.lastMove.from === square || input.lastMove.to === square);
@@ -59,6 +63,7 @@ export function buildBoardRows(input: {
             isLast,
             isAttention,
             isSelected,
+            isDropTarget,
             isHighlight,
             highlightTone: input.highlightTone,
           },
@@ -69,7 +74,7 @@ export function buildBoardRows(input: {
         isDark,
         showFile: rankIndex === 7,
         showRank: fileIndex === 0,
-        hidePiece: input.dragSquare === square,
+        hidePiece: input.dragSquare === square || hidden.has(square),
         label: squareLabel(square, piece, {
           selected: isSelected,
           highlighted: isHighlight || isAttention,

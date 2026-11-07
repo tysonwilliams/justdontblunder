@@ -45,7 +45,7 @@ export function DrillPlay({ session, onMode, onTheme, split, phone }: Props) {
       }
       board={
         <ChessBoard
-          key={session.boardKey}
+          key={`${drill.id}-${session.index}`}
           fen={session.boardFen}
           orientation={session.orientation}
           flipCue={!phone && session.orientation === 'black'}
