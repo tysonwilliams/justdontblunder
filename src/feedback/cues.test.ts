@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cueForLessonTone, planFeedback, type FeedbackCue } from '@/src/feedback/cues';
+import { cueForLessonTone, cuesForCommittedMove, planFeedback, type FeedbackCue } from '@/src/feedback/cues';
 
 const BOTH = { sound: true, haptics: true, native: true };
 
@@ -45,6 +45,16 @@ describe('planFeedback', () => {
       sound: null,
       haptic: null,
     });
+  });
+});
+
+describe('cuesForCommittedMove', () => {
+  it('plays the click for every committed move, plus save or blunder for a verdict', () => {
+    expect(cuesForCommittedMove('e4', undefined)).toEqual(['move']);
+    expect(cuesForCommittedMove('e4', true)).toEqual(['move', 'save']);
+    expect(cuesForCommittedMove('exd5', true)).toEqual(['capture', 'save']);
+    expect(cuesForCommittedMove('Qh5+', false)).toEqual(['capture', 'blunder']);
+    expect(cuesForCommittedMove('Nf3', false)).toEqual(['move', 'blunder']);
   });
 });
 

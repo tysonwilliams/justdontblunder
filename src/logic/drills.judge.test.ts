@@ -19,8 +19,6 @@ function ok(id: string, uci: string): boolean {
 const DISPUTED = [
   ['hang-q-01', 'h5g5'],
   ['hang-q-03', 'h4g4'],
-  ['hang-r-01', 'h4g4'],
-  ['hang-r-01', 'h4f4'],
   ['hang-p-01', 'd8h4'],
   ['hang-p-01', 'g8f6'],
   ['hang-p-01', 'd7d5'],
@@ -37,7 +35,6 @@ const QUEEN_ESCAPES = [
   ['hang-q-01', 'h5f5', 'Qf5'],
   ['hang-q-03', 'h4h5', 'Qh5'],
   ['hang-q-03', 'h4f4', 'Qf4'],
-  ['hang-r-04', 'd1g4', 'Qg4'],
   ['fork-03', 'b3a4', 'Qa4'],
   ['fork-03', 'b3c4', 'Qc4'],
   ['fork-03', 'b3d3', 'Qd3'],
@@ -91,12 +88,12 @@ describe('the drill judge', () => {
       }
     }
     expect(traps).toHaveLength(24);
-    expect(pass).toBe(206);
-    expect(fail).toBe(739);
+    expect(pass).toBe(216);
+    expect(fail).toBe(696);
   }, 120000);
 
   it('keeps the disputed material losses as failures', () => {
-    expect(DISPUTED).toHaveLength(14);
+    expect(DISPUTED).toHaveLength(12);
     for (const [id, uci] of DISPUTED) {
       const item = drill(id);
       const from = uci.slice(0, 2) as Square;

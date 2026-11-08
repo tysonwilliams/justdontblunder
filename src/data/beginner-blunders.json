@@ -111,83 +111,113 @@
   },
   {
     "id": "hang-r-01",
-    "fen": "rnbqk3/pppp1ppp/5n2/4p3/2B1P2r/5N2/PPPP1PPP/RNBQK2R b KQq - 2 4",
+    "fen": "rnbqkbn1/ppppppp1/8/8/2B1P2r/2NP1N1p/PPP2PPP/R1BQK2R b KQq - 3 5",
     "sideToMove": "b",
     "theme": "hanging",
     "atRiskSquare": "h4",
     "prompt": "Your rook is hanging on h4 — save it.",
     "solution": [
-      "h4e4",
-      "h4h5"
+      "h4h5",
+      "h4h7",
+      "h4h8"
     ],
-    "note": "Nf3 attacks the rook on h4. Move the rook before it is taken.",
+    "note": "Nf3 attacks the rook on h4. Rh5, Rh7, and Rh8 get it off that square.",
     "expectedDropCp": 500,
     "acceptable": [
-      "h4e4",
-      "h4h5"
+      "h4h5",
+      "h4h7",
+      "h4h8"
     ],
     "traps": []
   },
   {
     "id": "hang-r-02",
-    "fen": "r1bqk2r/pppp1ppp/2n2n2/4r3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 5",
+    "fen": "1nbqkbnr/1ppppppp/r7/pP6/8/8/PBPPPPPP/RN1QKBNR b KQk - 0 3",
     "sideToMove": "b",
     "theme": "hanging",
-    "atRiskSquare": "e5",
-    "prompt": "Your rook is hanging in the center — move it.",
+    "atRiskSquare": "a6",
+    "prompt": "Your rook is hanging — move it.",
     "solution": [
-      "e5e4",
-      "e5e7"
+      "a6b6",
+      "a6d6",
+      "a6e6",
+      "a6g6",
+      "a6h6",
+      "a6a7",
+      "a6a8"
     ],
-    "note": "The rook on e5 is unprotected and attacked. Relocate it.",
+    "note": "The pawn on b5 attacks the rook, and the knight on b8 is the only defender. Move the rook. Rc6 stays on the pawn's attack.",
     "expectedDropCp": 500,
     "acceptable": [
-      "e5e4",
-      "e5e7"
+      "a6b6",
+      "a6d6",
+      "a6e6",
+      "a6g6",
+      "a6h6",
+      "a6a7",
+      "a6a8"
     ],
     "traps": []
   },
   {
     "id": "hang-r-03",
-    "fen": "rnbqkb1r/pppppppp/5n2/7R/4P3/8/PPPP1PPP/RNBQKBN1 w Qkq - 0 3",
+    "fen": "rnbqkbnr/p1pppppp/8/8/Pp6/R7/1PPPPPPP/1NBQKBNR w Kkq - 0 3",
     "sideToMove": "w",
     "theme": "hanging",
-    "atRiskSquare": "h5",
-    "prompt": "Your rook is hanging to the knight — make everything safe.",
+    "atRiskSquare": "a3",
+    "prompt": "Your rook is hanging to the pawn — make everything safe.",
     "solution": [
-      "h5h4"
+      "a3b3",
+      "a3d3",
+      "a3e3",
+      "a3f3",
+      "a3g3",
+      "a3h3",
+      "a3a2",
+      "a3a1"
     ],
-    "note": "Nf6 attacks your unprotected rook. Make everything safe — move the rook, defend it, or deal with the knight.",
+    "note": "The pawn on b4 attacks your rook. The knight on b1 defends it, but you would still lose the rook for a pawn. Move the rook.",
     "expectedDropCp": 500,
     "acceptable": [
-      "h5h4"
+      "a3b3",
+      "a3d3",
+      "a3e3",
+      "a3f3",
+      "a3g3",
+      "a3h3",
+      "a3a2",
+      "a3a1"
     ],
     "traps": []
   },
   {
     "id": "hang-r-04",
-    "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P2R/8/PPPP1PPP/RNBQKBN1 w Qkq - 0 3",
+    "fen": "rnbqkbnr/1pp2ppp/p2p4/4p2P/7R/8/PPPPPPP1/RNBQKBN1 w Qkq - 0 4",
     "sideToMove": "w",
     "theme": "hanging",
     "atRiskSquare": "h4",
-    "prompt": "Your rook is hanging to the queen — retreat.",
+    "prompt": "Your rook is hanging to the queen — make it safe.",
     "solution": [
-      "h4g4",
-      "h4h3",
-      "h4h5",
+      "h4e4",
+      "h4c4",
+      "h4b4",
+      "h4a4",
+      "h4h2",
+      "h4h1",
       "g2g3",
-      "g1f3",
-      "d1h5"
+      "g1f3"
     ],
-    "note": "Black’s queen eyes Rh4. Move the rook before Q×h4.",
+    "note": "The queen on d8 attacks the rook on h4. Move the rook, or defend h4 with g3 or Nf3.",
     "expectedDropCp": 500,
     "acceptable": [
-      "h4g4",
-      "h4h3",
-      "h4h5",
+      "h4e4",
+      "h4c4",
+      "h4b4",
+      "h4a4",
+      "h4h2",
+      "h4h1",
       "g2g3",
-      "g1f3",
-      "d1h5"
+      "g1f3"
     ],
     "traps": []
   },
@@ -249,22 +279,24 @@
   },
   {
     "id": "hang-n-03",
-    "fen": "r1bqkbnr/pppp1ppp/8/1p6/2N1P3/8/PPPP1PPP/RNBQKB1R w KQkq - 0 3",
+    "fen": "rnbqkbnr/2pp1ppp/p7/1p2p3/2N1P3/8/PPPP1PPP/R1BQKBNR w KQkq - 0 4",
     "sideToMove": "w",
     "theme": "hanging",
     "atRiskSquare": "c4",
     "prompt": "A pawn attacks your knight on c4 — save it.",
     "solution": [
       "c4e3",
-      "c4e5",
-      "c4a3"
+      "c4a5",
+      "c4a3",
+      "c4e5"
     ],
-    "note": "b5 hits the knight. Move it before it drops.",
+    "note": "b5 hits the knight. Ne3, Na5, and Na3 step away. Nxe5 takes the e-pawn too. Nb6 and Nd6 walk into a pawn.",
     "expectedDropCp": 300,
     "acceptable": [
       "c4e3",
-      "c4e5",
-      "c4a3"
+      "c4a5",
+      "c4a3",
+      "c4e5"
     ],
     "traps": []
   },

@@ -22,6 +22,18 @@ export function planFeedback(
   };
 }
 
+/**
+ * A move that stays on the board always gets the move or capture click.
+ * A trainer that accepts it also plays the save chime; a rejection plays
+ * the blunder cue as well. `void` is a plain move with no verdict.
+ */
+export function cuesForCommittedMove(san: string, allowed: boolean | void): FeedbackCue[] {
+  const contact = soundForSan(san);
+  if (allowed === true) return [contact, 'save'];
+  if (allowed === false) return [contact, 'blunder'];
+  return [contact];
+}
+
 /** Lesson demos: the safe idea uses the save chime, a blunder the fail chime. */
 export function cueForLessonTone(tone: string, san: string): FeedbackCue {
   if (tone === 'blunder') return 'blunder';
