@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 import { DrillSession } from '@/src/components/DrillSession';
 import { SafeChoiceSession } from '@/src/components/SafeChoiceSession';
+import { PlaySkeleton } from '@/src/components/ui/Skeleton';
 import {
   drillHref,
   parseDrillMode,
@@ -38,7 +39,7 @@ export default function DrillsScreen() {
     router.setParams({ theme: next === 'all' ? '' : next });
   };
 
-  if (pick) return null;
+  if (pick) return <PlaySkeleton />;
 
   if (mode === 'pick') {
     return <SafeChoiceSession key={`pick-${theme}`} theme={theme} onMode={onMode} onTheme={onTheme} />;

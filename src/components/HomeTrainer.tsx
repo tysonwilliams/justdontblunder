@@ -8,6 +8,8 @@ import { homeEntryHref, useHomeTrainer, type HomeEntryId } from '@/src/component
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { BoardLead } from '@/src/components/ui/BoardLead';
+import { Bone, PlaySkeleton } from '@/src/components/ui/Skeleton';
+import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { StatusPill } from '@/src/components/ui/Chip';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
@@ -16,7 +18,7 @@ import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { themeInstruction } from '@/src/logic/drills';
-import { fontSizes, lineHeights, spacing } from '@/src/theme';
+import { fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 const RESULT_LINKS: { id: HomeEntryId; label: string }[] = [
   { id: 'drills', label: 'Drills' },
@@ -34,6 +36,7 @@ export function HomeTrainer() {
     router.push(homeEntryHref(id, trainer.learn.href) as Href);
   };
 
+  if (forceSkeleton()) return <PlaySkeleton cards />;
   if (!drill) return null;
 
   const feedback = trainer.round !== 'playing';
@@ -51,12 +54,12 @@ export function HomeTrainer() {
               <Text style={[text.meta, phone && text.metaPhone]}>
                 {trainer.index + 1} / {trainer.total}
               </Text>
-              {trainer.hydrated && trainer.streak > 0 ? (
+              {!trainer.hydrated ? (
+                <Bone width={72} height={phone ? 22 : 28} radius={radii.pill} />
+              ) : trainer.streak > 0 ? (
                 <StreakBadge streak={trainer.streak} celebrate compact={phone} />
-              ) : trainer.hydrated ? (
-                <Text style={[text.muted, phone && text.mutedPhone]}>No streak yet</Text>
               ) : (
-                <View style={styles.streakSlot} />
+                <Text style={[text.muted, phone && text.mutedPhone]}>No streak yet</Text>
               )}
             </View>
           </View>
@@ -131,10 +134,6 @@ export function HomeTrainer() {
 }
 
 const styles = StyleSheet.create({
-  streakSlot: {
-    minWidth: 72,
-    minHeight: 22,
-  },
   guidePhone: {
     padding: spacing.sm,
     gap: spacing.xs,

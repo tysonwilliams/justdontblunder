@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 
-import { playMoveSound } from '@/src/audio/playMoveSound';
 import { soundForSan } from '@/src/audio/moveSound';
+import { playFeedback } from '@/src/feedback/playFeedback';
 import type { PunishmentStep } from '@/src/logic/punishment';
 
 export const PUNISHMENT_STEP_MS = 720;
@@ -44,7 +44,7 @@ export function usePunishmentPlayback(active: boolean, line: PunishmentStep[]): 
         if (!move) return;
         setStep(next);
         if (next + 1 < lineRef.current.length) kick(next + 1);
-        playMoveSound(soundForSan(move.san));
+        playFeedback(soundForSan(move.san));
       }, PUNISHMENT_STEP_MS);
     };
     kick(0);

@@ -42,6 +42,10 @@ export type ChessBoardProps = {
    * the slot, so the squares match the frame before onLayout runs.
    */
   size?: number;
+  /**
+   * `false` is a blunder. `true` is a safe move. Omit the return for an
+   * ordinary move that is not judged.
+   */
   onMove?: (event: BoardMoveEvent) => boolean | void;
   onPositionChange?: (snap: GameSnapshot) => void;
 };

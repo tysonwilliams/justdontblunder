@@ -1,4 +1,4 @@
-export type MoveSound = 'move' | 'capture' | 'fail';
+export type MoveSound = 'move' | 'capture';
 
 /** Capture covers checks and mates too — one clip for any decisive contact. */
 export function soundForSan(san: string): MoveSound {

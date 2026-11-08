@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 import { LessonList } from '@/src/components/LessonList';
 import { LessonPlayer } from '@/src/components/LessonPlayer';
+import { PlaySkeleton } from '@/src/components/ui/Skeleton';
 import { legacyLearnRedirect } from '@/src/logic/drillLink';
 import { parseLessonId, type LessonId } from '@/src/logic/lessons';
 
@@ -27,7 +28,7 @@ export default function LearnScreen() {
     if (redirect) router.replace(redirect as Href);
   }, [redirect, router]);
 
-  if (redirect) return null;
+  if (redirect) return <PlaySkeleton />;
 
   const openLesson = (id: LessonId) => {
     router.setParams({ lesson: id });

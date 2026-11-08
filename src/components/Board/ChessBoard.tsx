@@ -12,8 +12,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { playMoveSound, unlockMoveSounds } from '@/src/audio/playMoveSound';
 import { soundForSan } from '@/src/audio/moveSound';
+import { playFeedback, unlockFeedback } from '@/src/feedback/playFeedback';
 import { BoardArrows } from '@/src/components/Board/BoardArrows';
 import { BoardSquare } from '@/src/components/Board/BoardSquare';
 import { centerOf } from '@/src/components/Board/boardCoords';
@@ -301,7 +301,7 @@ function ChessBoardView({
   const shakePiece = useCallback(
     (square: Square) => {
       const now = latest.current;
-      playMoveSound('fail');
+      playFeedback('blunder');
       if (reducedRef.current || now.squareSize <= 0 || !pieceAt(now.game, square)) {
         clearSelection();
         return;
@@ -338,7 +338,7 @@ function ChessBoardView({
       if (!moved) {
         if (source === 'drag') beginSnap(from, true);
         else shakePiece(from);
-        if (source === 'drag') playMoveSound('fail');
+        if (source === 'drag') playFeedback('blunder');
         return;
       }
       const afterFen = probe.fen();
@@ -346,10 +346,10 @@ function ChessBoardView({
       const allowed = now.onMove?.({ from, to, beforeFen, afterFen, san: moved.san });
       if (allowed === false) {
         clearSelection();
-        playMoveSound('fail');
+        playFeedback('blunder');
         return;
       }
-      playMoveSound(soundForSan(moved.san));
+      playFeedback(allowed === true ? 'save' : soundForSan(moved.san));
       if (now.fen === undefined) setGameFen(afterFen);
       now.onPositionChange?.(snapshot(probe));
       clearSelection();
@@ -401,6 +401,7 @@ function ChessBoardView({
       setSelected(square);
       setLegal(getLegalTargets(now.game, square));
       setDragSquare(square);
+      playFeedback('pickup');
       lift.value = withTiming(reducedRef.current ? 0 : 1, { duration: reducedRef.current ? 0 : 90 });
     },
     [armPressShield, dragX, dragY, lift, shake, tracking],
@@ -438,7 +439,7 @@ function ChessBoardView({
           commitMove(from, intent.to, 'drag');
           return;
         case 'snap':
-          if (intent.reason !== 'origin') playMoveSound('fail');
+          playFeedback(intent.reason === 'origin' ? 'drop' : 'blunder');
           beginSnap(from, intent.reason !== 'origin');
           return;
         default: {
@@ -597,7 +598,7 @@ function ChessBoardView({
   const turnLine = turnStatus(snap, hideTurn);
 
   return (
-    <View style={styles.wrap} onPointerDown={unlockMoveSounds}>
+    <View style={styles.wrap} onPointerDown={unlockFeedback}>
       {turnLine || flipCue ? (
         <View style={[styles.meta, phone && styles.metaPhone]}>
           {turnLine ? (

@@ -3,6 +3,9 @@ import { Text, View } from 'react-native';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { sentence, usePracticeGame } from '@/src/components/practice/usePracticeGame';
+import { useEnginePhase } from '@/src/engine/useEnginePhase';
+import { PlaySkeleton } from '@/src/components/ui/Skeleton';
+import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { liveA11y } from '@/src/components/ui/a11y';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { Button } from '@/src/components/ui/Button';
@@ -15,7 +18,9 @@ import { HABIT_PROMPT } from '@/src/logic/drills';
 
 export function PracticeScreen() {
   const { split, phone, tight } = useLayout();
+  const engine = useEnginePhase();
   const game = usePracticeGame();
+  if (forceSkeleton() || engine === 'warming') return <PlaySkeleton />;
   const showFeedback = game.feedback != null && (game.tone === 'danger' || !game.gameOver);
   const showExtra = !(tight && showFeedback);
   const preMoveHang = !game.feedback && !game.status ? game.hangingNow[0] : undefined;

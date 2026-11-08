@@ -2,11 +2,14 @@ import { Pressable, Text, View } from 'react-native';
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconCheck } from '@/src/components/ui/icons';
+import { Bone } from '@/src/components/ui/Skeleton';
+import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { LESSONS, type LessonId } from '@/src/logic/lessons';
 import { useProgressStore } from '@/src/store/progress';
+import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
@@ -18,6 +21,7 @@ type Props = {
 export function LessonList({ onOpen }: Props) {
   const { colors } = useTheme();
   const completed = useProgressStore((s) => s.completedLessons);
+  const ready = useHydrated(useProgressStore.persist) && !forceSkeleton();
   const { split } = useLayout();
   const done = new Set(completed);
 
@@ -32,39 +36,50 @@ export function LessonList({ onOpen }: Props) {
           </Text>
         </View>
         <View style={styles.list}>
-          {LESSONS.map((lesson, index) => {
-            const complete = done.has(lesson.id);
-            const label = `${lesson.title}${complete ? ', done' : ''}`;
-            return (
-              <Pressable
-                key={lesson.id}
-                {...controlA11y('button', label, complete)}
-                accessibilityState={{ selected: complete, checked: complete }}
-                aria-checked={complete}
-                testID={`lesson-open-${lesson.id}`}
-                onPress={() => onOpen(lesson.id)}
-                style={({ pressed }) => [styles.row, pressed && styles.rowOn]}>
-                <View style={styles.index}>
-                  <Text style={styles.indexText}>{index + 1}</Text>
-                </View>
-                <View style={styles.copy}>
-                  <Text style={styles.title} numberOfLines={1}>
-                    {lesson.title}
-                  </Text>
-                  <Text style={text.muted} numberOfLines={1}>
-                    {lesson.summary}
-                  </Text>
-                </View>
-                {complete ? (
-                  <View style={styles.check}>
-                    <IconCheck color={colors.accent} size={18} />
+          {ready
+            ? LESSONS.map((lesson, index) => {
+                const complete = done.has(lesson.id);
+                const label = `${lesson.title}${complete ? ', done' : ''}`;
+                return (
+                  <Pressable
+                    key={lesson.id}
+                    {...controlA11y('button', label, complete)}
+                    accessibilityState={{ selected: complete, checked: complete }}
+                    aria-checked={complete}
+                    testID={`lesson-open-${lesson.id}`}
+                    onPress={() => onOpen(lesson.id)}
+                    style={({ pressed }) => [styles.row, pressed && styles.rowOn]}>
+                    <View style={styles.index}>
+                      <Text style={styles.indexText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.copy}>
+                      <Text style={styles.title} numberOfLines={1}>
+                        {lesson.title}
+                      </Text>
+                      <Text style={text.muted} numberOfLines={1}>
+                        {lesson.summary}
+                      </Text>
+                    </View>
+                    {complete ? (
+                      <View style={styles.check}>
+                        <IconCheck color={colors.accent} size={18} />
+                      </View>
+                    ) : (
+                      <View style={styles.checkSlot} />
+                    )}
+                  </Pressable>
+                );
+              })
+            : LESSONS.map((lesson) => (
+                <View key={lesson.id} style={styles.row}>
+                  <Bone width={28} height={28} radius={radii.badge} />
+                  <View style={styles.copy}>
+                    <Bone width="52%" height={16} />
+                    <Bone width="88%" height={14} />
                   </View>
-                ) : (
-                  <View style={styles.checkSlot} />
-                )}
-              </Pressable>
-            );
-          })}
+                  <Bone width={18} height={18} />
+                </View>
+              ))}
         </View>
       </View>
     </Screen>

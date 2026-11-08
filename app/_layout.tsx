@@ -18,6 +18,8 @@ import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
+import { BootSkeleton } from '@/src/components/ui/Skeleton';
+import { unlockFeedback } from '@/src/feedback/playFeedback';
 import { useThemePreference } from '@/src/store/themePreference';
 import { useTheme } from '@/src/theme/useTheme';
 import { applyDocumentTheme } from '@/src/theme/chrome';
@@ -81,11 +83,11 @@ export default function RootLayout() {
   }, [loaded, themeReady]);
 
   if (!loaded || !themeReady) {
-    return null;
+    return <BootSkeleton />;
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+    <GestureHandlerRootView onPointerDown={unlockFeedback} style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{

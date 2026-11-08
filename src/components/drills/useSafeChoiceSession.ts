@@ -4,6 +4,7 @@ import type { Square } from 'chess.js';
 import type { BoardArrow } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
+import { playFeedback } from '@/src/feedback/playFeedback';
 import { sessionForTheme, type ThemeFilter } from '@/src/logic/drillLink';
 import { isCorrectDrillMove, type DrillPosition, type DrillSession as DrillSessionData } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
@@ -14,8 +15,6 @@ import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
-import { playMoveSound } from '@/src/audio/playMoveSound';
-import { soundForSan } from '@/src/audio/moveSound';
 
 export type SafeRound = 'playing' | 'correct' | 'retry';
 
@@ -151,13 +150,13 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
       recordFirst(true);
       setReplayLine([]);
       setRound('correct');
-      playMoveSound(soundForSan(played.san));
+      playFeedback('save');
       return;
     }
     recordFirst(false);
     setReplayLine(punishmentLine(drill, option.from, option.to));
     setRound('retry');
-    playMoveSound('fail');
+    playFeedback('blunder');
   };
 
   const boardFen = playback.fen ?? displayFen ?? drill?.fen ?? '';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { controlA11y, liveA11y, squareA11y } from '@/src/components/ui/a11y';
+import { controlA11y, liveA11y, squareA11y, switchA11y } from '@/src/components/ui/a11y';
 
 describe('accessibility props', () => {
   it('exposes button and tab state as aria attributes', () => {
@@ -18,6 +18,17 @@ describe('accessibility props', () => {
       'aria-label': 'Drills',
       'aria-selected': true,
     });
+  });
+
+  it('exposes a switch as checked on native and web', () => {
+    expect(switchA11y('Sound', true)).toMatchObject({
+      accessibilityRole: 'switch',
+      accessibilityLabel: 'Sound',
+      accessibilityState: { checked: true },
+      'aria-label': 'Sound',
+      'aria-checked': true,
+    });
+    expect(switchA11y('Haptics', false)['aria-checked']).toBe(false);
   });
 
   it('announces feedback politely on native and web', () => {
