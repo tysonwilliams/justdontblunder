@@ -12,8 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { soundForSan } from '@/src/audio/moveSound';
-import { playFeedback, unlockFeedback } from '@/src/feedback/playFeedback';
+import { playFeedback, playMoveOutcome, unlockFeedback } from '@/src/feedback/playFeedback';
 import { BoardArrows } from '@/src/components/Board/BoardArrows';
 import { BoardSquare } from '@/src/components/Board/BoardSquare';
 import { centerOf } from '@/src/components/Board/boardCoords';
@@ -346,10 +345,10 @@ function ChessBoardView({
       const allowed = now.onMove?.({ from, to, beforeFen, afterFen, san: moved.san });
       if (allowed === false) {
         clearSelection();
-        playFeedback('blunder');
+        playMoveOutcome(moved.san, false);
         return;
       }
-      playFeedback(allowed === true ? 'save' : soundForSan(moved.san));
+      playMoveOutcome(moved.san, allowed);
       if (now.fen === undefined) setGameFen(afterFen);
       now.onPositionChange?.(snapshot(probe));
       clearSelection();

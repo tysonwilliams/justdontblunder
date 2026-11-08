@@ -2,7 +2,8 @@ import { createAudioPlayer, preload, type AudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
-import { planFeedback, type FeedbackCue, type HapticId, type SoundId } from '@/src/feedback/cues';
+import { cuesForCommittedMove, planFeedback, type FeedbackCue, type HapticId, type SoundId } from '@/src/feedback/cues';
+import { primeSilently, replayAudibly } from '@/src/feedback/playback';
 import { useFeedbackSettings } from '@/src/store/feedbackSettings';
 
 const sources: Record<SoundId, number> = {
@@ -33,9 +34,7 @@ function getPlayers(): Record<SoundId, AudioPlayer> {
 }
 
 function replay(player: AudioPlayer, volume: number): void {
-  player.volume = volume;
-  void player.seekTo(0);
-  player.play();
+  replayAudibly(player, volume);
 }
 
 function fireHaptic(kind: HapticId): void {
@@ -65,7 +64,14 @@ export function unlockFeedback(): void {
   if (unlocked) return;
   unlocked = true;
   for (const player of Object.values(getPlayers())) {
-    replay(player, 0);
+    primeSilently(player);
+  }
+}
+
+/** Click for the move itself, then the save or blunder chime when the trainer has a verdict. */
+export function playMoveOutcome(san: string, allowed: boolean | void): void {
+  for (const cue of cuesForCommittedMove(san, allowed)) {
+    playFeedback(cue);
   }
 }
 
