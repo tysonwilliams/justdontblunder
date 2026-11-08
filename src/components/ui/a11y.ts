@@ -18,6 +18,17 @@ export function controlA11y(role: ControlRole, label: string, selected = false) 
   };
 }
 
+export function switchA11y(label: string, checked: boolean) {
+  const state: AccessibilityState = { checked };
+  return {
+    accessibilityRole: 'switch' as const,
+    accessibilityLabel: label,
+    accessibilityState: state,
+    'aria-label': label,
+    'aria-checked': checked,
+  };
+}
+
 export function liveA11y() {
   return {
     accessibilityLiveRegion: 'polite' as const,

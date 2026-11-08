@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 
-import { playMoveSound } from '@/src/audio/playMoveSound';
 import { soundForSan } from '@/src/audio/moveSound';
+import { playFeedback } from '@/src/feedback/playFeedback';
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
 import { judgePracticeMove, type MoveFeedback } from '@/src/engine/evaluate';
 import { findHangingPieces } from '@/src/engine/patterns';
@@ -123,7 +123,7 @@ export function usePracticeGame() {
       const afterSnap = snapshot(createGame(event.afterFen));
       if (afterSnap.isGameOver) {
         setThinking(false);
-        return true;
+        return result.ok;
       }
 
       setThinking(true);
@@ -134,7 +134,7 @@ export function usePracticeGame() {
           setFen(reply.fen);
           setLastMove({ from: reply.from, to: reply.to });
           setReplySan(reply.san);
-          playMoveSound(soundForSan(reply.san));
+          playFeedback(soundForSan(reply.san));
           const created = findHangingPieces(reply.fen, 'w');
           if (result.ok) setStatus(null);
           if (result.ok && created[0]) {
@@ -153,7 +153,7 @@ export function usePracticeGame() {
         }
         setThinking(false);
       }, REPLY_DELAY_MS);
-      return true;
+      return result.ok;
     },
     [markPracticeMove],
   );

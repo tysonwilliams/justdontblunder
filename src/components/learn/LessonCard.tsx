@@ -5,8 +5,8 @@ import { ChessBoard, type BoardArrow } from '@/src/components/Board/ChessBoard';
 import { LessonLead } from '@/src/components/learn/LessonLead';
 import { squaresForBeat } from '@/src/components/learn/lessonPhase';
 import { lessonStyles } from '@/src/components/learn/lessonStyles';
-import { playMoveSound } from '@/src/audio/playMoveSound';
-import { soundForSan } from '@/src/audio/moveSound';
+import { cueForLessonTone } from '@/src/feedback/cues';
+import { playFeedback } from '@/src/feedback/playFeedback';
 import { PUNISHMENT_STEP_MS } from '@/src/components/usePunishmentPlayback';
 import { Button } from '@/src/components/ui/Button';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
@@ -57,7 +57,7 @@ export function LessonCardView({
 
   useEffect(() => {
     if (!beat?.san) return;
-    playMoveSound(beat.tone === 'blunder' ? 'fail' : soundForSan(beat.san));
+    playFeedback(cueForLessonTone(beat.tone, beat.san));
   }, [beat?.san, beat?.tone, card?.id, index]);
 
   const { colors, scheme } = useTheme();

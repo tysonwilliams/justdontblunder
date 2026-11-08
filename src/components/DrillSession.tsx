@@ -1,11 +1,16 @@
+import { View } from 'react-native';
+
 import { DrillDone, DrillRunSummary } from '@/src/components/drills/DrillScore';
 import { DrillPlay } from '@/src/components/drills/DrillPlay';
 import { useDrillSession, type DrillPlayMode } from '@/src/components/drills/useDrillSession';
 import { DrillToolbar } from '@/src/components/DrillToolbar';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { ChessBoard } from '@/src/components/Board/ChessBoard';
+import { Bone, BoardSkeleton } from '@/src/components/ui/Skeleton';
+import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
+import { play } from '@/src/components/ui/playStyles';
 import { useLayout } from '@/src/components/ui/useLayout';
+import { radii } from '@/src/theme';
 import { sessionForTheme, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 
 type Props = {
@@ -30,15 +35,25 @@ export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
     );
   }
 
-  if (session.reviewing && !session.hydrated) {
+  if (forceSkeleton() || (session.reviewing && !session.hydrated)) {
     return (
       <PlayFrame
         intro={
           <BoardLead>
             <DrillToolbar {...toolbar} />
+            <Bone width="70%" height={phone ? 20 : 26} />
+            <Bone height={phone ? 4 : 6} radius={radii.track} />
           </BoardLead>
         }
-        board={<ChessBoard interactive={false} hideTurn />}
+        board={<BoardSkeleton hideTurn={phone} />}
+        aside={
+          phone ? null : (
+            <View style={play.guide}>
+              <Bone height={16} />
+              <Bone width="76%" height={16} />
+            </View>
+          )
+        }
       />
     );
   }

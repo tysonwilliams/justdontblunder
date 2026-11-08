@@ -7,13 +7,19 @@ import { Button } from '@/src/components/ui/Button';
 import { FilterChips } from '@/src/components/ui/Chip';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
+import { SettingSwitch } from '@/src/components/ui/SettingSwitch';
+import { Bone } from '@/src/components/ui/Skeleton';
+import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { text } from '@/src/components/ui/text';
 import { drillHref } from '@/src/logic/drillLink';
 import { themeLabel, type DrillTheme } from '@/src/logic/drills';
 import { LESSONS } from '@/src/logic/lessons';
+import { playFeedback } from '@/src/feedback/playFeedback';
 import { drillsDoneCount } from '@/src/store/drillStats';
+import { useFeedbackSettings } from '@/src/store/feedbackSettings';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
 import { useThemePreference } from '@/src/store/themePreference';
+import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import type { ThemePreference } from '@/src/theme/preference';
@@ -37,6 +43,11 @@ export default function ProgressScreen() {
   useTheme();
   const preference = useThemePreference((state) => state.preference);
   const setPreference = useThemePreference((state) => state.setPreference);
+  const sound = useFeedbackSettings((state) => state.sound);
+  const setSound = useFeedbackSettings((state) => state.setSound);
+  const haptics = useFeedbackSettings((state) => state.haptics);
+  const setHaptics = useFeedbackSettings((state) => state.setHaptics);
+  const progressReady = useHydrated(useProgressStore.persist) && !forceSkeleton();
   const [confirmReset, setConfirmReset] = useState(false);
   const {
     dailyStreak,
@@ -70,29 +81,54 @@ export default function ProgressScreen() {
         <View style={styles.group}>
           <Text style={text.section}>Appearance</Text>
           <FilterChips options={APPEARANCE} value={preference} onChange={setPreference} />
+          <View style={styles.toggles}>
+            <SettingSwitch
+              label="Sound"
+              value={sound}
+              testID="setting-sound"
+              onChange={(next) => {
+                setSound(next);
+                if (next) playFeedback('save');
+              }}
+            />
+            <SettingSwitch
+              label="Haptics"
+              value={haptics}
+              testID="setting-haptics"
+              onChange={(next) => {
+                setHaptics(next);
+                if (next) playFeedback('pickup');
+              }}
+            />
+          </View>
         </View>
 
         <View style={styles.banner}>
-          {dailyStreak > 0 ? (
-            <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
+          {progressReady ? (
+            dailyStreak > 0 ? (
+              <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
+            ) : (
+              <Text style={text.bodyStrong}>No streak yet. Finish a drill to start one.</Text>
+            )
           ) : (
-            <Text style={text.bodyStrong}>No streak yet. Finish a drill to start one.</Text>
+            <Bone width={220} height={22} radius={radii.pill} />
           )}
         </View>
 
         <View style={styles.group}>
           <Text style={text.section}>Themes</Text>
           <Grid columns={themeCols}>
-            {THEMES.map((theme) => (
-              <CategoryStat key={theme} theme={theme} tally={themeStats[theme]} />
-            ))}
+            {progressReady
+              ? THEMES.map((theme) => <CategoryStat key={theme} theme={theme} tally={themeStats[theme]} />)
+              : THEMES.map((theme) => <TileBone key={theme} />)}
           </Grid>
         </View>
 
         <View style={styles.group}>
           <Text style={text.section}>Badges</Text>
           <Grid columns={badgeCols}>
-            {badges.map((badge) => (
+            {progressReady
+              ? badges.map((badge) => (
               <View
                 key={badge.title}
                 style={[styles.tile, styles.badge, badge.earned ? styles.badgeOn : styles.badgeOff]}>
@@ -102,40 +138,58 @@ export default function ProgressScreen() {
                 <Text style={styles.badgeTitle}>{badge.title}</Text>
                 <Text style={[styles.badgeDetail, badge.earned && styles.badgeDetailOn]}>{badge.detail}</Text>
               </View>
-            ))}
+            ))
+              : badges.map((badge) => <TileBone key={badge.title} tall />)}
           </Grid>
         </View>
 
         <View style={styles.group}>
           <Text style={text.section}>Totals</Text>
           <Grid columns={statCols}>
-            <Stat label="Lessons" value={`${completedLessons.length}/${LESSONS.length}`} />
-            <Stat label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />
-            <Stat label="Accuracy" value={`${accuracy}%`} />
-            <Stat label="Saves" value={String(blundersAvoided)} />
-            <Stat label="Blunders" value={String(blundersMade)} />
-            <Stat label="Practice moves" value={String(practiceMoves)} />
-            <Stat label="Best day streak" value={String(recordStreak)} />
-            <Stat label="Best run" value={String(bestPuzzleStreak)} />
+            {progressReady
+              ? [
+                  <Stat key="lessons" label="Lessons" value={`${completedLessons.length}/${LESSONS.length}`} />,
+                  <Stat key="drills" label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />,
+                  <Stat key="accuracy" label="Accuracy" value={`${accuracy}%`} />,
+                  <Stat key="saves" label="Saves" value={String(blundersAvoided)} />,
+                  <Stat key="blunders" label="Blunders" value={String(blundersMade)} />,
+                  <Stat key="practice" label="Practice moves" value={String(practiceMoves)} />,
+                  <Stat key="day" label="Best day streak" value={String(recordStreak)} />,
+                  <Stat key="run" label="Best run" value={String(bestPuzzleStreak)} />,
+                ]
+              : Array.from({ length: 8 }, (_, index) => <TileBone key={index} />)}
           </Grid>
         </View>
 
         <View style={[styles.actions, wideActions && styles.actionsRow]}>
-          <Button
-            style={wideActions ? styles.action : undefined}
-            label={missCount > 0 ? `Review today's misses (${missCount})` : 'No misses today'}
-            variant={missCount > 0 ? 'primary' : 'secondary'}
-            onPress={() => {
-              if (missCount === 0) return;
-              router.push(drillHref('review') as Href);
-            }}
-          />
-          <Button
-            style={wideActions ? styles.action : undefined}
-            label="Reset local progress"
-            variant="secondary"
-            onPress={() => setConfirmReset(true)}
-          />
+          {progressReady ? (
+            <>
+              <Button
+                style={wideActions ? styles.action : undefined}
+                label={missCount > 0 ? `Review today's misses (${missCount})` : 'No misses today'}
+                variant={missCount > 0 ? 'primary' : 'secondary'}
+                onPress={() => {
+                  if (missCount === 0) return;
+                  router.push(drillHref('review') as Href);
+                }}
+              />
+              <Button
+                style={wideActions ? styles.action : undefined}
+                label="Reset local progress"
+                variant="secondary"
+                onPress={() => setConfirmReset(true)}
+              />
+            </>
+          ) : (
+            <>
+              <View style={wideActions ? styles.action : undefined}>
+                <Bone height={44} radius={radii.lg} />
+              </View>
+              <View style={wideActions ? styles.action : undefined}>
+                <Bone height={44} radius={radii.lg} />
+              </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -182,6 +236,16 @@ function Grid({ columns, children }: { columns: number; children: ReactNode }) {
           {child}
         </View>
       ))}
+    </View>
+  );
+}
+
+function TileBone({ tall = false }: { tall?: boolean }) {
+  return (
+    <View style={[styles.tile, tall && styles.badge]}>
+      <Bone width={tall ? '40%' : '48%'} height={tall ? 14 : 28} />
+      <Bone width="72%" height={16} />
+      {tall ? <Bone width="56%" height={14} /> : null}
     </View>
   );
 }
@@ -236,6 +300,10 @@ const styles = themedStyleSheet((colors) => ({
     justifyContent: 'center',
   },
   group: {
+    gap: spacing.sm,
+  },
+  toggles: {
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   grid: {

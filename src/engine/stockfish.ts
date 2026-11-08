@@ -20,8 +20,46 @@ export type BlunderCheck = {
 
 type EngineAdapter = {
   evaluate: (fen: string, depth?: number) => Promise<EvalResult>;
+  /** Start the worker and wait until it answers `readyok`. */
+  warmup: () => Promise<void>;
   terminate: () => void;
 };
+
+export type EnginePhase = 'idle' | 'warming' | 'ready';
+
+let enginePhase: EnginePhase = 'idle';
+const engineListeners = new Set<() => void>();
+
+export function getEnginePhase(): EnginePhase {
+  return enginePhase;
+}
+
+export function subscribeEnginePhase(listener: () => void): () => void {
+  engineListeners.add(listener);
+  return () => {
+    engineListeners.delete(listener);
+  };
+}
+
+function setEnginePhase(next: EnginePhase): void {
+  if (enginePhase === next) return;
+  enginePhase = next;
+  engineListeners.forEach((listener) => listener());
+}
+
+/** Load Stockfish on web. Native and tests are ready immediately. */
+export function warmEngine(): void {
+  if (enginePhase === 'warming' || enginePhase === 'ready') return;
+  if (!isWebRuntime()) {
+    setEnginePhase('ready');
+    return;
+  }
+  setEnginePhase('warming');
+  void getAdapter()
+    .then((adapter) => adapter.warmup())
+    .then(() => setEnginePhase('ready'))
+    .catch(() => setEnginePhase('ready'));
+}
 
 let adapterPromise: Promise<EngineAdapter> | null = null;
 
@@ -71,6 +109,9 @@ function createWorkerAdapter(scriptUrl: string): EngineAdapter {
   };
 
   return {
+    warmup() {
+      return ensure().then(() => undefined);
+    },
     async evaluate(fen, depth = 12) {
       const eng = await ensure();
       return new Promise<EvalResult>((resolve, reject) => {
@@ -127,6 +168,7 @@ function createWorkerAdapter(scriptUrl: string): EngineAdapter {
 
 function createStubAdapter(): EngineAdapter {
   return {
+    async warmup() {},
     async evaluate() {
       return { score: 0, bestMove: '', pv: [], depth: 0, mate: null };
     },
