@@ -9,6 +9,9 @@ import { BoardLead } from '@/src/components/ui/BoardLead';
 import { StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
+import { LineBox } from '@/src/components/ui/LineBox';
+import { PHONE_PROMPT_HEIGHT } from '@/src/components/ui/phoneSlots';
+import { PhoneTray } from '@/src/components/ui/PhoneTray';
 import { PlayFrame, ScoreFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
@@ -16,6 +19,7 @@ import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { sessionForTheme, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT, themeLabel } from '@/src/logic/drills';
+import { spacing } from '@/src/theme';
 
 type Props = {
   theme: ThemeFilter;
@@ -24,7 +28,7 @@ type Props = {
 };
 
 export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
-  const { split, phone } = useLayout();
+  const { phone } = useLayout();
   const session = useSafeChoiceSession(theme);
   const toolbar = <DrillToolbar mode="pick" theme={theme} onMode={onMode} onTheme={onTheme} />;
 
@@ -51,26 +55,23 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
 
   return (
     <PlayFrame
-      asideFirst={!split && session.round !== 'playing' && !session.watchingReply}
       intro={
         phone ? (
           <BoardLead>
             {toolbar}
-            {session.round === 'playing' ? (
-              <>
-                <Text style={play.phoneTitle} numberOfLines={2}>
-                  {drill.prompt}
-                </Text>
-                <View style={play.metaRow}>
-                  <View style={play.progressGrow}>
-                    <ProgressTrack progress={session.progress} />
-                  </View>
-                  <Text style={text.meta}>
-                    {session.index + 1}/{session.session.positions.length}
-                  </Text>
-                </View>
-              </>
-            ) : null}
+            <LineBox height={PHONE_PROMPT_HEIGHT}>
+              <Text style={play.phoneTitle} numberOfLines={2}>
+                {drill.prompt}
+              </Text>
+            </LineBox>
+            <View style={styles.progressRow}>
+              <View style={play.progressGrow}>
+                <ProgressTrack progress={session.progress} />
+              </View>
+              <Text style={[text.meta, text.metaPhone]} numberOfLines={1}>
+                {session.index + 1}/{session.session.positions.length}
+              </Text>
+            </View>
           </BoardLead>
         ) : (
           <BoardLead>
@@ -105,28 +106,45 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
         />
       }
       aside={
-        session.card ? (
-          <BlunderOverlay
-            visible
-            tone={session.card.tone}
-            title={session.card.title}
-            message={session.roundCopy}
-            waiting={session.card.tone === 'danger' && !session.replyReady ? 'Watch the reply.' : undefined}
-            actionLabel={session.card.tone === 'danger' ? (session.replyReady ? 'Try again' : undefined) : 'Next'}
-            onDismiss={session.card.tone === 'danger' ? (session.replyReady ? session.tryAgain : undefined) : session.next}
-            actionTestID={session.card.tone === 'danger' ? 'try-again' : 'next-puzzle'}
-            secondaryLabel={session.card.tone === 'danger' && session.replyReady ? 'Next' : undefined}
-            onSecondary={session.card.tone === 'danger' && session.replyReady ? session.next : undefined}
-          />
-        ) : phone ? (
-          <ChoiceButtons presented={presented} onChoose={session.choose} compact />
-        ) : (
-          <View style={play.guide}>
-            <Text style={text.body}>Blue arrows mark the two moves. One of them blunders.</Text>
-            <ChoiceButtons presented={presented} onChoose={session.choose} compact={false} />
-          </View>
-        )
+        <PhoneTray
+          banner={
+            session.card ? (
+              <BlunderOverlay
+                visible
+                tone={session.card.tone}
+                title={session.card.title}
+                message={session.roundCopy}
+                waiting={session.card.tone === 'danger' && !session.replyReady ? 'Watch the reply.' : undefined}
+                actionLabel={session.card.tone === 'danger' ? (session.replyReady ? 'Try again' : undefined) : 'Next'}
+                onDismiss={
+                  session.card.tone === 'danger' ? (session.replyReady ? session.tryAgain : undefined) : session.next
+                }
+                actionTestID={session.card.tone === 'danger' ? 'try-again' : 'next-puzzle'}
+                secondaryLabel={session.card.tone === 'danger' && session.replyReady ? 'Next' : undefined}
+                onSecondary={session.card.tone === 'danger' && session.replyReady ? session.next : undefined}
+              />
+            ) : phone ? (
+              <View style={play.phoneCard}>
+                <ChoiceButtons presented={presented} onChoose={session.choose} compact />
+              </View>
+            ) : (
+              <View style={play.guide}>
+                <Text style={text.body}>Blue arrows mark the two moves. One of them blunders.</Text>
+                <ChoiceButtons presented={presented} onChoose={session.choose} compact={false} />
+              </View>
+            )
+          }
+        />
       }
     />
   );
 }
+
+const styles = {
+  progressRow: {
+    height: 16,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+  },
+};

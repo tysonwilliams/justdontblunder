@@ -8,6 +8,7 @@ import { Button } from '@/src/components/ui/Button';
 import { ScoreFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
+import { useLayout } from '@/src/components/ui/useLayout';
 import { themeFilterLabel, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 
 type Toolbar = {
@@ -27,6 +28,7 @@ export function DrillRunSummary({
   onAgain: () => void;
 }) {
   const marks = highlightsForRound('streakEnd', summary.lastMove, summary.atRisk);
+  const { phone } = useLayout();
   return (
     <ScoreFrame
       toolbar={<DrillToolbar mode={toolbar.mode} theme={toolbar.theme} onMode={toolbar.onMode} onTheme={toolbar.onTheme} />}
@@ -42,16 +44,26 @@ export function DrillRunSummary({
         />
       }>
       <View style={play.done}>
-        <Text style={text.eyebrow}>Drills</Text>
-        <Text style={text.title}>Streak over</Text>
-        <Text style={text.hero}>{summary.saved}</Text>
-        <Text style={text.muted}>saved this run · best {summary.best}</Text>
+        {phone ? null : <Text style={text.eyebrow}>Drills</Text>}
+        <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>
+          Streak over
+        </Text>
+        <Text style={[text.hero, phone && text.heroPhone]}>{summary.saved}</Text>
+        <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={1}>
+          saved this run · best {summary.best}
+        </Text>
         <View style={play.miss}>
-          <Text style={text.section}>The miss</Text>
-          {summary.playedSan ? <Text style={text.body}>You played {summary.playedSan}.</Text> : null}
-          <Text style={text.body}>{summary.missText}</Text>
+          {phone ? null : <Text style={text.section}>The miss</Text>}
+          {summary.playedSan ? (
+            <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={1}>
+              You played {summary.playedSan}.
+            </Text>
+          ) : null}
+          <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
+            {summary.missText}
+          </Text>
         </View>
-        <Button label="Start again" onPress={onAgain} />
+        <Button compact={phone} label="Start again" onPress={onAgain} />
       </View>
     </ScoreFrame>
   );
@@ -77,28 +89,30 @@ export function DrillDone({
   onRestart: () => void;
 }) {
   const pct = total ? Math.round((correct / total) * 100) : 0;
+  const { phone } = useLayout();
   return (
     <ScoreFrame toolbar={<DrillToolbar {...toolbar} />}>
       <View style={play.done}>
-        <Text style={text.eyebrow}>Drills</Text>
-        <Text style={text.title}>
+        {phone ? null : <Text style={text.eyebrow}>Drills</Text>}
+        <Text style={[text.title, phone && text.titlePhone]} numberOfLines={2}>
           {emptyReview ? 'Nothing to review' : streak ? 'Clean run' : "That's the set"}
         </Text>
         {emptyReview ? (
-          <Text style={text.muted}>
+          <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={phone ? 3 : undefined}>
             {toolbar.theme === 'all'
               ? 'You have no misses saved for today.'
               : `No missed ${themeFilterLabel(toolbar.theme).toLowerCase()} puzzles today.`}
           </Text>
         ) : (
           <>
-            <Text style={text.hero}>{streak ? correct : `${correct}/${total}`}</Text>
-            <Text style={text.muted}>
+            <Text style={[text.hero, phone && text.heroPhone]}>{streak ? correct : `${correct}/${total}`}</Text>
+            <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={2}>
               {streak ? `in a row · best ${best}` : `${pct}% saved on the first try`}
             </Text>
           </>
         )}
         <Button
+          compact={phone}
           label={streak ? 'Run again' : reviewing ? 'Review again' : 'Practice again'}
           onPress={onRestart}
         />

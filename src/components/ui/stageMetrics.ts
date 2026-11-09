@@ -35,7 +35,8 @@ export function stageMetrics(
   const topNav = width >= layout.nav;
   const narrow = width < layout.split;
   const padX = narrow ? layout.padPhone : width >= 1280 ? layout.padDesktop : layout.padTablet;
-  const padTop = topNav ? spacing[10] : spacing.xs;
+  // Phone content starts below the notch. A window with no inset still gets a small top pad.
+  const padTop = topNav ? spacing[10] : Math.max(spacing.sm, insetTop);
   const padBottom = topNav ? spacing[12] : spacing.xxs;
   const tabBar = topNav ? layout.tabBar + insetTop : layout.tabBarPhone + insetBottom;
   const rawW = Math.max(280, width - padX * 2);

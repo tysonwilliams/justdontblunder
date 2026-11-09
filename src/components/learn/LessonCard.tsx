@@ -9,6 +9,7 @@ import { cueForLessonTone } from '@/src/feedback/cues';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { PUNISHMENT_STEP_MS } from '@/src/components/usePunishmentPlayback';
 import { Button } from '@/src/components/ui/Button';
+import { LineBox } from '@/src/components/ui/LineBox';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
@@ -36,6 +37,17 @@ function useBeatIndex(cardId: string, count: number): number {
   return Math.min(index, Math.max(count - 1, 0));
 }
 
+function lessonCopyLines(foot: number): number {
+  const room = foot - 56;
+  if (room >= 17 * 4) return 4;
+  if (room >= 17 * 3) return 3;
+  return 2;
+}
+
+function lessonCopyHeight(foot: number): number {
+  return lessonCopyLines(foot) * 17;
+}
+
 export function LessonCardView({
   lesson,
   cardIndex,
@@ -61,7 +73,7 @@ export function LessonCardView({
   }, [beat?.san, beat?.tone, card?.id, index]);
 
   const { colors, scheme } = useTheme();
-  const { phone } = useLayout();
+  const { phone, slots } = useLayout();
   if (!card || !beat) return null;
   const orientation = card.sideToMove === 'b' ? 'black' : 'white';
   const marks = squaresForBeat(beat);
@@ -96,11 +108,19 @@ export function LessonCardView({
         />
       }
       aside={
-        <View style={[play.guide, phone && lessonStyles.guidePhone]}>
-          <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 3 : 4}>
-            {beat.text}
-          </Text>
-          <Button label={lastCard ? 'Try it' : 'Next'} testID="lesson-next" onPress={onNext} />
+        <View style={[play.guide, phone && lessonStyles.cardAside]}>
+          {phone ? (
+            <LineBox height={lessonCopyHeight(slots?.foot ?? 0)}>
+              <Text style={[text.body, text.bodyPhone]} numberOfLines={lessonCopyLines(slots?.foot ?? 0)}>
+                {beat.text}
+              </Text>
+            </LineBox>
+          ) : (
+            <Text style={text.body} numberOfLines={4}>
+              {beat.text}
+            </Text>
+          )}
+          <Button compact={phone} label={lastCard ? 'Try it' : 'Next'} testID="lesson-next" onPress={onNext} />
         </View>
       }
     />

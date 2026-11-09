@@ -35,6 +35,8 @@ const styles = themedStyleSheet((colors) => ({
   rowPhone: {
     flexWrap: 'nowrap',
     gap: spacing.sm,
+    height: 24,
+    overflow: 'hidden',
   },
   item: {
     flexDirection: 'row',

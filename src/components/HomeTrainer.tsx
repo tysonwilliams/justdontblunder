@@ -1,34 +1,30 @@
 import { useRouter, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { HomeEntryCards } from '@/src/components/home/HomeEntryCards';
 import { homeEntryHref, useHomeTrainer, type HomeEntryId } from '@/src/components/home/useHomeTrainer';
 import { StreakBadge } from '@/src/components/StreakBadge';
-import { controlA11y } from '@/src/components/ui/a11y';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { Bone, PlaySkeleton } from '@/src/components/ui/Skeleton';
-import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { StatusPill } from '@/src/components/ui/Chip';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
+import { LineBox } from '@/src/components/ui/LineBox';
+import { footFitsExtra } from '@/src/components/ui/phoneSlots';
+import { PhoneTray } from '@/src/components/ui/PhoneTray';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
+import { Bone, PlaySkeleton } from '@/src/components/ui/Skeleton';
+import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { themeInstruction } from '@/src/logic/drills';
-import { fontSizes, lineHeights, radii, spacing } from '@/src/theme';
-
-const RESULT_LINKS: { id: HomeEntryId; label: string }[] = [
-  { id: 'drills', label: 'Drills' },
-  { id: 'learn', label: 'Learn' },
-  { id: 'practice', label: 'Practice' },
-];
+import { radii, spacing } from '@/src/theme';
 
 export function HomeTrainer() {
   const router = useRouter();
-  const { split, phone, tight } = useLayout();
+  const { split, phone, slots } = useLayout();
   const trainer = useHomeTrainer();
   const drill = trainer.drill;
 
@@ -39,34 +35,37 @@ export function HomeTrainer() {
   if (forceSkeleton()) return <PlaySkeleton cards />;
   if (!drill) return null;
 
-  const feedback = trainer.round !== 'playing';
-  const showExtra = !(tight && feedback);
-  const showGuide = !tight;
+  const showCards = !phone || (slots != null && footFitsExtra(slots.foot, 72));
 
   return (
     <PlayFrame
-      asideFirst={!split && feedback && !trainer.watchingReply}
       intro={
         <BoardLead>
-          <View style={play.metaRow}>
+          <View style={[styles.meta, phone && styles.metaPhone]}>
             <StatusPill>Daily trainer</StatusPill>
             <View style={play.metaRight}>
-              <Text style={[text.meta, phone && text.metaPhone]}>
+              <Text style={[text.meta, phone && text.metaPhone]} numberOfLines={1}>
                 {trainer.index + 1} / {trainer.total}
               </Text>
-              {!trainer.hydrated ? (
-                <Bone width={72} height={phone ? 22 : 28} radius={radii.pill} />
-              ) : trainer.streak > 0 ? (
-                <StreakBadge streak={trainer.streak} celebrate compact={phone} />
-              ) : (
-                <Text style={[text.muted, phone && text.mutedPhone]}>No streak yet</Text>
-              )}
+              <StreakSlot phone={phone} hydrated={trainer.hydrated} streak={trainer.streak} />
             </View>
           </View>
-          <ProgressTrack progress={trainer.progress} />
-          <Text style={[text.title, phone && text.titlePhone]}>Stop hanging pieces.</Text>
-          {showExtra ? <Text style={[text.habit, phone && text.habitPhone]}>{trainer.prompt}</Text> : null}
-          {showExtra ? <ColorLegend /> : null}
+          <LineBox height={phone ? 6 : 8}>
+            <ProgressTrack progress={trainer.progress} />
+          </LineBox>
+          <LineBox height={phone ? 22 : 32}>
+            <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>
+              Stop hanging pieces.
+            </Text>
+          </LineBox>
+          <LineBox height={phone ? 18 : 22}>
+            <Text style={[text.habit, phone && text.habitPhone]} numberOfLines={1}>
+              {trainer.prompt}
+            </Text>
+          </LineBox>
+          <LineBox height={phone ? 24 : 28}>
+            <ColorLegend />
+          </LineBox>
         </BoardLead>
       }
       board={
@@ -85,65 +84,91 @@ export function HomeTrainer() {
         />
       }
       aside={
-        trainer.card ? (
-          <View style={play.stack}>
-            <BlunderOverlay
-              visible
-              tone={trainer.card.tone}
-              title={trainer.card.title}
-              message={trainer.roundCopy}
-              waiting={trainer.card.tone === 'danger' && !trainer.replyReady ? 'Watch the reply.' : undefined}
-              actionLabel={
-                trainer.card.tone === 'danger' ? (trainer.replyReady ? 'Try again' : undefined) : 'Next puzzle'
-              }
-              onDismiss={
-                trainer.card.tone === 'danger' ? (trainer.replyReady ? trainer.tryAgain : undefined) : trainer.next
-              }
-              actionTestID={trainer.card.tone === 'danger' ? 'try-again' : undefined}
-              secondaryLabel={trainer.card.tone === 'danger' && trainer.replyReady ? 'Next puzzle' : undefined}
-              onSecondary={trainer.card.tone === 'danger' && trainer.replyReady ? trainer.next : undefined}
-            />
-            {showExtra ? (
-              <View style={play.linkRow}>
-                {RESULT_LINKS.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    {...controlA11y('button', item.label, false)}
-                    onPress={() => open(item.id)}
-                    style={[play.link, phone && styles.linkPhone]}>
-                    <Text style={[play.linkText, phone && styles.linkTextPhone]}>{item.label}</Text>
-                  </Pressable>
-                ))}
+        <PhoneTray
+          banner={
+            trainer.card ? (
+              <BlunderOverlay
+                visible
+                tone={trainer.card.tone}
+                title={trainer.card.title}
+                message={trainer.roundCopy}
+                waiting={trainer.card.tone === 'danger' && !trainer.replyReady ? 'Watch the reply.' : undefined}
+                actionLabel={
+                  trainer.card.tone === 'danger' ? (trainer.replyReady ? 'Try again' : undefined) : 'Next puzzle'
+                }
+                onDismiss={
+                  trainer.card.tone === 'danger' ? (trainer.replyReady ? trainer.tryAgain : undefined) : trainer.next
+                }
+                actionTestID={trainer.card.tone === 'danger' ? 'try-again' : undefined}
+                secondaryLabel={trainer.card.tone === 'danger' && trainer.replyReady ? 'Next puzzle' : undefined}
+                onSecondary={trainer.card.tone === 'danger' && trainer.replyReady ? trainer.next : undefined}
+              />
+            ) : (
+              <View style={[play.guide, phone && play.phoneCard]}>
+                {drill.theme === 'hanging' ? (
+                  <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
+                    {drill.prompt}
+                  </Text>
+                ) : null}
+                <Text
+                  style={[drill.theme === 'hanging' ? text.muted : text.body, phone && text.mutedPhone]}
+                  numberOfLines={phone ? 2 : undefined}>
+                  {themeInstruction(drill.theme)}
+                </Text>
               </View>
-            ) : null}
-          </View>
-        ) : showGuide ? (
-          <View style={[play.guide, phone && styles.guidePhone]}>
-            {drill.theme === 'hanging' ? (
-              <Text style={[text.body, phone && text.bodyPhone]}>{drill.prompt}</Text>
-            ) : null}
-            <Text style={[drill.theme === 'hanging' ? text.muted : text.body, phone && text.mutedPhone]}>
-              {themeInstruction(drill.theme)}
-            </Text>
-          </View>
-        ) : null
+            )
+          }
+        />
       }
-      footer={<HomeEntryCards learnBody={trainer.learn.body} split={split} hidden={tight && feedback} onOpen={open} />}
+      footer={<HomeEntryCards learnBody={trainer.learn.body} split={split} hidden={!showCards} onOpen={open} />}
     />
   );
 }
 
+function StreakSlot({ phone, hydrated, streak }: { phone: boolean; hydrated: boolean; streak: number }) {
+  const height = phone ? 22 : 36;
+  return (
+    <View style={[styles.streak, { height }]}>
+      <View style={[styles.streakLayer, { opacity: hydrated ? 0 : 1 }]} pointerEvents="none">
+        <Bone width={72} height={height} radius={radii.pill} />
+      </View>
+      <View style={[styles.streakLayer, { opacity: hydrated && streak > 0 ? 1 : 0 }]} pointerEvents="none">
+        <StreakBadge streak={streak} celebrate={hydrated && streak > 0} compact={phone} />
+      </View>
+      <View style={[styles.streakLayer, { opacity: hydrated && streak === 0 ? 1 : 0 }]} pointerEvents="none">
+        <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={1}>
+          No streak yet
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  guidePhone: {
-    padding: spacing.sm,
-    gap: spacing.xs,
+  meta: {
+    width: '100%',
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
-  linkPhone: {
-    minHeight: 32,
-    paddingHorizontal: spacing[10],
+  metaPhone: {
+    height: 24,
+    minHeight: 24,
+    overflow: 'hidden',
   },
-  linkTextPhone: {
-    fontSize: fontSizes[13],
-    lineHeight: lineHeights[16],
+  streak: {
+    width: 132,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  streakLayer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
 });

@@ -13,6 +13,8 @@ type Props = {
   onPress: () => void;
   variant?: Variant;
   fullWidth?: boolean;
+  /** Short row used inside the fixed phone tray. */
+  compact?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
   selected?: boolean;
@@ -23,6 +25,7 @@ export function Button({
   onPress,
   variant = 'primary',
   fullWidth = true,
+  compact = false,
   style,
   testID,
   selected = false,
@@ -33,18 +36,28 @@ export function Button({
     <Pressable
       {...controlA11y('button', label, selected)}
       testID={testID}
+      hitSlop={compact ? spacing[6] : 0}
       onPress={onPress}
       style={(state) => {
         const hovered = 'hovered' in state && Boolean(state.hovered);
         return [
           styles.base,
           phone && styles.basePhone,
+          compact && styles.compact,
           fullWidth && styles.full,
           variantStyle(colors, variant, state.pressed, hovered),
+          state.pressed && styles.pressed,
           style,
         ];
       }}>
-      <Text style={[styles.label, phone && styles.labelPhone, labelColor(colors, variant)]} numberOfLines={1}>
+      <Text
+        style={[
+          styles.label,
+          phone && styles.labelPhone,
+          compact && styles.labelCompact,
+          labelColor(colors, variant),
+        ]}
+        numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -105,9 +118,18 @@ const styles = StyleSheet.create({
     cursor: 'pointer',
   },
   basePhone: {
-    minHeight: 36,
+    minHeight: 44,
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing.sm,
+  },
+  compact: {
+    minHeight: 32,
     paddingHorizontal: spacing[10],
-    paddingVertical: spacing[6],
+    paddingVertical: 0,
+  },
+  pressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.92,
   },
   full: {
     alignSelf: 'stretch',
@@ -120,7 +142,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   labelPhone: {
-    fontSize: fontSizes[14],
+    fontSize: fontSizes[15],
     lineHeight: lineHeights[18],
+  },
+  labelCompact: {
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
   },
 });

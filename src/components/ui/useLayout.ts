@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { phoneSlots, type PhoneSlots } from '@/src/components/ui/phoneSlots';
 import { stageMetrics, type StageMetrics } from '@/src/components/ui/stageMetrics';
 
 function useVisualWindow(): { width: number; height: number } {
@@ -32,8 +33,15 @@ function useVisualWindow(): { width: number; height: number } {
   return visual.width > 0 && visual.height > 0 ? visual : windowSize;
 }
 
-export function useLayout(): StageMetrics {
+export type LayoutMetrics = StageMetrics & {
+  /** Phone column slots. Null when the board sits beside the side panel. */
+  slots: PhoneSlots | null;
+};
+
+export function useLayout(): LayoutMetrics {
   const { width, height } = useVisualWindow();
   const insets = useSafeAreaInsets();
-  return stageMetrics(width, height, insets.top, insets.bottom);
+  const metrics = stageMetrics(width, height, insets.top, insets.bottom);
+  const slots = metrics.phone ? phoneSlots(metrics.contentHeight, metrics.boardWidth, metrics.turnRow) : null;
+  return { ...metrics, slots };
 }

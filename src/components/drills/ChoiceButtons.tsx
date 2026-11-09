@@ -24,11 +24,17 @@ export function ChoiceButtons({
           {...controlA11y('button', `Move ${option.key}, ${option.san}`, false)}
           testID={`choice-${option.key}`}
           onPress={() => onChoose(option.key)}
-          style={({ pressed }) => [styles.choice, compact && styles.choiceCompact, pressed && styles.choiceOn]}>
-          <View style={styles.choiceKey}>
+          style={({ pressed }) => [
+            styles.choice,
+            compact && styles.choiceCompact,
+            pressed && styles.choiceOn,
+          ]}>
+          <View style={[styles.choiceKey, compact && styles.choiceKeyCompact]}>
             <Text style={styles.choiceKeyText}>{option.key}</Text>
           </View>
-          <Text style={styles.choiceSan}>{option.san}</Text>
+          <Text style={[styles.choiceSan, compact && styles.choiceSanCompact]} numberOfLines={1}>
+            {option.san}
+          </Text>
         </Pressable>
       ))}
     </View>
@@ -55,12 +61,13 @@ const styles = themedStyleSheet((colors) => ({
     cursor: 'pointer',
   },
   choiceCompact: {
-    minHeight: 48,
+    minHeight: 56,
     paddingHorizontal: spacing[10],
     gap: spacing.sm,
   },
   choiceOn: {
     backgroundColor: colors.surfaceRaised,
+    transform: [{ scale: 0.98 }],
   },
   choiceKey: {
     width: 36,
@@ -75,11 +82,21 @@ const styles = themedStyleSheet((colors) => ({
     color: colors.onInfo,
     fontSize: fontSizes[18],
   },
+  choiceKeyCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.circleMd,
+  },
   choiceSan: {
+    flex: 1,
     fontFamily: fonts.display,
     color: colors.text,
     fontSize: fontSizes[22],
     lineHeight: lineHeights[28],
     letterSpacing: letterSpacing.tight,
+  },
+  choiceSanCompact: {
+    fontSize: fontSizes[18],
+    lineHeight: lineHeights[22],
   },
 }));

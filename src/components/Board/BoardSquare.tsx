@@ -8,7 +8,7 @@ import { Piece } from '@/src/components/Board/Piece';
 import { noteSquareRender } from '@/src/components/Board/squareRenderCount';
 import { squareA11y } from '@/src/components/ui/a11y';
 import { getActivePalette } from '@/src/theme/active';
-import { colors, fonts, fontSizes, radii, spacing } from '@/src/theme/tokens';
+import { colors, fonts, radii, spacing } from '@/src/theme/tokens';
 
 type Props = BoardSquareModel & {
   onPress: (square: Square) => void;
@@ -32,6 +32,7 @@ export const BoardSquare = memo(function BoardSquare({
   const palette = getActivePalette();
   const ink = legalMoveInk(isDark, palette);
   const coordColor = isDark ? palette.boardLight : palette.boardDark;
+  const coordSize = Math.max(9, Math.min(12, Math.round(squareSize * 0.2)));
 
   return (
     <Pressable
@@ -54,10 +55,14 @@ export const BoardSquare = memo(function BoardSquare({
       ) : null}
       {pieceCode && !hidePiece ? <Piece code={pieceCode} size={squareSize} /> : null}
       {showFile ? (
-        <Text style={[styles.coord, styles.fileCoord, { color: coordColor }]}>{square[0]}</Text>
+        <Text style={[styles.coord, styles.fileCoord, { color: coordColor, fontSize: coordSize, lineHeight: coordSize + 1 }]}>
+          {square[0]}
+        </Text>
       ) : null}
       {showRank ? (
-        <Text style={[styles.coord, styles.rankCoord, { color: coordColor }]}>{square[1]}</Text>
+        <Text style={[styles.coord, styles.rankCoord, { color: coordColor, fontSize: coordSize, lineHeight: coordSize + 1 }]}>
+          {square[1]}
+        </Text>
       ) : null}
     </Pressable>
   );
@@ -79,15 +84,14 @@ const styles = StyleSheet.create({
   },
   coord: {
     position: 'absolute',
-    fontSize: fontSizes[14],
     fontFamily: fonts.bodyBold,
   },
   fileCoord: {
     right: spacing[3],
-    bottom: spacing[1],
+    bottom: spacing[2],
   },
   rankCoord: {
     left: spacing[3],
-    top: spacing[1],
+    top: spacing[2],
   },
 });

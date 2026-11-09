@@ -22,7 +22,7 @@ type Props = {
 
 export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
   const session = useDrillSession(mode, theme);
-  const { split, phone } = useLayout();
+  const { phone } = useLayout();
   const toolbar = { mode, theme, onMode, onTheme };
 
   if (session.runSummary) {
@@ -73,5 +73,5 @@ export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
     );
   }
 
-  return <DrillPlay session={session} onMode={onMode} onTheme={onTheme} split={split} phone={phone} />;
+  return <DrillPlay session={session} onMode={onMode} onTheme={onTheme} phone={phone} />;
 }

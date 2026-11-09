@@ -62,4 +62,13 @@ describe('stageMetrics', () => {
     const metrics = stageMetrics(844, 390);
     expect(metrics.split).toBe(false);
   });
+
+  it('clears a phone notch without giving up a full-width board', () => {
+    const metrics = stageMetrics(390, 844, 47, 34);
+    expect(metrics.phone).toBe(true);
+    expect(metrics.split).toBe(false);
+    expect(metrics.padTop).toBeGreaterThanOrEqual(47);
+    expect(metrics.boardWidth).toBe(metrics.contentW);
+    expect(metrics.boardWidth).toBeLessThanOrEqual(390);
+  });
 });

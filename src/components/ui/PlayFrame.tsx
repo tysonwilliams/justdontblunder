@@ -10,7 +10,6 @@ type PlayProps = {
   board: ReactNode;
   aside?: ReactNode;
   footer?: ReactNode;
-  asideFirst?: boolean;
 };
 
 export function PlayFrame(props: PlayProps) {

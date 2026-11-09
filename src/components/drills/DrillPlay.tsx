@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
@@ -9,12 +9,16 @@ import { BoardLead } from '@/src/components/ui/BoardLead';
 import { StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
+import { LineBox } from '@/src/components/ui/LineBox';
+import { PHONE_PROMPT_HEIGHT } from '@/src/components/ui/phoneSlots';
+import { PhoneTray } from '@/src/components/ui/PhoneTray';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { text } from '@/src/components/ui/text';
 import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT, themeInstruction, themeLabel, turnPrompt, type DrillTheme } from '@/src/logic/drills';
+import { spacing } from '@/src/theme';
 
 type Session = ReturnType<typeof useDrillSession>;
 
@@ -22,11 +26,10 @@ type Props = {
   session: Session;
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
-  split: boolean;
   phone: boolean;
 };
 
-export function DrillPlay({ session, onMode, onTheme, split, phone }: Props) {
+export function DrillPlay({ session, onMode, onTheme, phone }: Props) {
   const drill = session.drill;
   if (!drill) return null;
   const toolbar = (
@@ -35,7 +38,6 @@ export function DrillPlay({ session, onMode, onTheme, split, phone }: Props) {
 
   return (
     <PlayFrame
-      asideFirst={!split && session.round !== 'playing' && !session.watchingReply}
       intro={
         phone ? (
           <PhoneIntro session={session} toolbar={toolbar} />
@@ -59,7 +61,9 @@ export function DrillPlay({ session, onMode, onTheme, split, phone }: Props) {
           onMove={session.onMove}
         />
       }
-      aside={<DrillAside session={session} phone={phone} />}
+      aside={
+        <PhoneTray banner={<DrillAside session={session} phone={phone} />} />
+      }
     />
   );
 }
@@ -67,25 +71,24 @@ export function DrillPlay({ session, onMode, onTheme, split, phone }: Props) {
 function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode }) {
   const drill = session.drill;
   if (!drill) return null;
+  const title = session.guided ? drill.prompt : turnPrompt(drill.sideToMove);
   return (
     <BoardLead>
       {toolbar}
-      {session.round === 'playing' ? (
-        <>
-          <Text style={play.phoneTitle} numberOfLines={2}>
-            {session.guided ? drill.prompt : turnPrompt(drill.sideToMove)}
-          </Text>
-          <View style={play.metaRow}>
-            <View style={play.progressGrow}>
-              <ProgressTrack progress={session.progress} />
-            </View>
-            <Text style={text.meta}>
-              {session.index + 1}/{session.session.positions.length}
-              {session.mode === 'streak' ? ` · ${session.score.correct}` : ''}
-            </Text>
-          </View>
-        </>
-      ) : null}
+      <LineBox height={PHONE_PROMPT_HEIGHT}>
+        <Text style={play.phoneTitle} numberOfLines={2}>
+          {title}
+        </Text>
+      </LineBox>
+      <View style={styles.progressRow}>
+        <View style={play.progressGrow}>
+          <ProgressTrack progress={session.progress} />
+        </View>
+        <Text style={[text.meta, text.metaPhone]} numberOfLines={1}>
+          {session.index + 1}/{session.session.positions.length}
+          {session.mode === 'streak' ? ` · ${session.score.correct}` : ''}
+        </Text>
+      </View>
     </BoardLead>
   );
 }
@@ -148,7 +151,16 @@ function GuidedAside({
   theme: DrillTheme;
   onReveal: () => void;
 }) {
-  if (phone) return <Button label="Show the idea" variant="secondary" onPress={onReveal} />;
+  if (phone) {
+    return (
+      <View style={play.phoneCard}>
+        <Text style={[text.muted, text.mutedPhone]} numberOfLines={2}>
+          {themeInstruction(theme)}
+        </Text>
+        <Button compact label="Show the idea" variant="secondary" onPress={onReveal} />
+      </View>
+    );
+  }
   return (
     <View style={play.guide}>
       <Text style={text.body}>{themeInstruction(theme)}</Text>
@@ -160,11 +172,15 @@ function GuidedAside({
 
 function StreakAside({ phone, onReveal }: { phone: boolean; onReveal: () => void }) {
   const hint = <Text style={text.muted}>No hints. One miss ends the run.</Text>;
-  const action = <Button label="Show the answer" variant="secondary" testID="show-answer" onPress={onReveal} />;
+  const action = (
+    <Button compact={phone} label="Show the answer" variant="secondary" testID="show-answer" onPress={onReveal} />
+  );
   if (phone) {
     return (
-      <View style={play.stack}>
-        {hint}
+      <View style={play.phoneCard}>
+        <Text style={[text.muted, text.mutedPhone]} numberOfLines={1}>
+          No hints. One miss ends the run.
+        </Text>
         {action}
       </View>
     );
@@ -241,3 +257,12 @@ function DrillFeedback({
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  progressRow: {
+    height: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+});
