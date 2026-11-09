@@ -120,7 +120,7 @@ export function LessonCardView({
               {beat.text}
             </Text>
           )}
-          <Button compact={phone} label={lastCard ? 'Try it' : 'Next'} testID="lesson-next" onPress={onNext} />
+          <Button label={lastCard ? 'Play' : 'Next'} testID="lesson-next" onPress={onNext} />
         </View>
       }
     />

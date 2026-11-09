@@ -55,6 +55,25 @@ body > div:first-child {
     color: var(--jdb-fg, ${light.text});
   }
 }
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--jdb-bg, ${dark.background});
+  pointer-events: none;
+}
+#boot .frame {
+  width: min(72vw, 64dvh);
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: repeating-conic-gradient(${light.boardLight} 0% 25%, ${light.boardDark} 0% 50%) 0 0 / 25% 25%;
+}
+#root:not(:empty) + #boot {
+  display: none;
+}
 `;
 }
 
@@ -98,6 +117,7 @@ ${themeShellCss()}
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <div id="boot" aria-hidden="true"><div class="frame"></div></div>
   </body>
 </html>
 `;

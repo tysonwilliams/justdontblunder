@@ -2,9 +2,10 @@ import { useRouter, type Href } from 'expo-router';
 import { Children, type ReactNode, useState } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
 
+import { PIECE_CREDIT } from '@/src/components/Board/pieceCredit';
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
-import { FilterChips } from '@/src/components/ui/Chip';
+import { Chip, FilterChips } from '@/src/components/ui/Chip';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Screen } from '@/src/components/ui/Screen';
 import { SettingSwitch } from '@/src/components/ui/SettingSwitch';
@@ -17,7 +18,7 @@ import { LESSONS } from '@/src/logic/lessons';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { useFeedbackSettings } from '@/src/store/feedbackSettings';
-import { missesForDate, useProgressStore } from '@/src/store/progress';
+import { missesForDate, useProgressStore, type Experience } from '@/src/store/progress';
 import { useThemePreference } from '@/src/store/themePreference';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
@@ -26,6 +27,11 @@ import type { ThemePreference } from '@/src/theme/preference';
 import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
 
 const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
+
+const START: readonly { id: Experience; label: string; testID: string }[] = [
+  { id: 'new', label: 'Brand new', testID: 'experience-new' },
+  { id: 'basics', label: 'Know the basics', testID: 'experience-basics' },
+];
 
 const APPEARANCE: readonly { id: ThemePreference; label: string; testID: string }[] = [
   { id: 'system', label: 'System', testID: 'theme-system' },
@@ -62,7 +68,10 @@ export default function ProgressScreen() {
     practiceMoves,
     themeStats,
     completedLessons,
+    xp,
+    experience,
     resetProgress,
+    setExperience,
   } = useProgressStore();
 
   const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
@@ -116,6 +125,31 @@ export default function ProgressScreen() {
         </View>
 
         <View style={styles.group}>
+          <Text style={text.section}>Where you started</Text>
+          <Text style={text.muted}>Brand new opens Learn. Know the basics opens Drills.</Text>
+          <View style={styles.toggles}>
+            {START.map((item) => (
+              <Chip
+                key={item.id}
+                label={item.label}
+                testID={item.testID}
+                selected={experience === item.id}
+                onPress={() => setExperience(item.id)}
+              />
+            ))}
+            <Button
+              label="Show the welcome again"
+              variant="ghost"
+              fullWidth={false}
+              onPress={() => {
+                setExperience(null);
+                router.push('/' as Href);
+              }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.group}>
           <Text style={text.section}>Themes</Text>
           <Grid columns={themeCols}>
             {progressReady
@@ -148,6 +182,7 @@ export default function ProgressScreen() {
           <Grid columns={statCols}>
             {progressReady
               ? [
+                  <Stat key="xp" label="XP" value={String(xp)} />,
                   <Stat key="lessons" label="Lessons" value={`${completedLessons.length}/${LESSONS.length}`} />,
                   <Stat key="drills" label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />,
                   <Stat key="accuracy" label="Accuracy" value={`${accuracy}%`} />,
@@ -157,7 +192,7 @@ export default function ProgressScreen() {
                   <Stat key="day" label="Best day streak" value={String(recordStreak)} />,
                   <Stat key="run" label="Best run" value={String(bestPuzzleStreak)} />,
                 ]
-              : Array.from({ length: 8 }, (_, index) => <TileBone key={index} />)}
+              : Array.from({ length: 9 }, (_, index) => <TileBone key={index} />)}
           </Grid>
         </View>
 
@@ -191,12 +226,13 @@ export default function ProgressScreen() {
             </>
           )}
         </View>
+        <Text style={text.muted}>{PIECE_CREDIT}</Text>
       </View>
 
       <Dialog visible={confirmReset}>
         <Text style={styles.dialogTitle}>Reset progress?</Text>
         <Text style={styles.dialogBody}>
-          Streaks, lessons, and drill results on this device will go back to zero.
+          Streaks, XP, lessons, and drill results on this device will go back to zero.
         </Text>
         <Button
           label="Reset"

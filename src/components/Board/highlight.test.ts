@@ -24,10 +24,16 @@ describe('squareBackground', () => {
     expect(fill).not.toBe(colors.boardBlunder);
   });
 
-  it('keeps blunder highlights red', () => {
-    expect(
-      squareBackground({ ...quiet, isLast: true, isHighlight: true, highlightTone: 'danger' }),
-    ).toBe(colors.boardBlunder);
+  it('leaves a blunder square on the last-move color instead of a red wash', () => {
+    const fill = squareBackground({
+      ...quiet,
+      isLast: true,
+      isHighlight: true,
+      highlightTone: 'danger',
+    });
+    expect(fill).toBe(colors.boardLastMove);
+    expect(fill).not.toBe(colors.boardBlunder);
+    expect(squareBackground({ ...quiet, isHighlight: true, highlightTone: 'danger' })).toBe(colors.boardDark);
   });
 
   it('leaves an unmarked last-move square on the neutral last-move color', () => {
@@ -37,7 +43,7 @@ describe('squareBackground', () => {
   it('paints a drop target with the selection color, including over a last-move square', () => {
     expect(squareBackground({ ...quiet, isDropTarget: true })).toBe(colors.boardSelected);
     expect(squareBackground({ ...quiet, isLast: true, isDropTarget: true })).toBe(colors.boardSelected);
-    expect(squareBackground({ ...quiet, isHighlight: true, isDropTarget: true })).toBe(colors.boardBlunder);
+    expect(squareBackground({ ...quiet, isHighlight: true, isDropTarget: true })).toBe(colors.boardSelected);
   });
 });
 

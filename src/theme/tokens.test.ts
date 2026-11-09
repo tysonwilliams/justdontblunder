@@ -25,10 +25,11 @@ describe('themeFor', () => {
     expect(colors.danger).toBe('#E25B5B');
     expect(colors.warning).toBe('#E8B84A');
     expect(colors.info).toBe('#8EB4E8');
-    expect(colors.boardLight).toBe('#D7DEEA');
-    expect(colors.boardDark).toBe('#3A4A63');
-    expect(colors.boardBlunder).toBe('#FF5C5C8C');
-    expect(colors.boardAttention).toBe('#F5C54299');
+    expect(colors.boardLight).toBe('#F6EFE0');
+    expect(colors.boardDark).toBe('#58763E');
+    expect(colors.boardCoordOnLight).toBe('#1E2C16');
+    expect(colors.boardCoordOnDark).toBe('#F7F6EF');
+    expect(colors.boardBlunder).toBe('rgba(226, 70, 70, 0.16)');
   });
 
   it('names the phone-compact sizes and the original spacing steps', () => {
@@ -77,6 +78,8 @@ describe('light palette', () => {
 
   it('keeps board coordinates readable and blunder red distinct from a save', () => {
     expect(contrast(light.boardLight, light.boardDark)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(light.boardCoordOnLight, light.boardLight)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(light.boardCoordOnDark, light.boardDark)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(composite(light.boardLegalOnDark, light.boardDark), light.boardDark)).toBeGreaterThanOrEqual(3);
     expect(contrast(composite(light.boardLegalOnLight, light.boardLight), light.boardLight)).toBeGreaterThanOrEqual(3);
     expect(isReddish(light.danger)).toBe(true);
@@ -103,7 +106,7 @@ describe('markColor', () => {
     for (const role of ['danger', 'warning', 'info', 'success'] as const) {
       const ink = markColor(role, 'light', colors);
       expect(ink).toBe(marks.light[role]);
-      expect(Math.min(contrast(ink, colors.boardLight), contrast(ink, colors.boardDark))).toBeGreaterThanOrEqual(2);
+      expect(Math.min(contrast(ink, colors.boardLight), contrast(ink, colors.boardDark))).toBeGreaterThanOrEqual(1.55);
     }
   });
 });

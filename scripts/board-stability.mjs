@@ -64,6 +64,10 @@ async function open(page, path, theme) {
       'jdb-theme-v1',
       JSON.stringify({ state: { preference }, version: 0 }),
     );
+    localStorage.setItem(
+      'jdb-progress-v1',
+      JSON.stringify({ state: { welcomeSkipped: true, experience: 'basics' }, version: 0 }),
+    );
   }, theme);
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle0', timeout: 60000 });
   await waitForBoard(page);

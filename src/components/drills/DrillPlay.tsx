@@ -221,7 +221,7 @@ function DrillFeedback({
         tone="success"
         title="Nice save"
         message={message}
-        actionLabel={runOver ? 'Done' : 'Next puzzle'}
+        actionLabel={runOver ? 'Done' : 'Next drill'}
         onDismiss={runOver ? onDone : onNext}
       />
       <BlunderOverlay
@@ -239,7 +239,7 @@ function DrillFeedback({
         tone="warn"
         title="Here's the idea"
         message={message}
-        actionLabel="Next puzzle"
+        actionLabel="Next drill"
         onDismiss={onNext}
       />
       <BlunderOverlay

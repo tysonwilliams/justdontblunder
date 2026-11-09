@@ -5,6 +5,9 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { DrillTheme } from '@/src/logic/drills';
 import { withLessonComplete } from '@/src/logic/lessons';
 import { applyDrillResult } from '@/src/store/drillStats';
+import { xpAfterAward } from '@/src/store/xp';
+
+export type Experience = 'new' | 'basics';
 
 export type ThemeTally = { attempts: number; correct: number };
 
@@ -22,7 +25,13 @@ export type ProgressState = {
   missedDate: string | null;
   missedIds: string[];
   completedLessons: string[];
+  xp: number;
+  experience: Experience | null;
+  welcomeSkipped: boolean;
   markDrillResult: (correct: boolean, theme: DrillTheme) => void;
+  awardXp: (safe: boolean) => void;
+  setExperience: (value: Experience | null) => void;
+  skipWelcome: () => void;
   completeLesson: (id: string) => void;
   recordMiss: (drillId: string) => void;
   clearMiss: (drillId: string) => void;
@@ -80,6 +89,9 @@ export const useProgressStore = create<ProgressState>()(
       missedDate: null,
       missedIds: [],
       completedLessons: [],
+      xp: 0,
+      experience: null,
+      welcomeSkipped: false,
       markDrillResult: (correct, theme) =>
         set((state) => {
           const streak = bumpStreak(state.lastDrillDate, state.dailyStreak);
@@ -95,8 +107,12 @@ export const useProgressStore = create<ProgressState>()(
               },
             },
             recordStreak: Math.max(state.recordStreak, streak.dailyStreak),
+            xp: xpAfterAward(state.xp, correct),
           };
         }),
+      awardXp: (safe) => set((state) => ({ xp: xpAfterAward(state.xp, safe) })),
+      setExperience: (value) => set({ experience: value, welcomeSkipped: false }),
+      skipWelcome: () => set({ welcomeSkipped: true }),
       completeLesson: (id) =>
         set((state) => ({ completedLessons: withLessonComplete(state.completedLessons, id) })),
       recordMiss: (drillId) =>
@@ -139,6 +155,9 @@ export const useProgressStore = create<ProgressState>()(
           missedDate: null,
           missedIds: [],
           completedLessons: [],
+          xp: 0,
+          experience: null,
+          welcomeSkipped: false,
         }),
     }),
     {
@@ -154,6 +173,9 @@ export const useProgressStore = create<ProgressState>()(
           missedDate: saved.missedDate ?? null,
           missedIds: saved.missedIds ?? [],
           completedLessons: saved.completedLessons ?? [],
+          xp: saved.xp ?? 0,
+          experience: saved.experience ?? null,
+          welcomeSkipped: saved.welcomeSkipped ?? false,
         };
       },
     },

@@ -1,6 +1,8 @@
 /**
  * Standard digital chess pieces (Cburnett set).
- * Source: Lichess / Wikimedia — CC BY-SA 3.0
+ * Colin M.L. Burnett, via Wikimedia Commons and the Lichess piece set.
+ * License: Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0).
+ * https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces
  * https://github.com/lichess-org/lila/tree/master/public/piece/cburnett
  */
 import type { PieceCode } from '@/src/components/Board/pieceCode';

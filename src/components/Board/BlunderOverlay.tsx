@@ -83,7 +83,7 @@ export function BlunderOverlay({
             <Text style={styles.bannerTitle} numberOfLines={1}>
               {title}
             </Text>
-            <Text style={styles.bannerMessage} numberOfLines={2}>
+            <Text style={styles.bannerMessage} numberOfLines={2} testID="coach-line">
               {copy}
             </Text>
           </View>
@@ -134,7 +134,7 @@ export function BlunderOverlay({
           {title}
         </Text>
       </View>
-      <Text style={text.body} numberOfLines={tight ? 3 : undefined}>
+      <Text style={text.body} numberOfLines={tight ? 3 : undefined} testID="coach-line">
         {message}
       </Text>
       {hint ? (

@@ -18,6 +18,7 @@ import { isCorrectDrillMove } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
 import type { Lesson } from '@/src/logic/lessons';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
+import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
@@ -101,7 +102,10 @@ export function LessonTry({
   const threatTo = playback.arrow?.to;
   const threatArrow: BoardArrow[] =
     threatFrom && threatTo ? [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }] : [];
-  const copy = feedbackForRound(roundKind(round), drill, lastMove) ?? '';
+  const taught = feedbackForRound(roundKind(round), drill, lastMove) ?? '';
+  const kind = roundKind(round);
+  const coachKind = kind === 'correct' ? 'save' : kind === 'retry' || kind === 'streakEnd' ? 'blunder' : 'idea';
+  const copy = coachForRound(coachKind, drill.fen, lastMove, taught);
 
   return (
     <PlayFrame

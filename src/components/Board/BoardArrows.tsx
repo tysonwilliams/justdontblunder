@@ -79,8 +79,8 @@ function ArrowShape({
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len;
   const uy = dy / len;
-  const startX = from.x + ux * square * 0.28;
-  const startY = from.y + uy * square * 0.28;
+  const startX = from.x + ux * square * 0.32;
+  const startY = from.y + uy * square * 0.32;
   const tipX = to.x - ux * square * 0.18;
   const tipY = to.y - uy * square * 0.18;
   const head = square * 0.28;
@@ -95,7 +95,7 @@ function ArrowShape({
       <Polygon
         points={`${startX + px * 3},${startY + py * 3} ${baseX + px * 3},${baseY + py * 3} ${baseX - px * 3},${baseY - py * 3} ${startX - px * 3},${startY - py * 3}`}
         fill={color}
-        opacity={0.95}
+        opacity={0.62}
       />
       <Polygon points={points} fill={color} />
     </>

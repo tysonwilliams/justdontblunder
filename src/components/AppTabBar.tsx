@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 
+import { XpChip } from '@/src/components/XpChip';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
 import { useLayout } from '@/src/components/ui/useLayout';
@@ -67,6 +68,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
             <Text style={styles.brandText}>Just Don't Blunder</Text>
           </View>
         ) : null}
+        {wide ? <XpChip /> : null}
         <View style={[styles.links, wide && styles.linksWide]}>
           {state.routes.map((route, index) => {
             const focused = state.index === index;

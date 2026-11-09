@@ -55,7 +55,7 @@ const styles = themedStyleSheet((colors) => ({
   },
   label: {
     fontFamily: fonts.bodyBold,
-    color: colors.textMuted,
+    color: colors.textDim,
     fontSize: fontSizes[13],
     lineHeight: lineHeights[18],
   },

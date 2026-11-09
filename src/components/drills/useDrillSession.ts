@@ -16,6 +16,7 @@ import {
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
+import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { missesForDate, useProgressStore } from '@/src/store/progress';
@@ -306,7 +307,9 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     () => (drill ? highlightsForRound(round, lastMove, drill.atRiskSquare) : { squares: [] as Square[], tone: 'danger' as const }),
     [drill, round, lastMove],
   );
-  const roundCopy = drill ? (feedbackForRound(round, drill, shownIdea ? null : lastMove) ?? '') : '';
+  const taught = drill ? (feedbackForRound(round, drill, shownIdea ? null : lastMove) ?? '') : '';
+  const coachKind = round === 'correct' ? 'save' : round === 'retry' || round === 'streakEnd' ? 'blunder' : 'idea';
+  const roundCopy = drill ? coachForRound(coachKind, drill.fen, shownIdea ? null : lastMove, taught) : '';
   const threatFrom = !shownIdea ? playback.arrow?.from : undefined;
   const threatTo = !shownIdea ? playback.arrow?.to : undefined;
   const threatArrow = useMemo<BoardArrow[]>(() => {
