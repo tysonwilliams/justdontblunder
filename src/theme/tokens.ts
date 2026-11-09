@@ -20,7 +20,10 @@ export type Palette = {
   text: string;
   textMuted: string;
   textDim: string;
-  /** Green accent. */
+  /**
+   * The one filled action color. Primary buttons use this and nothing else
+   * should paint a solid accent fill.
+   */
   accent: string;
   accentPressed: string;
   accentText: string;
@@ -57,6 +60,12 @@ export type Palette = {
   boardFrame: string;
   boardFrameBg: string;
   boardMeta: string;
+  /** Coordinate ink on a light square. */
+  boardCoordOnLight: string;
+  /** Coordinate ink on a dark square. */
+  boardCoordOnDark: string;
+  /** Bones while a screen is loading. Distinct from the page background. */
+  skeleton: string;
   whitePiece: string;
   whitePieceStroke: string;
   blackPiece: string;
@@ -89,29 +98,32 @@ const darkPalette = {
   hover: 'rgba(255,255,255,0.04)',
   transparent: 'transparent',
   shadow: '#000',
-  boardLight: '#D7DEEA',
-  boardDark: '#3A4A63',
-  boardSelected: 'rgba(61, 220, 151, 0.42)',
-  boardLegalOnDark: 'rgba(247, 249, 252, 0.78)',
-  boardLegalOnLight: 'rgba(32, 44, 62, 0.62)',
-  boardCaptureOnDark: 'rgba(255, 196, 196, 0.95)',
-  boardCaptureOnLight: 'rgba(168, 28, 40, 0.9)',
-  boardLastMove: 'rgba(245, 197, 66, 0.34)',
-  boardAttention: '#F5C54299',
-  boardBlunder: '#FF5C5C8C',
-  boardSave: 'rgba(142, 191, 85, 0.55)',
-  boardFrame: '#2A3344',
-  boardFrameBg: '#1C2330',
-  boardMeta: '#9AA6B2',
+  skeleton: '#3A3834',
+  boardLight: '#F6EFE0',
+  boardDark: '#58763E',
+  boardSelected: 'rgba(214, 168, 48, 0.55)',
+  boardLegalOnDark: 'rgba(247, 246, 239, 0.94)',
+  boardLegalOnLight: 'rgba(30, 44, 22, 0.66)',
+  boardCaptureOnDark: 'rgba(255, 228, 210, 0.5)',
+  boardCaptureOnLight: 'rgba(70, 36, 24, 0.45)',
+  boardLastMove: 'rgba(230, 186, 48, 0.55)',
+  boardAttention: 'rgba(210, 140, 40, 0.40)',
+  boardBlunder: 'rgba(226, 70, 70, 0.16)',
+  boardSave: 'rgba(56, 150, 72, 0.42)',
+  boardFrame: '#24301C',
+  boardFrameBg: '#1A2218',
+  boardMeta: '#C8D0C0',
+  boardCoordOnLight: '#1E2C16',
+  boardCoordOnDark: '#F7F6EF',
   whitePiece: '#FFF6E8',
   whitePieceStroke: '#1A2230',
   blackPiece: '#0B1018',
 } satisfies Palette;
 
 /**
- * Warm paper and a walnut board. Text tokens clear WCAG AA on the page.
- * Square colors stay far enough apart that coordinates do too. Board marks
- * below are the brighter inks arrows need on both light and dark squares.
+ * Warm paper and a cream/sage board. Text tokens clear WCAG AA on the page.
+ * Coordinates use their own inks so they stay readable on both squares.
+ * Arrow inks stay saturated; the coordinate inks carry the text contrast.
  */
 const lightPalette = {
   background: '#F3EFE6',
@@ -140,20 +152,23 @@ const lightPalette = {
   hover: 'rgba(28, 25, 21, 0.06)',
   transparent: 'transparent',
   shadow: '#1C1915',
-  boardLight: '#F0D9B5',
-  boardDark: '#7A4E32',
-  boardSelected: 'rgba(46, 150, 72, 0.48)',
-  boardLegalOnDark: 'rgba(255, 246, 230, 0.92)',
-  boardLegalOnLight: 'rgba(58, 32, 18, 0.72)',
-  boardCaptureOnDark: 'rgba(255, 220, 210, 0.96)',
-  boardCaptureOnLight: 'rgba(132, 24, 28, 0.92)',
-  boardLastMove: 'rgba(214, 150, 40, 0.50)',
-  boardAttention: 'rgba(224, 112, 32, 0.74)',
-  boardBlunder: 'rgba(255, 72, 72, 0.78)',
-  boardSave: 'rgba(36, 150, 64, 0.70)',
-  boardFrame: '#8A5E42',
-  boardFrameBg: '#F6EBDA',
-  boardMeta: '#5C4638',
+  skeleton: '#D9CDB8',
+  boardLight: '#F6EFE0',
+  boardDark: '#58763E',
+  boardSelected: 'rgba(214, 168, 48, 0.55)',
+  boardLegalOnDark: 'rgba(247, 246, 239, 0.94)',
+  boardLegalOnLight: 'rgba(30, 44, 22, 0.66)',
+  boardCaptureOnDark: 'rgba(255, 228, 210, 0.5)',
+  boardCaptureOnLight: 'rgba(70, 36, 24, 0.45)',
+  boardLastMove: 'rgba(230, 186, 48, 0.55)',
+  boardAttention: 'rgba(210, 140, 40, 0.40)',
+  boardBlunder: 'rgba(180, 40, 40, 0.16)',
+  boardSave: 'rgba(46, 140, 64, 0.42)',
+  boardFrame: '#3E5632',
+  boardFrameBg: '#F8F4EA',
+  boardMeta: '#3E4A34',
+  boardCoordOnLight: '#1E2C16',
+  boardCoordOnDark: '#F7F6EF',
   whitePiece: '#FFF6E8',
   whitePieceStroke: '#1A2230',
   blackPiece: '#0B1018',

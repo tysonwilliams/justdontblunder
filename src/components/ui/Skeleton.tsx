@@ -28,7 +28,7 @@ export function Bone({ width = '100%', height, radius = radii.sm, style }: BoneP
           width,
           height,
           borderRadius: radius,
-          backgroundColor: colors.surfaceRaised,
+          backgroundColor: colors.skeleton,
         },
         pulse,
         style,

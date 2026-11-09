@@ -63,7 +63,7 @@ export default function RootLayout() {
   const themeReady = useThemeReady();
   useThemeChrome(theme);
   const { colors } = theme;
-  const [loaded, error] = useFonts({
+  const [, error] = useFonts({
     Nunito_500Medium,
     Nunito_700Bold,
     Nunito_800ExtraBold,
@@ -77,12 +77,16 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded && themeReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded, themeReady]);
+    if (!themeReady) return;
+    void SplashScreen.hideAsync();
+  }, [themeReady]);
 
-  if (!loaded || !themeReady) {
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    document.getElementById('boot')?.remove();
+  }, []);
+
+  if (!themeReady) {
     return <BootSkeleton />;
   }
 

@@ -153,7 +153,7 @@ const styles = themedStyleSheet((colors) => ({
     paddingHorizontal: spacing[3],
   },
   chipOn: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentSoft,
     borderColor: colors.accent,
   },
   chipHover: {
@@ -174,7 +174,7 @@ const styles = themedStyleSheet((colors) => ({
     lineHeight: lineHeights[14],
   },
   chipTextOn: {
-    color: colors.accentText,
+    color: colors.accent,
   },
   wrap: {
     width: '100%',
@@ -209,7 +209,7 @@ const styles = themedStyleSheet((colors) => ({
     cursor: 'pointer',
   },
   segmentOn: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
   segmentPressed: {
     opacity: 0.82,
@@ -221,7 +221,7 @@ const styles = themedStyleSheet((colors) => ({
     lineHeight: lineHeights[14],
   },
   segmentTextOn: {
-    color: colors.accentText,
+    color: colors.accent,
   },
   pill: {
     alignSelf: 'flex-start',

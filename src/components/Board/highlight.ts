@@ -20,12 +20,13 @@ type SquarePaint = {
   highlightTone: HighlightTone;
 };
 
-/** Blunder squares stay red. A correct save paints green, even on the last-move squares. */
+/**
+ * A save paints green. A blunder does not wash the square red — the arrow and
+ * the badge carry that. Selection stays on top of either mark.
+ */
 export function squareBackground(input: SquarePaint, palette: Palette = palettes.dark): string {
-  if (input.isHighlight) {
-    return input.highlightTone === 'success' ? palette.boardSave : palette.boardBlunder;
-  }
   if (input.isDropTarget || input.isSelected) return palette.boardSelected;
+  if (input.isHighlight && input.highlightTone === 'success') return palette.boardSave;
   if (input.isAttention) return palette.boardAttention;
   if (input.isLast) return palette.boardLastMove;
   return input.isDark ? palette.boardDark : palette.boardLight;

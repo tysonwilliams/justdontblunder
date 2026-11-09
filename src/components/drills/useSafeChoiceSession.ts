@@ -10,6 +10,7 @@ import { isCorrectDrillMove, type DrillPosition, type DrillSession as DrillSessi
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/src/logic/safeChoice';
+import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound, type DrillRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
@@ -170,7 +171,10 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     [drill, round, lastMove],
   );
   const card = safeResultCard(round);
-  const roundCopy = drill ? (feedbackForRound(roundKind(round), drill, lastMove) ?? '') : '';
+  const taught = drill ? (feedbackForRound(roundKind(round), drill, lastMove) ?? '') : '';
+  const kind = roundKind(round);
+  const coachKind = kind === 'correct' ? 'save' : kind === 'retry' || kind === 'streakEnd' ? 'blunder' : 'idea';
+  const roundCopy = drill ? coachForRound(coachKind, drill.fen, lastMove, taught) : '';
   const arrows = useMemo<BoardArrow[]>(() => {
     if (round === 'playing' && presented) {
       return presented.options.map((option) => ({

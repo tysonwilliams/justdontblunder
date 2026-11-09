@@ -152,7 +152,7 @@ const styles = themedStyleSheet((colors) => ({
     maxWidth: '100%',
     flexShrink: 0,
     borderRadius: radii.md,
-    backgroundColor: colors.boardFrame,
+    backgroundColor: colors.transparent,
     shadowColor: colors.shadow,
     shadowOpacity: 0.22,
     shadowRadius: 16,

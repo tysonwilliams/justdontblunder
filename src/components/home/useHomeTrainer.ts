@@ -12,6 +12,7 @@ import {
 } from '@/src/logic/drills';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { learnCard } from '@/src/logic/lessons';
+import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
@@ -138,7 +139,9 @@ export function useHomeTrainer() {
     [drill, round, lastMove],
   );
   const card = homeResultCard(round);
-  const roundCopy = drill ? (feedbackForRound(round, drill, lastMove) ?? '') : '';
+  const taught = drill ? (feedbackForRound(round, drill, lastMove) ?? '') : '';
+  const coachKind = round === 'correct' ? 'save' : round === 'retry' ? 'blunder' : 'idea';
+  const roundCopy = drill ? coachForRound(coachKind, drill.fen, lastMove, taught) : '';
   const threatFrom = playback.arrow?.from;
   const threatTo = playback.arrow?.to;
   const threatArrow = useMemo<BoardArrow[]>(() => {

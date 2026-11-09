@@ -14,8 +14,11 @@ import Animated, {
 
 import { playFeedback, playMoveOutcome, unlockFeedback } from '@/src/feedback/playFeedback';
 import { BoardArrows } from '@/src/components/Board/BoardArrows';
+import { BoardCoordinates } from '@/src/components/Board/BoardCoordinates';
 import { BoardSquare } from '@/src/components/Board/BoardSquare';
 import { centerOf } from '@/src/components/Board/boardCoords';
+import { boardStatusLine } from '@/src/components/Board/coordinates';
+import { MoveBadge, type MoveBadgeKind } from '@/src/components/Board/MoveBadge';
 import { chessBoardPropsEqual } from '@/src/components/Board/boardProps';
 import { buildBoardRows } from '@/src/components/Board/boardSquares';
 import type { BoardArrow, BoardMoveEvent, ChessBoardProps } from '@/src/components/Board/boardTypes';
@@ -39,11 +42,10 @@ import {
   pieceAt,
   snapshot,
   tryMove,
-  type GameSnapshot,
 } from '@/src/logic/game';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
+import { fonts, fontSizes, lineHeights, radii } from '@/src/theme';
 
 export type { BoardArrow, BoardMoveEvent };
 
@@ -57,13 +59,7 @@ const webBoardTouch: ViewStyle | null =
 type Phase = 'idle' | 'dragging' | 'settling';
 type Placement = { fen: string; from: Square };
 
-function turnStatus(snap: GameSnapshot, hideTurn: boolean): string | null {
-  if (snap.isCheckmate) return 'Checkmate';
-  if (snap.isStalemate) return 'Stalemate';
-  if (hideTurn) return null;
-  if (snap.isCheck) return `${snap.turn === 'w' ? 'White' : 'Black'} in check`;
-  return `${snap.turn === 'w' ? 'White' : 'Black'} to move`;
-}
+type JudgedBadge = { square: Square; kind: MoveBadgeKind };
 
 function planFlights(before: string, after: string, squareSize: number, reduced: boolean): PieceFlightModel[] {
   if (reduced || squareSize <= 0) return [];
@@ -109,6 +105,7 @@ function ChessBoardView({
   const [legal, setLegal] = useState<Square[]>([]);
   const [dragSquare, setDragSquare] = useState<Square | null>(null);
   const [hoverSquare, setHoverSquare] = useState<Square | null>(null);
+  const [badge, setBadge] = useState<JudgedBadge | null>(null);
   const [flights, setFlights] = useState<PieceFlightModel[]>([]);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [rejectedFrom, setRejectedFrom] = useState<Square | null>(null);
@@ -343,6 +340,9 @@ function ChessBoardView({
       const afterFen = probe.fen();
       if (source === 'drag') setPlacement({ fen: afterFen, from });
       const allowed = now.onMove?.({ from, to, beforeFen, afterFen, san: moved.san });
+      if (allowed === false) setBadge({ square: to, kind: 'blunder' });
+      else if (allowed === true) setBadge({ square: to, kind: 'safe' });
+      else setBadge(null);
       if (allowed === false) {
         clearSelection();
         playMoveOutcome(moved.san, false);
@@ -537,6 +537,10 @@ function ChessBoardView({
   );
 
   useEffect(() => {
+    if (!lastMove) setBadge(null);
+  }, [lastMove]);
+
+  useEffect(() => {
     if (!rejectedFrom) return;
     const from = rejectedFrom;
     setRejectedFrom(null);
@@ -594,30 +598,25 @@ function ChessBoardView({
   const arrowDraw = useMemo(() => (arrows.length ? arrows : EMPTY_ARROWS), [arrowKey]);
 
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
-  const turnLine = turnStatus(snap, false);
+  const turnLine = boardStatusLine({
+    turn: snap.turn,
+    inCheck: snap.isCheck,
+    checkmate: snap.isCheckmate,
+    stalemate: snap.isStalemate,
+  });
 
-  // Phone drills keep this row off for the whole puzzle. Desktop always reserves it,
-  // because streak mode reveals the turn line after a move.
+  // Phone drills keep this row off for the whole puzzle. Desktop always reserves it.
   const reserveTurn = phone ? !hideTurn || flipCue : true;
 
   return (
     <View style={styles.wrap} onPointerDown={unlockFeedback}>
-      {reserveTurn ? <View style={[styles.meta, { height: turnRow }]}>
-        <Text
-          style={[styles.turn, phone && styles.turnPhone, hideTurn && styles.hidden]}
-          numberOfLines={1}
-          accessibilityElementsHidden={hideTurn}>
-          {turnLine}
-        </Text>
-        <View
-          pointerEvents="none"
-          style={[styles.flipAnchor, !flipCue && styles.hidden]}
-          accessibilityElementsHidden={!flipCue}>
-          <Text style={[styles.flip, phone && styles.flipPhone]} numberOfLines={1}>
-            {phone ? 'Playing Black' : "You're playing Black. Board flipped."}
+      {reserveTurn ? (
+        <View style={[styles.meta, { height: turnRow }]}>
+          <Text style={[styles.turn, phone && styles.turnPhone]} numberOfLines={1}>
+            {turnLine}
           </Text>
         </View>
-      </View> : null}
+      ) : null}
       <GestureDetector gesture={pan} touchAction="none" userSelect="none">
         <View
           collapsable={false}
@@ -633,6 +632,15 @@ function ChessBoardView({
               </View>
             ))}
             <BoardArrows arrows={arrowDraw} orientation={orientation} squareSize={squareSize} />
+            <BoardCoordinates orientation={orientation} squareSize={squareSize} />
+            {badge ? (
+              <MoveBadge
+                square={badge.square}
+                kind={badge.kind}
+                orientation={orientation}
+                squareSize={squareSize}
+              />
+            ) : null}
           </View>
           <View pointerEvents="none" style={styles.motion}>
             {flights.map((flight) => (
@@ -672,45 +680,16 @@ const styles = themedStyleSheet((colors) => ({
     alignItems: 'center',
     overflow: 'hidden',
   },
-  hidden: {
-    opacity: 0,
-  },
   turn: {
     flex: 1,
     fontFamily: fonts.bodyBold,
     color: colors.text,
     fontSize: fontSizes[15],
     lineHeight: lineHeights[20],
-    paddingRight: 220,
   },
   turnPhone: {
     fontSize: fontSizes[12],
     lineHeight: lineHeights[16],
-    paddingRight: 108,
-  },
-  flipAnchor: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
-  flip: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accentText,
-    backgroundColor: colors.warning,
-    fontSize: fontSizes[13],
-    lineHeight: lineHeights[16],
-    paddingHorizontal: spacing[10],
-    paddingVertical: spacing[2],
-    borderRadius: radii.pill,
-    overflow: 'hidden',
-  },
-  flipPhone: {
-    fontSize: fontSizes[11],
-    lineHeight: lineHeights[14],
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 0,
   },
   hit: {
     width: '100%',

@@ -7,6 +7,7 @@ import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTyp
 import { judgePracticeMove, type MoveFeedback } from '@/src/engine/evaluate';
 import { findHangingPieces } from '@/src/engine/patterns';
 import { createGame, snapshot } from '@/src/logic/game';
+import { coachSpeech } from '@/src/logic/coach';
 import { chooseBlackReply } from '@/src/logic/reply';
 import { countRetriedMove } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
@@ -34,6 +35,7 @@ function gameResultLine(fen: string): string | null {
 export function usePracticeGame() {
   const { colors, scheme } = useTheme();
   const markPracticeMove = useProgressStore((s) => s.markPracticeMove);
+  const awardXp = useProgressStore((s) => s.awardXp);
   const [fen, setFen] = useState(() => createGame().fen());
   const [feedback, setFeedback] = useState<MoveFeedback | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -105,17 +107,24 @@ export function usePracticeGame() {
       }
       if (result.ok) checkpoint.current = null;
       else checkpoint.current = { fen: event.beforeFen, lastMove: lastMoveRef.current };
+      const line = coachSpeech({
+        kind: result.ok ? 'save' : 'blunder',
+        fen: event.beforeFen,
+        from: event.from,
+        to: event.to,
+      });
+      awardXp(result.ok);
       setFen(event.afterFen);
       setLastMove({ from: event.from, to: event.to });
       setReplySan(null);
       if (result.ok) {
-        setFeedback(null);
-        setStatus(`${result.title}. ${result.message}`);
+        setFeedback({ ...result, message: line });
+        setStatus(null);
         setTone('success');
         setHighlights([]);
       } else {
         setStatus(null);
-        setFeedback(result);
+        setFeedback({ ...result, message: line });
         setTone('danger');
         setHighlights(result.squares);
       }
@@ -136,6 +145,7 @@ export function usePracticeGame() {
           setReplySan(reply.san);
           playFeedback(soundForSan(reply.san));
           const created = findHangingPieces(reply.fen, 'w');
+          if (result.ok && !created[0]) setFeedback(null);
           if (result.ok) setStatus(null);
           if (result.ok && created[0]) {
             const name = created[0].message.replace(/^You left the /, '').replace(/ hanging$/, '');
@@ -155,7 +165,7 @@ export function usePracticeGame() {
       }, REPLY_DELAY_MS);
       return result.ok;
     },
-    [markPracticeMove],
+    [awardXp, markPracticeMove],
   );
 
   const arrow = useMemo(() => {
