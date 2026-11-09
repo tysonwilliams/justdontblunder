@@ -50,6 +50,44 @@ export function Chip({ label, selected = false, onPress, testID, size = 'md', fi
   );
 }
 
+export function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+  height = 32,
+}: {
+  options: readonly { id: T; label: string; spoken?: string; testID?: string }[];
+  value: T;
+  onChange: (id: T) => void;
+  height?: number;
+}) {
+  useTheme();
+  return (
+    <View style={[styles.segmentTrack, { height }]}>
+      {options.map((item) => {
+        const selected = item.id === value;
+        return (
+          <Pressable
+            key={item.id}
+            {...controlA11y('button', item.spoken ?? item.label, selected)}
+            testID={item.testID}
+            hitSlop={spacing.xs}
+            onPress={() => onChange(item.id)}
+            style={({ pressed }) => [
+              styles.segment,
+              selected && styles.segmentOn,
+              pressed && styles.segmentPressed,
+            ]}>
+            <Text style={[styles.segmentText, selected && styles.segmentTextOn]} numberOfLines={1}>
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function FilterChips<T extends string>({
   options,
   value,
@@ -150,6 +188,40 @@ const styles = themedStyleSheet((colors) => ({
   oneRow: {
     flexWrap: 'nowrap',
     gap: spacing.xs,
+  },
+  segmentTrack: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing[2],
+    gap: spacing[2],
+  },
+  segment: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[2],
+    cursor: 'pointer',
+  },
+  segmentOn: {
+    backgroundColor: colors.accent,
+  },
+  segmentPressed: {
+    opacity: 0.82,
+  },
+  segmentText: {
+    fontFamily: fonts.bodyBold,
+    color: colors.textMuted,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+  },
+  segmentTextOn: {
+    color: colors.accentText,
   },
   pill: {
     alignSelf: 'flex-start',

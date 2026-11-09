@@ -99,7 +99,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
                     press.pressed && styles.pressed,
                   ];
                 }}>
-                {wide ? null : <Icon color={color} size={18} />}
+                {wide ? null : <Icon color={color} size={20} />}
                 <Text style={[wide ? styles.labelWide : styles.label, { color }]}>{label}</Text>
               </Pressable>
             );
@@ -138,6 +138,11 @@ const styles = themedStyleSheet((colors) => ({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     paddingTop: spacing.xxs,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -3 },
+    elevation: 8,
   },
   inner: {
     minHeight: 48,
@@ -199,7 +204,7 @@ const styles = themedStyleSheet((colors) => ({
   },
   link: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[1],

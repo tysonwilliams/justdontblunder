@@ -66,16 +66,17 @@ export function LessonPlayer({ lessonId, onBack, onPractice }: Props) {
           />
         }
         aside={
-          <View style={[play.guide, phone && lessonStyles.guidePhone]}>
+          <View style={[play.guide, phone && lessonStyles.cardAside]}>
             <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : 3}>
               {doneCopy(lesson.id)}
             </Text>
             <Button
+              compact={phone}
               label="Practice this in Drills"
               testID="lesson-practice"
               onPress={() => onPractice(practiceHref(lesson))}
             />
-            <Button label="All lessons" variant="secondary" testID="lesson-back" onPress={onBack} />
+            <Button compact={phone} label="All lessons" variant="secondary" testID="lesson-back" onPress={onBack} />
           </View>
         }
       />

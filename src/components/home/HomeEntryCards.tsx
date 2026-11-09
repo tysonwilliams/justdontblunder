@@ -63,7 +63,7 @@ function EntryCard({
       <Text style={[play.cardTitle, phone && styles.cardTitlePhone]} numberOfLines={1}>
         {item.title}
       </Text>
-      <Text style={[play.cardBody, phone && styles.cardBodyPhone]} numberOfLines={3}>
+      <Text style={[play.cardBody, phone && styles.cardBodyPhone]} numberOfLines={phone ? 2 : 3}>
         {item.body}
       </Text>
     </Pressable>
@@ -72,9 +72,11 @@ function EntryCard({
 
 const styles = StyleSheet.create({
   cardPhone: {
-    minHeight: 0,
+    height: 64,
+    minHeight: 64,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
+    overflow: 'hidden',
   },
   cardTitlePhone: {
     fontSize: fontSizes[13],

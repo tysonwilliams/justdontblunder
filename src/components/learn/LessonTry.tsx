@@ -7,9 +7,9 @@ import { ChessBoard, type BoardArrow, type BoardMoveEvent } from '@/src/componen
 import { highlightsForRound } from '@/src/components/Board/highlight';
 import { LessonLead } from '@/src/components/learn/LessonLead';
 import { roundKind } from '@/src/components/learn/lessonPhase';
-import { lessonStyles } from '@/src/components/learn/lessonStyles';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { Button } from '@/src/components/ui/Button';
+import { PhoneTray } from '@/src/components/ui/PhoneTray';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
@@ -102,11 +102,9 @@ export function LessonTry({
   const threatArrow: BoardArrow[] =
     threatFrom && threatTo ? [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }] : [];
   const copy = feedbackForRound(roundKind(round), drill, lastMove) ?? '';
-  const watching = replayActive && !playback.done;
 
   return (
     <PlayFrame
-      asideFirst={round !== 'playing' && !watching}
       intro={
         <LessonLead
           lesson={lesson}
@@ -132,17 +130,27 @@ export function LessonTry({
         />
       }
       aside={
-        round === 'playing' ? (
-          <View style={[play.guide, phone && lessonStyles.guidePhone]}>
-            <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : 3}>
-              {task.coach}
-            </Text>
-            {phone ? null : <Text style={text.muted}>The amber square is the piece to watch.</Text>}
-            <Button label="Show the idea" variant="secondary" testID="lesson-idea" onPress={reveal} />
-          </View>
-        ) : (
-          <TryResult round={round} message={copy} ready={replyReady} onAgain={tryAgain} onNext={onNext} />
-        )
+        <PhoneTray
+          banner={
+            round === 'playing' ? (
+              <View style={[play.guide, phone && play.phoneCard]}>
+                <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : 3}>
+                  {task.coach}
+                </Text>
+                {phone ? null : <Text style={text.muted}>The amber square is the piece to watch.</Text>}
+                <Button
+                  compact={phone}
+                  label="Show the idea"
+                  variant="secondary"
+                  testID="lesson-idea"
+                  onPress={reveal}
+                />
+              </View>
+            ) : (
+              <TryResult round={round} message={copy} ready={replyReady} onAgain={tryAgain} onNext={onNext} />
+            )
+          }
+        />
       }
     />
   );

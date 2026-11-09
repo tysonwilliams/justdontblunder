@@ -24,7 +24,7 @@ const styles = themedStyleSheet((colors) => ({
   track: {
     height: 6,
     borderRadius: radii.track,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.borderStrong,
     overflow: 'hidden',
     width: '100%',
   },

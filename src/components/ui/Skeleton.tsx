@@ -56,7 +56,7 @@ function usePulseStyle() {
 /** Square board frame in the same slot the live board uses. */
 export function BoardSkeleton({ size, hideTurn = false }: { size?: number; hideTurn?: boolean }) {
   const { colors } = useTheme();
-  const { phone } = useLayout();
+  const { phone, turnRow } = useLayout();
   const pulse = usePulseStyle();
   const frame = size && size > 0 ? Math.round(size) : undefined;
   const rows = [];
@@ -81,7 +81,9 @@ export function BoardSkeleton({ size, hideTurn = false }: { size?: number; hideT
   return (
     <View accessibilityLabel="Loading board" style={{ width: '100%' }}>
       {hideTurn ? null : (
-        <Bone width={112} height={phone ? 14 : 16} style={{ marginBottom: phone ? spacing.xs : spacing.sm }} />
+        <View style={{ height: turnRow, justifyContent: 'center' }}>
+          <Bone width={112} height={phone ? 14 : 16} />
+        </View>
       )}
       <Animated.View
         style={[

@@ -101,7 +101,7 @@ function ChessBoardView({
   onPositionChange,
 }: ChessBoardProps) {
   const { colors, scheme } = useTheme();
-  const { phone } = useLayout();
+  const { phone, turnRow } = useLayout();
   const reduced = useReducedMotion();
   const [measured, setMeasured] = useState(0);
   const [gameFen, setGameFen] = useState(() => fen ?? createGame().fen());
@@ -594,27 +594,34 @@ function ChessBoardView({
   const arrowDraw = useMemo(() => (arrows.length ? arrows : EMPTY_ARROWS), [arrowKey]);
 
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
-  const turnLine = turnStatus(snap, hideTurn);
+  const turnLine = turnStatus(snap, false);
+
+  // Phone drills keep this row off for the whole puzzle. Desktop always reserves it,
+  // because streak mode reveals the turn line after a move.
+  const reserveTurn = phone ? !hideTurn || flipCue : true;
 
   return (
     <View style={styles.wrap} onPointerDown={unlockFeedback}>
-      {turnLine || flipCue ? (
-        <View style={[styles.meta, phone && styles.metaPhone]}>
-          {turnLine ? (
-            <Text style={[styles.turn, phone && styles.turnPhone]} numberOfLines={1}>
-              {turnLine}
-            </Text>
-          ) : null}
-          {flipCue ? (
-            <Text style={[styles.flip, phone && styles.flipPhone]} numberOfLines={1}>
-              {phone ? 'Playing Black' : "You're playing Black. Board flipped."}
-            </Text>
-          ) : null}
+      {reserveTurn ? <View style={[styles.meta, { height: turnRow }]}>
+        <Text
+          style={[styles.turn, phone && styles.turnPhone, hideTurn && styles.hidden]}
+          numberOfLines={1}
+          accessibilityElementsHidden={hideTurn}>
+          {turnLine}
+        </Text>
+        <View
+          pointerEvents="none"
+          style={[styles.flipAnchor, !flipCue && styles.hidden]}
+          accessibilityElementsHidden={!flipCue}>
+          <Text style={[styles.flip, phone && styles.flipPhone]} numberOfLines={1}>
+            {phone ? 'Playing Black' : "You're playing Black. Board flipped."}
+          </Text>
         </View>
-      ) : null}
+      </View> : null}
       <GestureDetector gesture={pan} touchAction="none" userSelect="none">
         <View
           collapsable={false}
+          testID="chess-board"
           style={[styles.hit, outer > 0 ? { height: outer } : styles.boardSquare, webBoardTouch]}
           onLayout={onLayout}>
           <View style={styles.board}>
@@ -659,38 +666,43 @@ const styles = themedStyleSheet((colors) => ({
     alignSelf: 'flex-start',
   },
   meta: {
-    marginBottom: spacing.sm,
-    minHeight: 28,
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'nowrap',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.sm,
+    overflow: 'hidden',
   },
-  metaPhone: {
-    marginBottom: spacing.xs,
-    minHeight: 18,
-    height: 18,
+  hidden: {
+    opacity: 0,
   },
   turn: {
+    flex: 1,
     fontFamily: fonts.bodyBold,
     color: colors.text,
     fontSize: fontSizes[15],
     lineHeight: lineHeights[20],
-    flexShrink: 1,
+    paddingRight: 220,
   },
   turnPhone: {
     fontSize: fontSizes[12],
     lineHeight: lineHeights[16],
+    paddingRight: 108,
+  },
+  flipAnchor: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
   flip: {
     fontFamily: fonts.bodyBold,
     color: colors.accentText,
     backgroundColor: colors.warning,
-    fontSize: fontSizes[14],
-    lineHeight: lineHeights[18],
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
     paddingHorizontal: spacing[10],
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing[2],
     borderRadius: radii.pill,
     overflow: 'hidden',
   },
@@ -698,7 +710,7 @@ const styles = themedStyleSheet((colors) => ({
     fontSize: fontSizes[11],
     lineHeight: lineHeights[14],
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing[1],
+    paddingVertical: 0,
   },
   hit: {
     width: '100%',
