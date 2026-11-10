@@ -30,6 +30,7 @@ import {
   pointToSquare,
   type DropIntent,
 } from '@/src/components/Board/boardMotion';
+import { keepMarksAfterDrop, marksForDragPress, type ShownMarks } from '@/src/components/Board/dragSelection';
 import { PieceFlight, type PieceFlightModel } from '@/src/components/Board/PieceFlight';
 import { Piece } from '@/src/components/Board/Piece';
 import { BOARD_BORDER, squareSizeForFrame } from '@/src/components/Board/boardGeometry';
@@ -129,6 +130,10 @@ function ChessBoardView({
 
   const phase = useRef<Phase>('idle');
   const dragFrom = useRef<Square | null>(null);
+  /** Piece under the pointer when this press began. The pan arms a few pixels later. */
+  const pressedPiece = useRef<Square | null>(null);
+  /** Legal targets for the marked piece. Drag frames read this instead of chess.js. */
+  const marks = useRef<ShownMarks | null>(null);
   const suppressPress = useRef(false);
   const shieldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -165,6 +170,8 @@ function ChessBoardView({
     setTrackedFen(activeFen);
     setPlacement(null);
     setRejectedFrom(null);
+    marks.current = null;
+    pressedPiece.current = null;
     setSelected(null);
     setLegal([]);
     setHoverSquare(null);
@@ -209,8 +216,40 @@ function ChessBoardView({
   };
 
   const clearSelection = useCallback(() => {
+    marks.current = null;
     setSelected(null);
     setLegal([]);
+  }, []);
+
+  const showMarks = useCallback((square: Square): 'ignore' | 'unchanged' | 'show' => {
+    const now = latest.current;
+    const piece = pieceAt(now.game, square);
+    const decision = marksForDragPress(
+      {
+        phase: phase.current,
+        interactive: now.interactive,
+        squareSize: now.squareSize,
+        square,
+        pieceColor: piece?.color ?? null,
+        turn: now.snap.turn,
+        shown: marks.current,
+      },
+      (target) => getLegalTargets(now.game, target),
+    );
+    switch (decision.action) {
+      case 'ignore':
+      case 'unchanged':
+        return decision.action;
+      case 'show':
+        marks.current = { square: decision.square, legal: decision.legal };
+        setSelected(decision.square);
+        setLegal(decision.legal);
+        return 'show';
+      default: {
+        const _exhaustive: never = decision;
+        return _exhaustive;
+      }
+    }
   }, []);
 
   const clearSettleTimer = useCallback(() => {
@@ -368,42 +407,49 @@ function ChessBoardView({
           return;
         }
         if (piece && piece.color === now.snap.turn) {
-          setSelected(square);
-          setLegal(getLegalTargets(now.game, square));
+          showMarks(square);
           return;
         }
         shakePiece(now.selected);
         return;
       }
       if (piece && piece.color === now.snap.turn) {
-        setSelected(square);
-        setLegal(getLegalTargets(now.game, square));
+        showMarks(square);
       }
     },
-    [commitMove, shakePiece],
+    [commitMove, shakePiece, showMarks],
   );
 
   const startDrag = useCallback(
     (square: Square, x: number, y: number) => {
+      const origin = pressedPiece.current ?? square;
+      pressedPiece.current = null;
       tracking.value = 0;
       const now = latest.current;
       if (phase.current === 'settling' || !now.interactive || now.squareSize <= 0) return;
-      const piece = pieceAt(now.game, square);
+      const piece = pieceAt(now.game, origin);
       if (!piece || piece.color !== now.snap.turn) return;
+      showMarks(origin);
       phase.current = 'dragging';
-      dragFrom.current = square;
+      dragFrom.current = origin;
       dragX.value = x;
       dragY.value = y;
       shake.value = 0;
       tracking.value = 1;
       armPressShield();
-      setSelected(square);
-      setLegal(getLegalTargets(now.game, square));
-      setDragSquare(square);
+      setDragSquare(origin);
       playFeedback('pickup');
       lift.value = withTiming(reducedRef.current ? 0 : 1, { duration: reducedRef.current ? 0 : 90 });
     },
-    [armPressShield, dragX, dragY, lift, shake, tracking],
+    [armPressShield, dragX, dragY, lift, shake, showMarks, tracking],
+  );
+
+  const previewSelection = useCallback(
+    (square: Square) => {
+      const marked = showMarks(square);
+      pressedPiece.current = marked === 'ignore' ? null : square;
+    },
+    [showMarks],
   );
 
   const rememberHover = useCallback((square: Square | null) => {
@@ -412,6 +458,7 @@ function ChessBoardView({
 
   const endDrag = useCallback(
     (x: number, y: number) => {
+      pressedPiece.current = null;
       tracking.value = 0;
       hoverSV.value = null;
       setHoverSquare(null);
@@ -424,13 +471,15 @@ function ChessBoardView({
         setDragSquare(null);
         return;
       }
+      const shown = marks.current;
+      const legal = shown?.square === from ? shown.legal : getLegalTargets(now.game, from);
       const intent: DropIntent = dragDropIntent({
         from,
         x,
         y,
         squareSize: now.squareSize,
         orientation: now.orientation,
-        legal: getLegalTargets(now.game, from),
+        legal,
       });
       switch (intent.kind) {
         case 'move':
@@ -439,7 +488,7 @@ function ChessBoardView({
           return;
         case 'snap':
           playFeedback(intent.reason === 'origin' ? 'drop' : 'blunder');
-          beginSnap(from, intent.reason !== 'origin');
+          beginSnap(from, !keepMarksAfterDrop(intent));
           return;
         default: {
           const _exhaustive: never = intent;
@@ -451,6 +500,7 @@ function ChessBoardView({
   );
 
   const cancelDrag = useCallback(() => {
+    pressedPiece.current = null;
     if (phase.current !== 'dragging') return;
     const from = dragFrom.current;
     tracking.value = 0;
@@ -461,11 +511,14 @@ function ChessBoardView({
     }
   }, [beginSnap, tracking]);
 
-  const handlers = useRef({ startDrag, endDrag, rememberHover, cancelDrag });
-  handlers.current = { startDrag, endDrag, rememberHover, cancelDrag };
+  const handlers = useRef({ startDrag, endDrag, rememberHover, cancelDrag, previewSelection });
+  handlers.current = { startDrag, endDrag, rememberHover, cancelDrag, previewSelection };
 
   const startDragJS = useCallback((square: Square, x: number, y: number) => {
     handlers.current.startDrag(square, x, y);
+  }, []);
+  const previewSelectionJS = useCallback((square: Square) => {
+    handlers.current.previewSelection(square);
   }, []);
   const endDragJS = useCallback((x: number, y: number) => {
     handlers.current.endDrag(x, y);
@@ -484,6 +537,18 @@ function ChessBoardView({
         .minDistance(DRAG_ARM_PX)
         .maxPointers(1)
         .shouldCancelWhenOutside(false)
+        .onTouchesDown((event) => {
+          'worklet';
+          if (event.numberOfTouches !== 1) return;
+          const touch = event.changedTouches[0] ?? event.allTouches[0];
+          if (touch == null) return;
+          const point = pointerToBoard(touch.x, touch.y);
+          const boardSize = sizeSV.value;
+          if (boardSize <= 0) return;
+          const square = pointToSquare(point.x, point.y, boardSize, orientSV.value);
+          if (!square) return;
+          runOnJS(previewSelectionJS)(square);
+        })
         .onStart((event) => {
           'worklet';
           dragSettled.value = 0;
@@ -530,6 +595,7 @@ function ChessBoardView({
       hoverSV,
       interactive,
       orientSV,
+      previewSelectionJS,
       sizeSV,
       startDragJS,
       tracking,
