@@ -682,5 +682,5 @@ export function learnCard(completed: readonly string[]): { href: string; title: 
 }
 
 export function practiceHref(lesson: Lesson): string {
-  return drillHref('streak', lesson.practice);
+  return drillHref('play', lesson.practice);
 }

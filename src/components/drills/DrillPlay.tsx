@@ -26,14 +26,22 @@ type Props = {
   session: Session;
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
+  onStreak: (streak: boolean) => void;
   phone: boolean;
 };
 
-export function DrillPlay({ session, onMode, onTheme, phone }: Props) {
+export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) {
   const drill = session.drill;
   if (!drill) return null;
   const toolbar = (
-    <DrillToolbar mode={session.mode} theme={session.theme} onMode={onMode} onTheme={onTheme} />
+    <DrillToolbar
+      mode={session.mode}
+      theme={session.theme}
+      streak={session.streak}
+      onMode={onMode}
+      onTheme={onTheme}
+      onStreak={onStreak}
+    />
   );
 
   return (
@@ -51,7 +59,7 @@ export function DrillPlay({ session, onMode, onTheme, phone }: Props) {
           fen={session.boardFen}
           orientation={session.orientation}
           flipCue={!phone && session.orientation === 'black'}
-          hideTurn={phone || (!session.guided && session.round === 'playing')}
+          hideTurn={phone || (session.streak && session.round === 'playing')}
           interactive={session.round === 'playing'}
           lastMove={session.boardLastMove}
           arrows={session.threatArrow}
@@ -86,7 +94,7 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
         </View>
         <Text style={[text.meta, text.metaPhone]} numberOfLines={1}>
           {session.index + 1}/{session.session.positions.length}
-          {session.mode === 'streak' ? ` · ${session.score.correct}` : ''}
+          {session.streak ? ` · ${session.score.correct}` : ''}
         </Text>
       </View>
     </BoardLead>
@@ -101,11 +109,11 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
       {toolbar}
       <View style={play.metaRow}>
         <StatusPill>
-          {session.reviewing ? 'Review' : session.mode === 'streak' ? 'Streak' : themeLabel(drill.theme)}
+          {session.reviewing ? 'Review' : session.streak ? 'Streak' : themeLabel(drill.theme)}
         </StatusPill>
         <Text style={text.meta}>
           {session.index + 1} / {session.session.positions.length}
-          {session.mode === 'streak' ? ` · ${session.score.correct} in a row` : ''}
+          {session.streak ? ` · ${session.score.correct} in a row` : ''}
         </Text>
       </View>
       <ProgressTrack progress={session.progress} />
@@ -124,8 +132,8 @@ function DrillAside({ session, phone }: { session: Session; phone: boolean }) {
   const drill = session.drill;
   if (!drill) return null;
   if (session.round === 'playing') {
-    if (session.guided) return <GuidedAside phone={phone} theme={drill.theme} onReveal={session.revealIdea} />;
-    return <StreakAside phone={phone} onReveal={session.revealIdea} />;
+    if (session.streak) return <StreakAside phone={phone} onReveal={session.revealIdea} />;
+    return <GuidedAside phone={phone} theme={drill.theme} onReveal={session.revealIdea} />;
   }
   return (
     <DrillFeedback
