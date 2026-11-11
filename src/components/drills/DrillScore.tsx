@@ -2,21 +2,16 @@ import { Text, View } from 'react-native';
 
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
-import { DrillToolbar } from '@/src/components/DrillToolbar';
+import { DrillToolbar, type DrillToolbarProps } from '@/src/components/DrillToolbar';
 import type { DrillRunSummary } from '@/src/components/drills/useDrillSession';
 import { Button } from '@/src/components/ui/Button';
 import { ScoreFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { themeFilterLabel, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
+import { themeFilterLabel } from '@/src/logic/drillLink';
 
-type Toolbar = {
-  mode: DrillMode;
-  theme: ThemeFilter;
-  onMode: (mode: DrillMode) => void;
-  onTheme: (theme: ThemeFilter) => void;
-};
+type Toolbar = DrillToolbarProps;
 
 export function DrillRunSummary({
   summary,
@@ -31,7 +26,7 @@ export function DrillRunSummary({
   const { phone } = useLayout();
   return (
     <ScoreFrame
-      toolbar={<DrillToolbar mode={toolbar.mode} theme={toolbar.theme} onMode={toolbar.onMode} onTheme={toolbar.onTheme} />}
+      toolbar={<DrillToolbar {...toolbar} />}
       board={
         <ChessBoard
           fen={summary.fen}

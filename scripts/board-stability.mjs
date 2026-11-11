@@ -3,6 +3,9 @@
  *
  * Requires the web app (npm run web) and puppeteer-core, and uses the system Chrome.
  *   BOARD_URL=http://127.0.0.1:43127 node scripts/board-stability.mjs
+ *
+ * The username sheet sits over the board, so the fixture skips it. Otherwise the
+ * script cannot play the move it measures.
  */
 import puppeteer from 'puppeteer-core';
 
@@ -66,7 +69,10 @@ async function open(page, path, theme) {
     );
     localStorage.setItem(
       'jdb-progress-v1',
-      JSON.stringify({ state: { welcomeSkipped: true, experience: 'basics' }, version: 0 }),
+      JSON.stringify({
+        state: { welcomeSkipped: true, experience: 'basics', drillsPromptSkipped: true },
+        version: 0,
+      }),
     );
   }, theme);
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle0', timeout: 60000 });
@@ -76,9 +82,12 @@ async function open(page, path, theme) {
 async function checkDrill(browser, viewport) {
   const page = await browser.newPage();
   await page.setViewport({ ...viewport, deviceScaleFactor: 1 });
-  await open(page, '/drills?mode=play', 'dark');
+  await open(page, '/drills', 'dark');
+  await page.waitForSelector('[data-testid="streak-toggle"]', { timeout: 30000 });
   const before = await measure(page);
   if (!before.board) throw new Error('board missing before the move');
+  const playChecked = await page.$eval('[data-testid="streak-toggle"]', (node) => node.getAttribute('aria-checked'));
+  const playCopy = await page.evaluate(() => document.body.innerText);
 
   await clickSquare(page, 'h5');
   await clickSquare(page, 'e5');
@@ -102,7 +111,19 @@ async function checkDrill(browser, viewport) {
   }
 
   await page.close();
-  return { before, after, afterNext };
+
+  const streakPage = await browser.newPage();
+  await streakPage.setViewport({ ...viewport, deviceScaleFactor: 1 });
+  await open(streakPage, '/drills?streak=1', 'dark');
+  await streakPage.waitForSelector('[data-testid="streak-toggle"]', { timeout: 30000 });
+  const streak = await measure(streakPage);
+  const streakChecked = await streakPage.$eval('[data-testid="streak-toggle"]', (node) =>
+    node.getAttribute('aria-checked'),
+  );
+  const streakCopy = await streakPage.evaluate(() => document.body.innerText);
+  await streakPage.close();
+
+  return { before, after, afterNext, streak, playChecked, playCopy, streakChecked, streakCopy };
 }
 
 function sameY(label, left, right) {
@@ -138,7 +159,7 @@ async function shot(browser, name, path, theme, viewport) {
 async function shotMove(browser, theme, viewport) {
   const page = await browser.newPage();
   await page.setViewport({ ...viewport, deviceScaleFactor: 2 });
-  await open(page, '/drills?mode=play', theme);
+  await open(page, '/drills', theme);
   const tag = theme === 'light' ? 'light' : 'dark';
   await page.screenshot({ path: `${shotDir}/drill-before-${tag}.png`, fullPage: false });
   await clickSquare(page, 'h5');
@@ -165,6 +186,23 @@ try {
     const label = `${viewport.width}x${viewport.height}`;
     sameY(`${label} move`, result.before, result.after);
     if (result.afterNext) sameY(`${label} next`, result.before, result.afterNext);
+    sameY(`${label} streak`, result.before, result.streak);
+    if (Math.abs((result.before.board?.y ?? -1) - 128) > 0.5) {
+      fail(`${label}: board y is ${result.before.board?.y}, expected 128`);
+    }
+    if (Math.abs((result.streak?.board?.y ?? -1) - 128) > 0.5) {
+      fail(`${label}: streak board y is ${result.streak?.board?.y}, expected 128`);
+    }
+    if (result.streak?.scrollHeight > result.streak.innerHeight + 1) {
+      fail(`${label}: streak page scrolls (${result.streak.scrollHeight} > ${result.streak.innerHeight})`);
+    }
+    if (result.playChecked !== 'false') fail(`${label}: Play opened with Streak on`);
+    if (!result.playCopy.includes('Show the idea')) fail(`${label}: guided Play is missing Show the idea`);
+    if (result.streakChecked !== 'true') fail(`${label}: streak=1 left the Streak toggle off`);
+    if (!result.streakCopy.includes('Show the answer')) fail(`${label}: Streak is missing Show the answer`);
+    if (!/White to move|Black to move/.test(result.streakCopy)) {
+      fail(`${label}: Streak prompt should name whose turn it is`);
+    }
     const full = result.before.board && result.before.innerWidth
       ? result.before.board.width >= result.before.innerWidth - 16
       : false;

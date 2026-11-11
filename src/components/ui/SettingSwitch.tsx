@@ -11,18 +11,31 @@ type Props = {
   value: boolean;
   onChange: (value: boolean) => void;
   testID?: string;
+  /** Content-sized row that fits the 32px phone drills toolbar. */
+  compact?: boolean;
 };
 
-export function SettingSwitch({ label, value, onChange, testID }: Props) {
+export function SettingSwitch({ label, value, onChange, testID, compact = false }: Props) {
   useTheme();
   const { phone } = useLayout();
+  const spoken = compact ? `${label} ${value ? 'on' : 'off'}` : label;
   return (
     <Pressable
-      {...switchA11y(label, value)}
+      {...switchA11y(spoken, value)}
       testID={testID}
+      hitSlop={compact ? spacing.xs : 0}
       onPress={() => onChange(!value)}
-      style={[styles.row, phone && styles.rowPhone]}>
-      <Text style={[styles.label, phone && styles.labelPhone]} numberOfLines={1}>
+      style={[
+        styles.row,
+        !compact && styles.rowGrow,
+        phone && styles.rowPhone,
+        compact && styles.rowCompact,
+        phone && compact && styles.rowCompactPhone,
+        compact && value && styles.rowCompactOn,
+      ]}>
+      <Text
+        style={[styles.label, phone && styles.labelPhone, compact && value && styles.labelCompactOn]}
+        numberOfLines={1}>
         {label}
       </Text>
       <View style={[styles.track, value && styles.trackOn]}>
@@ -34,7 +47,6 @@ export function SettingSwitch({ label, value, onChange, testID }: Props) {
 
 const styles = themedStyleSheet((colors) => ({
   row: {
-    flex: 1,
     minHeight: 40,
     minWidth: 0,
     flexDirection: 'row',
@@ -48,9 +60,28 @@ const styles = themedStyleSheet((colors) => ({
     backgroundColor: colors.surface,
     cursor: 'pointer',
   },
+  rowGrow: {
+    flex: 1,
+  },
   rowPhone: {
     minHeight: 32,
     paddingHorizontal: spacing.sm,
+  },
+  rowCompact: {
+    alignSelf: 'center',
+    height: 36,
+    minHeight: 36,
+    paddingHorizontal: spacing[10],
+  },
+  rowCompactPhone: {
+    height: 32,
+    minHeight: 32,
+    paddingHorizontal: spacing[6],
+    gap: spacing.xs,
+  },
+  rowCompactOn: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
   },
   label: {
     flexShrink: 1,
@@ -62,6 +93,9 @@ const styles = themedStyleSheet((colors) => ({
   labelPhone: {
     fontSize: fontSizes[12],
     lineHeight: lineHeights[16],
+  },
+  labelCompactOn: {
+    color: colors.accent,
   },
   track: {
     width: 40,

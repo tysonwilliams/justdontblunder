@@ -6,7 +6,9 @@ import { isCorrectDrillMove } from '@/src/logic/drills';
 import {
   LESSONS,
   learnCard,
+  lessonById,
   nextLessonId,
+  practiceHref,
   resolveBeats,
   withLessonComplete,
   type LessonBeat,
@@ -194,5 +196,11 @@ describe('lesson completion', () => {
       body: 'All six lessons done. Review any idea.',
     });
     expect(nextLessonId([...ORDER])).toBeNull();
+  });
+
+  it('practices the lesson theme in guided Play', () => {
+    expect(practiceHref(lessonById('blunder'))).toBe('/drills');
+    expect(practiceHref(lessonById('fork'))).toBe('/drills?theme=fork');
+    expect(practiceHref(lessonById('mate'))).toBe('/drills?theme=missed_mate');
   });
 });

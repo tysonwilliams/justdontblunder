@@ -5,11 +5,10 @@ import { View, StyleSheet } from 'react-native';
 import { DrillSession } from '@/src/components/DrillSession';
 import { DrillsPrompt } from '@/src/components/drills/DrillsPrompt';
 import { SafeChoiceSession } from '@/src/components/SafeChoiceSession';
-import { PlaySkeleton } from '@/src/components/ui/Skeleton';
 import {
   drillHref,
-  parseDrillMode,
-  parseThemeFilter,
+  observedDrillHref,
+  resolveDrillQuery,
   type DrillMode,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
@@ -22,33 +21,47 @@ export default function DrillsScreen() {
   const params = useLocalSearchParams<{
     mode?: string | string[];
     theme?: string | string[];
+    streak?: string | string[];
     pick?: string | string[];
   }>();
   const router = useRouter();
-  const pick = firstParam(params.pick) === '1';
-  const mode = parseDrillMode(pick ? 'pick' : firstParam(params.mode));
-  const theme = parseThemeFilter(firstParam(params.theme));
+  const query = {
+    mode: firstParam(params.mode),
+    theme: firstParam(params.theme),
+    streak: firstParam(params.streak),
+    pick: firstParam(params.pick),
+  };
+  const { mode, theme, streak, href } = resolveDrillQuery(query);
 
   useEffect(() => {
-    if (!pick) return;
-    router.replace(drillHref('pick', theme) as Href);
-  }, [pick, router, theme]);
+    if (observedDrillHref(query) === href) return;
+    router.replace(href as Href);
+  }, [href, query.mode, query.pick, query.streak, query.theme, router]);
 
   const onMode = (next: DrillMode) => {
-    router.setParams({ mode: next === 'streak' ? '' : next, pick: '' });
+    router.replace(drillHref(next, theme, next === 'play' && streak) as Href);
   };
   const onTheme = (next: ThemeFilter) => {
-    router.setParams({ theme: next === 'all' ? '' : next });
+    router.replace(drillHref(mode, next, streak) as Href);
   };
-
-  if (pick) return <PlaySkeleton />;
+  const onStreak = (next: boolean) => {
+    router.replace(drillHref('play', theme, next) as Href);
+  };
 
   return (
     <View style={styles.stage}>
       {mode === 'pick' ? (
         <SafeChoiceSession key={`pick-${theme}`} theme={theme} onMode={onMode} onTheme={onTheme} />
       ) : (
-        <DrillSession key={`${mode}-${theme}`} mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />
+        <DrillSession
+          key={`${mode}-${theme}-${streak ? '1' : '0'}`}
+          mode={mode}
+          theme={theme}
+          streak={streak}
+          onMode={onMode}
+          onTheme={onTheme}
+          onStreak={onStreak}
+        />
       )}
       <DrillsPrompt />
     </View>

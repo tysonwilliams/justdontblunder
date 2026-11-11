@@ -7,14 +7,13 @@ import {
   type DrillTheme,
 } from '@/src/logic/drills';
 
-export type DrillMode = 'streak' | 'pick' | 'play' | 'review';
+export type DrillMode = 'play' | 'pick' | 'review';
 
 export type ThemeFilter = 'all' | DrillTheme;
 
 export const DRILL_MODES: readonly { id: DrillMode; label: string }[] = [
-  { id: 'streak', label: 'Streak' },
-  { id: 'pick', label: 'Pick the safe move' },
   { id: 'play', label: 'Play the move' },
+  { id: 'pick', label: 'Pick the safe move' },
   { id: 'review', label: 'Review misses' },
 ];
 
@@ -29,13 +28,15 @@ export const THEME_FILTERS: readonly { id: ThemeFilter; label: string }[] = [
 
 export function parseDrillMode(value: string | undefined): DrillMode {
   switch (value) {
-    case 'streak':
     case 'pick':
-    case 'play':
     case 'review':
       return value;
+    case 'play':
+    case 'streak':
+    case undefined:
+      return 'play';
     default:
-      return 'streak';
+      return 'play';
   }
 }
 
@@ -63,13 +64,54 @@ export function themeFilterLabel(theme: ThemeFilter): string {
   return match ? match.label : 'All';
 }
 
-/** Canonical drills URL. Streak and All stay off the query so the default link is /drills. */
-export function drillHref(mode: DrillMode = 'streak', theme: ThemeFilter = 'all'): string {
+export type DrillQuery = {
+  mode?: string;
+  theme?: string;
+  streak?: string;
+  pick?: string;
+};
+
+/**
+ * Canonical drills URL.
+ * Play and All stay off the query, so the default link is /drills.
+ * Sudden-death is a Play option: `streak=1`, not a mode.
+ */
+export function drillHref(mode: DrillMode = 'play', theme: ThemeFilter = 'all', streak = false): string {
   const params = new URLSearchParams();
-  if (mode !== 'streak') params.set('mode', mode);
+  if (mode !== 'play') params.set('mode', mode);
+  if (mode === 'play' && streak) params.set('streak', '1');
   if (theme !== 'all') params.set('theme', theme === 'missed_mate' ? 'missed_mate' : theme);
   const query = params.toString();
   return query ? `/drills?${query}` : '/drills';
+}
+
+/** Mode, theme, and whether Play is using sudden-death rules. */
+export function resolveDrillQuery(query: DrillQuery): {
+  mode: DrillMode;
+  theme: ThemeFilter;
+  streak: boolean;
+  href: string;
+} {
+  const mode = parseDrillMode(query.pick === '1' ? 'pick' : query.mode);
+  const theme = parseThemeFilter(query.theme);
+  const streak = mode === 'play' && (query.mode === 'streak' || query.streak === '1');
+  return { mode, theme, streak, href: drillHref(mode, theme, streak) };
+}
+
+/** Canonical drills URL for a raw query, including old `mode=streak` links. */
+export function canonicalDrillHref(query: DrillQuery): string {
+  return resolveDrillQuery(query).href;
+}
+
+/** The href the raw query already spells, before it is canonicalized. */
+export function observedDrillHref(query: DrillQuery): string {
+  const params = new URLSearchParams();
+  if (query.mode) params.set('mode', query.mode);
+  if (query.streak) params.set('streak', query.streak);
+  if (query.theme) params.set('theme', query.theme);
+  if (query.pick) params.set('pick', query.pick);
+  const search = params.toString();
+  return search ? `/drills?${search}` : '/drills';
 }
 
 /** Old Learn links that used to open an interactive trainer. */

@@ -24,7 +24,7 @@ import { buildPuzzlePool, reviewId } from '@/src/logic/puzzlePool';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
-export type DrillPlayMode = 'streak' | 'play' | 'review';
+export type DrillPlayMode = 'play' | 'review';
 type RoundState = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
 
 export type DrillRunSummary = {
@@ -63,9 +63,10 @@ function reviewSession(theme: ThemeFilter) {
   );
 }
 
-export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
+export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak: boolean) {
   const { colors, scheme } = useTheme();
-  const guided = mode === 'play' || mode === 'review';
+  const sudden = mode === 'play' && streak;
+  const guided = !sudden;
   const reviewing = mode === 'review';
 
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
@@ -102,7 +103,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     drill,
     round,
     runOver,
-    mode,
+    sudden,
     score,
     reviewing,
     shownIdea,
@@ -115,7 +116,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     drill,
     round,
     runOver,
-    mode,
+    sudden,
     score,
     reviewing,
     shownIdea,
@@ -187,10 +188,10 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
   }, [drill?.id, drill?.fen]);
 
   useEffect(() => {
-    if (mode !== 'streak' || !done || runRecorded.current) return;
+    if (!sudden || !done || runRecorded.current) return;
     runRecorded.current = true;
     recordPuzzleRun(score.correct);
-  }, [done, mode, recordPuzzleRun, score.correct]);
+  }, [done, sudden, recordPuzzleRun, score.correct]);
 
   const restart = () => {
     begin(reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()));
@@ -244,7 +245,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
         setLastMove({ from: moved.from, to: moved.to });
       }
     }
-    if (latest.current.mode === 'streak') {
+    if (latest.current.sudden) {
       if (!runRecorded.current) {
         runRecorded.current = true;
         recordPuzzleRun(latest.current.score.correct);
@@ -271,7 +272,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
       return true;
     }
     setReplayLine(punishmentLine(current, event.from, event.to));
-    if (now.mode === 'streak') {
+    if (now.sudden) {
       if (!now.runOver) {
         recordFirstResult(false);
         setMissedPlay({
@@ -340,6 +341,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
 
   return {
     guided,
+    streak: sudden,
     reviewing,
     hydrated,
     runSummary,

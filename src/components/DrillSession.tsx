@@ -16,14 +16,16 @@ import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 type Props = {
   mode: DrillPlayMode;
   theme: ThemeFilter;
+  streak: boolean;
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
+  onStreak: (streak: boolean) => void;
 };
 
-export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
-  const session = useDrillSession(mode, theme);
+export function DrillSession({ mode, theme, streak, onMode, onTheme, onStreak }: Props) {
+  const session = useDrillSession(mode, theme, streak);
   const { phone } = useLayout();
-  const toolbar = { mode, theme, onMode, onTheme };
+  const toolbar = { mode, theme, streak, onMode, onTheme, onStreak };
 
   if (session.runSummary) {
     return (
@@ -63,7 +65,7 @@ export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
       <DrillDone
         toolbar={toolbar}
         reviewing={session.reviewing}
-        streak={mode === 'streak'}
+        streak={streak}
         emptyReview={session.reviewing && session.session.positions.length === 0}
         correct={session.score.correct}
         total={session.score.total}
@@ -73,5 +75,5 @@ export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
     );
   }
 
-  return <DrillPlay session={session} onMode={onMode} onTheme={onTheme} phone={phone} />;
+  return <DrillPlay session={session} onMode={onMode} onTheme={onTheme} onStreak={onStreak} phone={phone} />;
 }
