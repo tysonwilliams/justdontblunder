@@ -27,6 +27,10 @@ type Props = {
   actionTestID?: string;
   secondaryLabel?: string;
   onSecondary?: () => void;
+  secondaryTestID?: string;
+  extraLabel?: string;
+  onExtra?: () => void;
+  extraTestID?: string;
   /** Shown in place of the buttons while a punishment line is still playing. */
   waiting?: string;
 };
@@ -42,6 +46,10 @@ export function BlunderOverlay({
   actionTestID,
   secondaryLabel,
   onSecondary,
+  secondaryTestID,
+  extraLabel,
+  onExtra,
+  extraTestID,
   waiting,
 }: Props) {
   const { colors } = useTheme();
@@ -112,6 +120,17 @@ export function BlunderOverlay({
                   label={secondaryLabel}
                   onPress={onSecondary}
                   variant="secondary"
+                  testID={secondaryTestID}
+                  style={styles.action}
+                />
+              ) : null}
+              {onExtra && extraLabel ? (
+                <Button
+                  compact
+                  label={extraLabel}
+                  onPress={onExtra}
+                  variant="secondary"
+                  testID={extraTestID}
                   style={styles.action}
                 />
               ) : null}
@@ -144,20 +163,38 @@ export function BlunderOverlay({
         </View>
       ) : null}
       {waiting && !onDismiss ? <Text style={styles.waiting}>{waiting}</Text> : null}
-      {rowActions && (onDismiss || (onSecondary && secondaryLabel)) ? (
+      {rowActions && (onDismiss || (onSecondary && secondaryLabel) || (onExtra && extraLabel)) ? (
         <View style={styles.actions}>
           {onDismiss ? (
             <Button label={actionLabel} onPress={onDismiss} testID={actionTestID} style={styles.action} />
           ) : null}
           {onSecondary && secondaryLabel ? (
-            <Button label={secondaryLabel} onPress={onSecondary} variant="secondary" style={styles.action} />
+            <Button
+              label={secondaryLabel}
+              onPress={onSecondary}
+              variant="secondary"
+              testID={secondaryTestID}
+              style={styles.action}
+            />
+          ) : null}
+          {onExtra && extraLabel ? (
+            <Button
+              label={extraLabel}
+              onPress={onExtra}
+              variant="secondary"
+              testID={extraTestID}
+              style={styles.action}
+            />
           ) : null}
         </View>
       ) : (
         <>
           {onDismiss ? <Button label={actionLabel} onPress={onDismiss} testID={actionTestID} /> : null}
           {onSecondary && secondaryLabel ? (
-            <Button label={secondaryLabel} onPress={onSecondary} variant="secondary" />
+            <Button label={secondaryLabel} onPress={onSecondary} variant="secondary" testID={secondaryTestID} />
+          ) : null}
+          {onExtra && extraLabel ? (
+            <Button label={extraLabel} onPress={onExtra} variant="secondary" testID={extraTestID} />
           ) : null}
         </>
       )}

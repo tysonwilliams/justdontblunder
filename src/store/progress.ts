@@ -2,8 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { DrillTheme } from '@/src/logic/drills';
+import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
 import { withLessonComplete } from '@/src/logic/lessons';
+import {
+  installImported,
+  noteSave,
+  rememberBankMiss,
+  rememberPosition,
+  reviewFromSaved,
+  type ReviewEntry,
+} from '@/src/logic/reviewPile';
 import { applyDrillResult } from '@/src/store/drillStats';
 import { xpAfterAward } from '@/src/store/xp';
 
@@ -24,6 +32,8 @@ export type ProgressState = {
   bestPuzzleStreak: number;
   missedDate: string | null;
   missedIds: string[];
+  /** Misses and personal positions. They stay until saved twice. */
+  review: ReviewEntry[];
   completedLessons: string[];
   xp: number;
   experience: Experience | null;
@@ -34,19 +44,28 @@ export type ProgressState = {
   skipWelcome: () => void;
   completeLesson: (id: string) => void;
   recordMiss: (drillId: string) => void;
-  clearMiss: (drillId: string) => void;
+  /** One correct review. The second one removes the position. */
+  recordSave: (drillId: string) => void;
+  savePersonalDrill: (drill: DrillPosition) => void;
+  saveImportedDrills: (drills: readonly DrillPosition[]) => void;
   recordPuzzleRun: (length: number) => void;
   markPracticeMove: (avoidedBlunder: boolean, madeBlunder: boolean) => void;
   resetProgress: () => void;
 };
 
+/** Ids still in the review pile. A previous day does not clear them. */
 export function missesForDate(
   missedDate: string | null,
   missedIds: string[],
   today = todayKey(),
 ): string[] {
-  if (missedDate !== today) return [];
+  void missedDate;
+  void today;
   return missedIds;
+}
+
+function withReview(review: ReviewEntry[]): { review: ReviewEntry[]; missedIds: string[] } {
+  return { review, missedIds: review.map((entry) => entry.id) };
 }
 
 function todayKey(): string {
@@ -88,6 +107,7 @@ export const useProgressStore = create<ProgressState>()(
       bestPuzzleStreak: 0,
       missedDate: null,
       missedIds: [],
+      review: [],
       completedLessons: [],
       xp: 0,
       experience: null,
@@ -115,21 +135,10 @@ export const useProgressStore = create<ProgressState>()(
       skipWelcome: () => set({ welcomeSkipped: true }),
       completeLesson: (id) =>
         set((state) => ({ completedLessons: withLessonComplete(state.completedLessons, id) })),
-      recordMiss: (drillId) =>
-        set((state) => {
-          const today = todayKey();
-          const current = state.missedDate === today ? state.missedIds : [];
-          if (current.includes(drillId)) {
-            return { missedDate: today, missedIds: current };
-          }
-          return { missedDate: today, missedIds: [...current, drillId] };
-        }),
-      clearMiss: (drillId) =>
-        set((state) => {
-          const today = todayKey();
-          if (state.missedDate !== today) return { missedDate: today, missedIds: [] };
-          return { missedIds: state.missedIds.filter((id) => id !== drillId) };
-        }),
+      recordMiss: (drillId) => set((state) => withReview(rememberBankMiss(state.review, drillId))),
+      recordSave: (drillId) => set((state) => withReview(noteSave(state.review, drillId))),
+      savePersonalDrill: (drill) => set((state) => withReview(rememberPosition(state.review, drill))),
+      saveImportedDrills: (drills) => set((state) => withReview(installImported(state.review, drills))),
       recordPuzzleRun: (length) =>
         set((state) => ({
           bestPuzzleStreak: Math.max(state.bestPuzzleStreak, length),
@@ -154,6 +163,7 @@ export const useProgressStore = create<ProgressState>()(
           bestPuzzleStreak: 0,
           missedDate: null,
           missedIds: [],
+          review: [],
           completedLessons: [],
           xp: 0,
           experience: null,
@@ -165,13 +175,14 @@ export const useProgressStore = create<ProgressState>()(
       storage: createJSONStorage(() => AsyncStorage),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<ProgressState>;
+        const review = reviewFromSaved(saved);
         return {
           ...current,
           ...saved,
           bestPuzzleStreak: saved.bestPuzzleStreak ?? 0,
           themeStats: saved.themeStats ?? {},
           missedDate: saved.missedDate ?? null,
-          missedIds: saved.missedIds ?? [],
+          ...withReview(review),
           completedLessons: saved.completedLessons ?? [],
           xp: saved.xp ?? 0,
           experience: saved.experience ?? null,

@@ -47,6 +47,32 @@ export type DrillSession = {
   startedAt: string;
 };
 
+export type ThemeAccuracy = Partial<Record<DrillTheme, { attempts: number; correct: number }>>;
+
+/** A theme can pull the daily pack only after this many tries. */
+export const WEAK_THEME_MIN_ATTEMPTS = 4;
+
+const THEME_ORDER: readonly DrillTheme[] = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'];
+
+/** The theme with the worst accuracy, once it has a handful of tries. */
+export function weakestTheme(stats: ThemeAccuracy | undefined): DrillTheme | null {
+  if (!stats) return null;
+  let picked: { theme: DrillTheme; accuracy: number; attempts: number } | null = null;
+  for (const theme of THEME_ORDER) {
+    const tally = stats[theme];
+    if (!tally || tally.attempts < WEAK_THEME_MIN_ATTEMPTS) continue;
+    const accuracy = tally.correct / tally.attempts;
+    if (
+      !picked ||
+      accuracy < picked.accuracy ||
+      (accuracy === picked.accuracy && tally.attempts > picked.attempts)
+    ) {
+      picked = { theme, accuracy, attempts: tally.attempts };
+    }
+  }
+  return picked?.theme ?? null;
+}
+
 const ALL = beginnerBlunders as DrillPosition[];
 
 function hashDay(seed: string): number {
@@ -72,19 +98,53 @@ export function getAllDrills(): DrillPosition[] {
   return ALL;
 }
 
-export function createDailySession(date = new Date(), count = 7): DrillSession {
+export function createDailySession(date = new Date(), count = 7, stats?: ThemeAccuracy): DrillSession {
   const key = date.toISOString().slice(0, 10);
   const seeded = shuffleWithSeed(ALL, hashDay(key));
   return {
     id: `daily-${key}`,
-    positions: seeded.slice(0, Math.min(count, seeded.length)),
+    positions: leanTowardWeak(seeded, count, stats),
     startedAt: new Date().toISOString(),
   };
 }
 
+/**
+ * Keep every theme in the pack, and give the spare seats to the weakest one.
+ * With no recorded tries, the pack stays the plain daily shuffle.
+ */
+function leanTowardWeak(seeded: readonly DrillPosition[], count: number, stats?: ThemeAccuracy): DrillPosition[] {
+  const weak = weakestTheme(stats);
+  if (!weak) return seeded.slice(0, Math.min(count, seeded.length));
+  const byTheme = new Map<DrillTheme, DrillPosition[]>();
+  for (const theme of THEME_ORDER) byTheme.set(theme, []);
+  for (const drill of seeded) byTheme.get(drill.theme)?.push(drill);
+  const picked: DrillPosition[] = [];
+  const used = new Set<string>();
+  for (const theme of THEME_ORDER) {
+    if (theme === weak || picked.length >= count) continue;
+    const drill = byTheme.get(theme)?.[0];
+    if (!drill) continue;
+    picked.push(drill);
+    used.add(drill.id);
+  }
+  for (const drill of byTheme.get(weak) ?? []) {
+    if (picked.length >= count) break;
+    if (used.has(drill.id)) continue;
+    picked.push(drill);
+    used.add(drill.id);
+  }
+  for (const drill of seeded) {
+    if (picked.length >= count) break;
+    if (used.has(drill.id)) continue;
+    picked.push(drill);
+    used.add(drill.id);
+  }
+  return picked.slice(0, count);
+}
+
 /** Today's drills, white hanging saves first, so Home opens on the habit. */
-export function createHomeSession(date = new Date()): DrillSession {
-  const daily = createDailySession(date);
+export function createHomeSession(date = new Date(), stats?: ThemeAccuracy): DrillSession {
+  const daily = createDailySession(date, 7, stats);
   const whiteHanging = daily.positions.filter(
     (drill) => drill.theme === 'hanging' && drill.sideToMove === 'w',
   );
@@ -127,8 +187,13 @@ export function createAllSession(): DrillSession {
   };
 }
 
-export function createReviewSession(ids: string[], theme?: DrillTheme): DrillSession {
+export function createReviewSession(
+  ids: readonly string[],
+  theme?: DrillTheme,
+  personal: readonly DrillPosition[] = [],
+): DrillSession {
   const byId = new Map(ALL.map((drill) => [drill.id, drill]));
+  for (const drill of personal) byId.set(drill.id, drill);
   const positions = ids.flatMap((id) => {
     const drill = byId.get(id);
     if (!drill || (theme && drill.theme !== theme)) return [];

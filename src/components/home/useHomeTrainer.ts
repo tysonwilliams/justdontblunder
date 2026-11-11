@@ -54,7 +54,9 @@ export function homeResultCard(round: HomeRound): { title: string; tone: 'succes
 
 export function useHomeTrainer() {
   const { colors, scheme } = useTheme();
-  const [session] = useState(() => createHomeSession());
+  const [session, setSession] = useState(() =>
+    createHomeSession(new Date(), useProgressStore.getState().themeStats),
+  );
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<HomeRound>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
@@ -62,6 +64,7 @@ export function useHomeTrainer() {
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
   const resultCounted = useRef(false);
+  const biased = useRef(false);
   const replayActive = round === 'retry';
   const playback = usePunishmentPlayback(replayActive, replayLine);
   const replyReady = !replayActive || playback.done;
@@ -90,6 +93,13 @@ export function useHomeTrainer() {
       unsub();
     };
   }, []);
+
+  useEffect(() => {
+    if (!hydrated || biased.current) return;
+    biased.current = true;
+    if (index !== 0 || round !== 'playing') return;
+    setSession(createHomeSession(new Date(), useProgressStore.getState().themeStats));
+  }, [hydrated, index, round]);
 
   const next = () => {
     if (total === 0) return;

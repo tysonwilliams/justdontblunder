@@ -3,6 +3,7 @@ import { Children, type ReactNode, useState } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
 
 import { PIECE_CREDIT } from '@/src/components/Board/pieceCredit';
+import { GameImport } from '@/src/components/progress/GameImport';
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Chip, FilterChips } from '@/src/components/ui/Chip';
@@ -196,12 +197,22 @@ export default function ProgressScreen() {
           </Grid>
         </View>
 
+        {progressReady ? (
+          <GameImport />
+        ) : (
+          <View style={styles.group}>
+            <Bone width={140} height={16} />
+            <Bone height={44} radius={radii.md} />
+            <Bone height={88} radius={radii.md} />
+          </View>
+        )}
+
         <View style={[styles.actions, wideActions && styles.actionsRow]}>
           {progressReady ? (
             <>
               <Button
                 style={wideActions ? styles.action : undefined}
-                label={missCount > 0 ? `Review today's misses (${missCount})` : 'No misses today'}
+                label={missCount > 0 ? `Review misses (${missCount})` : 'No misses to review'}
                 variant={missCount > 0 ? 'primary' : 'secondary'}
                 onPress={() => {
                   if (missCount === 0) return;
@@ -232,7 +243,7 @@ export default function ProgressScreen() {
       <Dialog visible={confirmReset}>
         <Text style={styles.dialogTitle}>Reset progress?</Text>
         <Text style={styles.dialogBody}>
-          Streaks, XP, lessons, and drill results on this device will go back to zero.
+          Streaks, XP, lessons, drill results, and saved positions on this device will go back to zero.
         </Text>
         <Button
           label="Reset"

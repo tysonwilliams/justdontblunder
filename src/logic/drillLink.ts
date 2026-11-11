@@ -2,6 +2,7 @@ import {
   createAllSession,
   createReviewSession,
   createThemeSession,
+  type DrillPosition,
   type DrillSession,
   type DrillTheme,
 } from '@/src/logic/drills';
@@ -83,6 +84,10 @@ export function sessionForTheme(theme: ThemeFilter): DrillSession {
   return createThemeSession(theme);
 }
 
-export function reviewForTheme(ids: string[], theme: ThemeFilter): DrillSession {
-  return createReviewSession(ids, theme === 'all' ? undefined : theme);
+export function reviewForTheme(
+  ids: readonly string[],
+  theme: ThemeFilter,
+  personal: readonly DrillPosition[] = [],
+): DrillSession {
+  return createReviewSession(ids, theme === 'all' ? undefined : theme, personal);
 }

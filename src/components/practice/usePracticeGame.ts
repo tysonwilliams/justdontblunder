@@ -16,6 +16,13 @@ import { useTheme } from '@/src/theme/useTheme';
 
 const REPLY_DELAY_MS = 700;
 
+export type PracticeBlunder = {
+  fen: string;
+  from: Square;
+  to: Square;
+  san: string;
+};
+
 export function sentence(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return '';
@@ -44,6 +51,7 @@ export function usePracticeGame() {
   const [thinking, setThinking] = useState(false);
   const [highlights, setHighlights] = useState<Square[]>([]);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
+  const [blunder, setBlunder] = useState<PracticeBlunder | null>(null);
   const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryUncounted = useRef(false);
   const lastMoveRef = useRef(lastMove);
@@ -71,6 +79,7 @@ export function usePracticeGame() {
     setThinking(false);
     setHighlights([]);
     setLastMove(null);
+    setBlunder(null);
     checkpoint.current = null;
     retryUncounted.current = false;
   };
@@ -122,11 +131,13 @@ export function usePracticeGame() {
         setStatus(null);
         setTone('success');
         setHighlights([]);
+        setBlunder(null);
       } else {
         setStatus(null);
         setFeedback({ ...result, message: line });
         setTone('danger');
         setHighlights(result.squares);
+        setBlunder({ fen: event.beforeFen, from: event.from, to: event.to, san: event.san });
       }
 
       const afterSnap = snapshot(createGame(event.afterFen));
@@ -202,6 +213,7 @@ export function usePracticeGame() {
     resultLine,
     gameOver,
     hangingNow,
+    blunder,
     arrow,
     panelMessage,
     resetBoard,

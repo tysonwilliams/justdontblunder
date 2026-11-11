@@ -142,8 +142,8 @@ describe('beginner fixtures', () => {
     expect(matePrompts.filter((prompt) => prompt.includes('Qxf7'))).toHaveLength(1);
   });
 
-  it('builds a review from the ids missed today', () => {
-    expect(missesForDate('2026-10-28', ['hang-q-01'], '2026-10-29')).toEqual([]);
+  it('keeps misses from a previous day until they are saved twice', () => {
+    expect(missesForDate('2026-10-28', ['hang-q-01'], '2026-10-29')).toEqual(['hang-q-01']);
     expect(missesForDate('2026-10-29', ['hang-q-01', 'mate-03'], '2026-10-29')).toEqual([
       'hang-q-01',
       'mate-03',

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
@@ -16,13 +17,35 @@ import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { HABIT_PROMPT } from '@/src/logic/drills';
+import { drillFromBlunder, drillFromHang } from '@/src/logic/personalDrill';
+import { useProgressStore } from '@/src/store/progress';
 
 export function PracticeScreen() {
   const { phone } = useLayout();
   const game = usePracticeGame();
+  const savePersonalDrill = useProgressStore((state) => state.savePersonalDrill);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const hangingVisible = !game.feedback && !game.status && game.hangingNow[0];
+  const offerKey =
+    game.tone === 'danger' && game.blunder
+      ? `move:${game.blunder.fen}:${game.blunder.from}${game.blunder.to}`
+      : (hangingVisible || game.tone === 'warn') && game.fen.includes(' w ')
+        ? `hang:${game.fen}`
+        : null;
+  const saved = offerKey != null && offerKey === savedId;
+  const saveOffer = () => {
+    if (!offerKey || saved) return;
+    const drill =
+      game.tone === 'danger' && game.blunder ? drillFromBlunder(game.blunder) : drillFromHang(game.fen);
+    if (!drill) return;
+    savePersonalDrill(drill);
+    setSavedId(offerKey);
+  };
   if (forceSkeleton()) return <PlaySkeleton />;
   const showFeedback = game.feedback != null && (game.tone === 'danger' || !game.gameOver);
   const preMoveHang = !game.feedback && !game.status ? game.hangingNow[0] : undefined;
+  const danger = game.tone === 'danger';
+  const drillLabel = saved ? 'Saved' : 'Drill this';
 
   return (
     <PlayFrame
@@ -78,11 +101,14 @@ export function PracticeScreen() {
                   game.gameOver && game.resultLine ? `${game.panelMessage} ${game.resultLine}` : game.panelMessage
                 }
                 hint={game.feedback.bestMoveHint}
-                actionLabel={game.tone === 'danger' ? 'Try again' : 'Continue'}
-                onDismiss={game.tone === 'danger' ? game.tryAgain : game.dismissFeedback}
-                actionTestID={game.tone === 'danger' ? 'try-again' : undefined}
-                secondaryLabel={game.tone === 'danger' ? 'Continue' : undefined}
-                onSecondary={game.tone === 'danger' ? game.dismissFeedback : undefined}
+                actionLabel={danger ? 'Try again' : 'Continue'}
+                onDismiss={danger ? game.tryAgain : game.dismissFeedback}
+                actionTestID={danger ? 'try-again' : undefined}
+                secondaryLabel={offerKey ? drillLabel : undefined}
+                onSecondary={offerKey ? saveOffer : undefined}
+                secondaryTestID={offerKey ? 'drill-this' : undefined}
+                extraLabel={danger ? 'Continue' : undefined}
+                onExtra={danger ? game.dismissFeedback : undefined}
               />
             ) : game.gameOver ? (
               <View {...liveA11y()} style={[play.guide, phone && play.phoneCard]}>
@@ -105,6 +131,9 @@ export function PracticeScreen() {
                 message={sentence(
                   `Before you move: your ${game.hangingNow[0].message.replace('You left the ', '').replace(' hanging', '')} on ${game.hangingNow[0].squares[0]} is hanging`,
                 )}
+                actionLabel={offerKey ? drillLabel : undefined}
+                onDismiss={offerKey ? saveOffer : undefined}
+                actionTestID={offerKey ? 'drill-this' : undefined}
               />
             ) : (
               <View style={[play.guide, phone && play.phoneCard]}>
