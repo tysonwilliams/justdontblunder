@@ -83,7 +83,7 @@ function hashDay(seed: string): number {
   return h;
 }
 
-function shuffleWithSeed<T>(items: T[], seed: number): T[] {
+function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
   const arr = [...items];
   let s = seed || 1;
   for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -94,13 +94,22 @@ function shuffleWithSeed<T>(items: T[], seed: number): T[] {
   return arr;
 }
 
+function fenIdentity(fen: string): string {
+  return fen.trim().split(/\s+/).slice(0, 4).join(' ');
+}
+
 export function getAllDrills(): DrillPosition[] {
   return ALL;
 }
 
-export function createDailySession(date = new Date(), count = 7, stats?: ThemeAccuracy): DrillSession {
+export function createDailySession(
+  date = new Date(),
+  count = 7,
+  stats?: ThemeAccuracy,
+  source?: readonly DrillPosition[],
+): DrillSession {
   const key = date.toISOString().slice(0, 10);
-  const seeded = shuffleWithSeed(ALL, hashDay(key));
+  const seeded = shuffleWithSeed(source ?? ALL, hashDay(key));
   return {
     id: `daily-${key}`,
     positions: leanTowardWeak(seeded, count, stats),
@@ -114,37 +123,49 @@ export function createDailySession(date = new Date(), count = 7, stats?: ThemeAc
  */
 function leanTowardWeak(seeded: readonly DrillPosition[], count: number, stats?: ThemeAccuracy): DrillPosition[] {
   const weak = weakestTheme(stats);
-  if (!weak) return seeded.slice(0, Math.min(count, seeded.length));
+  if (!weak) return fillSeats(seeded, count, seeded);
   const byTheme = new Map<DrillTheme, DrillPosition[]>();
   for (const theme of THEME_ORDER) byTheme.set(theme, []);
   for (const drill of seeded) byTheme.get(drill.theme)?.push(drill);
-  const picked: DrillPosition[] = [];
-  const used = new Set<string>();
+  const firstPass: DrillPosition[] = [];
   for (const theme of THEME_ORDER) {
-    if (theme === weak || picked.length >= count) continue;
+    if (theme === weak) continue;
     const drill = byTheme.get(theme)?.[0];
-    if (!drill) continue;
-    picked.push(drill);
-    used.add(drill.id);
+    if (drill) firstPass.push(drill);
   }
-  for (const drill of byTheme.get(weak) ?? []) {
-    if (picked.length >= count) break;
-    if (used.has(drill.id)) continue;
+  return fillSeats(firstPass, count, [...(byTheme.get(weak) ?? []), ...seeded]);
+}
+
+/** Unique positions first. Repeated starter puzzles fill a short pack only after that. */
+function fillSeats(
+  preferred: readonly DrillPosition[],
+  count: number,
+  rest: readonly DrillPosition[],
+): DrillPosition[] {
+  const picked: DrillPosition[] = [];
+  const usedId = new Set<string>();
+  const usedFen = new Set<string>();
+  const take = (drill: DrillPosition, allowRepeatFen: boolean) => {
+    if (picked.length >= count || usedId.has(drill.id)) return;
+    const key = fenIdentity(drill.fen);
+    if (!allowRepeatFen && usedFen.has(key)) return;
     picked.push(drill);
-    used.add(drill.id);
-  }
-  for (const drill of seeded) {
-    if (picked.length >= count) break;
-    if (used.has(drill.id)) continue;
-    picked.push(drill);
-    used.add(drill.id);
-  }
-  return picked.slice(0, count);
+    usedId.add(drill.id);
+    usedFen.add(key);
+  };
+  for (const drill of preferred) take(drill, false);
+  for (const drill of rest) take(drill, false);
+  for (const drill of rest) take(drill, true);
+  return picked;
 }
 
 /** Today's drills, white hanging saves first, so Home opens on the habit. */
-export function createHomeSession(date = new Date(), stats?: ThemeAccuracy): DrillSession {
-  const daily = createDailySession(date, 7, stats);
+export function createHomeSession(
+  date = new Date(),
+  stats?: ThemeAccuracy,
+  source?: readonly DrillPosition[],
+): DrillSession {
+  const daily = createDailySession(date, 7, stats, source);
   const whiteHanging = daily.positions.filter(
     (drill) => drill.theme === 'hanging' && drill.sideToMove === 'w',
   );
@@ -179,10 +200,10 @@ export function homePlayPrompt(drill: DrillPosition): string {
 }
 
 /** Every drill, in a fixed order, so All is the whole bank and numbers stay put. */
-export function createAllSession(): DrillSession {
+export function createAllSession(source?: readonly DrillPosition[]): DrillSession {
   return {
     id: 'all',
-    positions: [...ALL],
+    positions: source ? [...source] : [...ALL],
     startedAt: new Date().toISOString(),
   };
 }
@@ -206,10 +227,11 @@ export function createReviewSession(
   };
 }
 
-export function createThemeSession(theme: DrillTheme): DrillSession {
+export function createThemeSession(theme: DrillTheme, source?: readonly DrillPosition[]): DrillSession {
+  const list = source ?? ALL;
   return {
     id: `theme-${theme}`,
-    positions: ALL.filter((drill) => drill.theme === theme),
+    positions: list.filter((drill) => drill.theme === theme),
     startedAt: new Date().toISOString(),
   };
 }

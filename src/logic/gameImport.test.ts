@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   CHESS_COM_USER_AGENT,
+  collectPublicDrills,
   drillsFromGames,
+  IMPORT_DRILL_LIMIT,
+  LICHESS_PAGE_SIZE,
   loadPublicGames,
   pastedGameDrills,
   type GameRecord,
@@ -30,7 +33,7 @@ describe('game import', () => {
     const openings = ['a3', 'a4', 'b3', 'b4', 'c3', 'c4', 'd3', 'Nc3'];
     const games = openings.map((second, index) => record(queenHang(second), index, 'rapid', 'w'));
     games.push(record(queenHang('a3'), 100, 'bullet', 'w'));
-    const drills = drillsFromGames(games);
+    const drills = drillsFromGames(games, 8);
     expect(drills).toHaveLength(8);
     const newest = new Chess();
     newest.move('e4');
@@ -90,7 +93,7 @@ describe('game import', () => {
       });
     });
     const chessGames = await loadPublicGames('chesscom', 'Me', chessFetch);
-    expect(chessGames.map((game) => game.speed).sort()).toEqual(['blitz', 'rapid']);
+    expect(chessGames.map((game) => game.speed).sort()).toEqual(['blitz', 'daily', 'rapid']);
     expect(chessGames.find((game) => game.speed === 'rapid')?.userColor).toBe('w');
     expect(chessGames.find((game) => game.speed === 'blitz')?.userColor).toBe('b');
 
@@ -106,8 +109,16 @@ describe('game import', () => {
       pgn,
       players: { white: { user: { name: 'Me' } }, black: { user: { name: 'them' } } },
     });
+    const classical = JSON.stringify({
+      id: 'c1',
+      speed: 'classical',
+      createdAt: 7,
+      pgn,
+      players: { white: { user: { name: 'Me' } }, black: { user: { name: 'them' } } },
+    });
     const lichessFetch = vi.fn(async (url: string, init?: RequestInit) => {
-      expect(String(url)).toContain('perfType=blitz,rapid');
+      expect(String(url)).toContain('perfType=blitz%2Crapid%2Cclassical');
+      expect(String(url)).toContain(`max=${LICHESS_PAGE_SIZE}`);
       expect(String(url)).toContain('/api/games/user/Me');
       const headers = init?.headers as Record<string, string>;
       expect(headers['User-Agent']).toBe(CHESS_COM_USER_AGENT);
@@ -115,12 +126,11 @@ describe('game import', () => {
         ok: true,
         status: 200,
         json: async () => ({}),
-        text: async () => `${rapid}\n${bullet}\n`,
+        text: async () => `${rapid}\n${classical}\n${bullet}\n`,
       };
     });
     const lichessGames = await loadPublicGames('lichess', 'Me', lichessFetch);
-    expect(lichessGames).toHaveLength(1);
-    expect(lichessGames[0]?.speed).toBe('rapid');
+    expect(lichessGames.map((game) => game.speed).sort()).toEqual(['classical', 'rapid']);
 
     await expect(
       loadPublicGames('lichess', 'nobody', async () => ({
@@ -131,6 +141,42 @@ describe('game import', () => {
       })),
     ).rejects.toThrow(/No Lichess player/);
     await expect(loadPublicGames('chesscom', 'has space')).rejects.toThrow(/username/);
+    expect(IMPORT_DRILL_LIMIT).toBe(100);
+  });
+
+  it('pages Lichess with until, and stops Chess.com once the blunder cap is full', async () => {
+    const bulletGames = Array.from({ length: LICHESS_PAGE_SIZE }, (_, index) =>
+      JSON.stringify({
+        id: `b${index}`,
+        speed: 'bullet',
+        createdAt: 3000 - index,
+        pgn: '1. e4 e5',
+        players: { white: { user: { name: 'Me' } }, black: { user: { name: 'them' } } },
+      }),
+    ).join('\n');
+    const lichessFetch = vi.fn(async (url: string) => {
+      const text = String(url).includes('until=') ? '' : `${bulletGames}\n`;
+      return { ok: true, status: 200, json: async () => ({}), text: async () => text };
+    });
+    const paged = await loadPublicGames('lichess', 'Me', lichessFetch);
+    expect(paged).toHaveLength(0);
+    expect(lichessFetch).toHaveBeenCalledTimes(2);
+    expect(String(lichessFetch.mock.calls[1]?.[0])).toContain('until=2970');
+
+    const pgn = queenHang('a3');
+    const newer = 'https://api.chess.com/pub/player/me/games/2026/11';
+    const older = 'https://api.chess.com/pub/player/me/games/2026/10';
+    const chessFetch = vi.fn(async (url: string) => {
+      if (String(url).endsWith('/archives')) return json({ archives: [older, newer] });
+      expect(String(url)).toBe(newer);
+      return json({
+        games: [{ pgn, time_class: 'rapid', end_time: 9, white: { username: 'Me' }, black: { username: 'them' } }],
+      });
+    });
+    const scan = await collectPublicDrills('chesscom', 'Me', { fetchImpl: chessFetch, drillLimit: 1 });
+    expect(scan.drills.length).toBeGreaterThan(0);
+    expect(scan.drills.length).toBeLessThanOrEqual(1);
+    expect(chessFetch.mock.calls.some((call) => String(call[0]) === older)).toBe(false);
   });
 });
 

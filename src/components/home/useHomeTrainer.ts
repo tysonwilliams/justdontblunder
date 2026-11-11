@@ -10,6 +10,7 @@ import {
   isCorrectDrillMove,
   type DrillPosition,
 } from '@/src/logic/drills';
+import { buildPuzzlePool } from '@/src/logic/puzzlePool';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { learnCard } from '@/src/logic/lessons';
 import { coachForRound } from '@/src/logic/coach';
@@ -55,7 +56,11 @@ export function homeResultCard(round: HomeRound): { title: string; tone: 'succes
 export function useHomeTrainer() {
   const { colors, scheme } = useTheme();
   const [session, setSession] = useState(() =>
-    createHomeSession(new Date(), useProgressStore.getState().themeStats),
+    createHomeSession(
+      new Date(),
+      useProgressStore.getState().themeStats,
+      buildPuzzlePool(useProgressStore.getState().ownDrills),
+    ),
   );
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<HomeRound>('playing');
@@ -64,13 +69,13 @@ export function useHomeTrainer() {
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
   const resultCounted = useRef(false);
-  const biased = useRef(false);
   const replayActive = round === 'retry';
   const playback = usePunishmentPlayback(replayActive, replayLine);
   const replyReady = !replayActive || playback.done;
 
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
+  const ownDrills = useProgressStore((s) => s.ownDrills);
   const streak = useProgressStore((s) => s.dailyStreak);
   const completedLessons = useProgressStore((s) => s.completedLessons);
   const learn = hydrated
@@ -83,8 +88,8 @@ export function useHomeTrainer() {
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
     [drill?.sideToMove],
   );
-  const latest = useRef({ drill, round });
-  latest.current = { drill, round };
+  const latest = useRef({ drill, round, index });
+  latest.current = { drill, round, index };
 
   useEffect(() => {
     const unsub = useProgressStore.persist.onFinishHydration(() => setHydrated(true));
@@ -95,11 +100,12 @@ export function useHomeTrainer() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated || biased.current) return;
-    biased.current = true;
-    if (index !== 0 || round !== 'playing') return;
-    setSession(createHomeSession(new Date(), useProgressStore.getState().themeStats));
-  }, [hydrated, index, round]);
+    if (!hydrated) return;
+    if (latest.current.index !== 0 || latest.current.round !== 'playing') return;
+    setSession(
+      createHomeSession(new Date(), useProgressStore.getState().themeStats, buildPuzzlePool(ownDrills)),
+    );
+  }, [hydrated, ownDrills]);
 
   const next = () => {
     if (total === 0) return;

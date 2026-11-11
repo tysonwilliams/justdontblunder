@@ -1,18 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import type { Color } from 'chess.js';
 
 import { Button } from '@/src/components/ui/Button';
 import { FilterChips } from '@/src/components/ui/Chip';
 import { text } from '@/src/components/ui/text';
-import {
-  cleanUsername,
-  collectImportedDrills,
-  ImportError,
-  loadPublicGames,
-  pastedGameDrills,
-  type GameSite,
-} from '@/src/logic/gameImport';
+import { cleanUsername, pastedGameDrills, type GameSite } from '@/src/logic/gameImport';
+import { poolSummary } from '@/src/logic/puzzlePool';
+import { runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
@@ -30,13 +25,21 @@ const COLORS: readonly { id: Color; label: string; testID: string }[] = [
 
 export function GameImport() {
   const { colors } = useTheme();
-  const saveImportedDrills = useProgressStore((state) => state.saveImportedDrills);
-  const [site, setSite] = useState<GameSite>('chesscom');
-  const [username, setUsername] = useState('');
+  const profile = useProgressStore((state) => state.gameProfile);
+  const scan = useProgressStore((state) => state.scan);
+  const mergeImportedDrills = useProgressStore((state) => state.mergeImportedDrills);
+  const [site, setSite] = useState<GameSite>(profile?.site ?? 'chesscom');
+  const [username, setUsername] = useState(profile?.username ?? '');
   const [pgn, setPgn] = useState('');
   const [userColor, setUserColor] = useState<Color>('w');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    setSite(profile.site);
+    setUsername(profile.username);
+  }, [profile]);
 
   const findGames = async () => {
     if (busy) return;
@@ -46,29 +49,12 @@ export function GameImport() {
       return;
     }
     setBusy(true);
-    setStatus('Looking at recent rapid and blitz games.');
-    try {
-      const games = await loadPublicGames(site, name);
-      if (games.length === 0) {
-        setStatus('No recent rapid or blitz games.');
-        return;
-      }
-      const drills = await collectImportedDrills(games);
-      if (drills.length === 0) {
-        setStatus('No one-move blunder in those games.');
-        return;
-      }
-      saveImportedDrills(drills);
-      setStatus(savedLine(drills.length));
-    } catch (error) {
-      setStatus(
-        error instanceof ImportError
-          ? error.message
-          : 'Could not reach the site. Paste a PGN from one game.',
-      );
-    } finally {
-      setBusy(false);
+    setStatus('');
+    const result = await runOwnScan(site, name);
+    if (result === 'error') {
+      setStatus(useProgressStore.getState().scan.message);
     }
+    setBusy(false);
   };
 
   const usePgn = async () => {
@@ -86,8 +72,8 @@ export function GameImport() {
         setStatus('No one-move blunder in your moves.');
         return;
       }
-      saveImportedDrills(result.drills);
-      setStatus(savedLine(result.drills.length));
+      mergeImportedDrills(result.drills);
+      setStatus(poolSummary(useProgressStore.getState().ownDrills.length));
     } finally {
       setBusy(false);
     }
@@ -97,7 +83,7 @@ export function GameImport() {
     <View style={styles.wrap}>
       <Text style={text.section}>Your games</Text>
       <Text style={text.muted}>
-        A username, not a password. Public rapid and blitz games become a few drills on this device.
+        A username, not a password. Public blitz, rapid, and classical games become your puzzles on this device.
       </Text>
       <FilterChips options={SITES} value={site} onChange={setSite} />
       <TextInput
@@ -135,17 +121,13 @@ export function GameImport() {
         style={[styles.field, styles.pgn, { color: colors.text }]}
       />
       <Button label="Use this game" variant="secondary" onPress={() => void usePgn()} testID="import-paste" />
-      {status ? (
+      {status || scan.message ? (
         <Text style={text.body} testID="import-status">
-          {status}
+          {status || scan.message}
         </Text>
       ) : null}
     </View>
   );
-}
-
-function savedLine(count: number): string {
-  return count === 1 ? 'Saved 1 position for review.' : `Saved ${count} positions for review.`;
 }
 
 const styles = themedStyleSheet((colors) => ({

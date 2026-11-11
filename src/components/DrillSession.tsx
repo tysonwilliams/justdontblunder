@@ -11,7 +11,7 @@ import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { radii } from '@/src/theme';
-import { sessionForTheme, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
+import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 
 type Props = {
   mode: DrillPlayMode;
@@ -30,7 +30,7 @@ export function DrillSession({ mode, theme, onMode, onTheme }: Props) {
       <DrillRunSummary
         summary={session.runSummary}
         toolbar={toolbar}
-        onAgain={() => session.begin(sessionForTheme(theme))}
+        onAgain={() => session.restart()}
       />
     );
   }

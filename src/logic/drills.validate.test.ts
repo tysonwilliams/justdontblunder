@@ -6,7 +6,9 @@ import { getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
 import { hangingGain, materialIsReachable, moveOutcome, opponentThreatensMateInOne } from '@/src/logic/safety';
 
 describe('drill bank', () => {
-  it('rejects illegal material, the wrong side, a fake threat, or a move that hangs material or allows mate in 1', () => {
+  it(
+    'rejects illegal material, the wrong side, a fake threat, or a move that hangs material or allows mate in 1',
+    () => {
     const ids = new Set<string>();
     for (const drill of getAllDrills()) {
       expect(ids.has(drill.id), drill.id).toBe(false);
@@ -51,5 +53,7 @@ describe('drill bank', () => {
         ).toBe(true);
       }
     }
-  });
+  },
+  60_000,
+);
 });

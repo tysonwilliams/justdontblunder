@@ -144,3 +144,20 @@ function isTrap(value: unknown): value is DrillPosition['traps'][number] {
     trap.line.every((step) => typeof step === 'string')
   );
 }
+
+/** Saved personal puzzles. Invalid rows are dropped. One position each, newest first. */
+export function parseDrillList(value: unknown, limit = 100): DrillPosition[] {
+  if (!Array.isArray(value)) return [];
+  const out: DrillPosition[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    const drill = cleanDrill(item);
+    if (!drill) continue;
+    const key = fenKey(drill.fen);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(drill);
+    if (out.length >= limit) break;
+  }
+  return out;
+}

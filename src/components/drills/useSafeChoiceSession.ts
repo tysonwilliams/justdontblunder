@@ -7,6 +7,7 @@ import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { sessionForTheme, type ThemeFilter } from '@/src/logic/drillLink';
 import { isCorrectDrillMove, type DrillPosition, type DrillSession as DrillSessionData } from '@/src/logic/drills';
+import { buildPuzzlePool, reviewId } from '@/src/logic/puzzlePool';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/src/logic/safeChoice';
@@ -53,7 +54,11 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   const { colors, scheme } = useTheme();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
-  const [session, setSession] = useState<DrillSessionData>(() => sessionForTheme(theme));
+  const ownDrills = useProgressStore((s) => s.ownDrills);
+  const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
+  const [session, setSession] = useState<DrillSessionData>(() =>
+    sessionForTheme(theme, buildPuzzlePool(useProgressStore.getState().ownDrills)),
+  );
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<SafeRound>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
@@ -62,9 +67,11 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const resultCounted = useRef(false);
   const lock = useRef(false);
+  const place = useRef({ index: 0, round: 'playing' as SafeRound });
 
   const drill: DrillPosition | undefined = session.positions[index];
   const done = index >= session.positions.length;
+  place.current = { index, round };
   const choice = useMemo(() => (drill ? safeChoiceFor(drill) : null), [drill]);
   const presented = useMemo(() => (choice ? presentSafeChoice(choice) : null), [choice]);
   const replayActive = round === 'retry';
@@ -90,6 +97,20 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     setScore({ correct: 0, total: 0 });
     resetBoard();
   };
+
+  useEffect(() => {
+    const unsub = useProgressStore.persist.onFinishHydration(() => setHydrated(true));
+    if (useProgressStore.persist.hasHydrated()) setHydrated(true);
+    return () => {
+      unsub();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (place.current.index !== 0 || place.current.round !== 'playing') return;
+    setSession(sessionForTheme(theme, buildPuzzlePool(ownDrills)));
+  }, [hydrated, ownDrills, theme]);
 
   useEffect(() => {
     if (!drill || presented) return;
@@ -132,7 +153,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
       total: s.total + 1,
     }));
     markDrillResult(correct, drill.theme);
-    if (!correct) recordMiss(drill.id);
+    if (!correct) recordMiss(reviewId(drill.id));
   };
 
   const choose = (key: 'A' | 'B') => {
@@ -216,6 +237,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     next,
     tryAgain,
     begin,
+    restart: () => begin(sessionForTheme(theme, buildPuzzlePool(useProgressStore.getState().ownDrills))),
   };
 }
 

@@ -20,6 +20,7 @@ import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
+import { buildPuzzlePool, reviewId } from '@/src/logic/puzzlePool';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
@@ -49,6 +50,10 @@ function playedSan(fen: string, from: Square, to: Square): string | null {
   return moved?.san ?? null;
 }
 
+function playingPool() {
+  return buildPuzzlePool(useProgressStore.getState().ownDrills);
+}
+
 function reviewSession(theme: ThemeFilter) {
   const entries = useProgressStore.getState().review;
   return reviewForTheme(
@@ -68,9 +73,10 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
   const recordSave = useProgressStore((s) => s.recordSave);
   const recordPuzzleRun = useProgressStore((s) => s.recordPuzzleRun);
   const bestPuzzleStreak = useProgressStore((s) => s.bestPuzzleStreak);
+  const ownDrills = useProgressStore((s) => s.ownDrills);
 
   const [session, setSession] = useState<DrillSessionData>(() =>
-    reviewing ? reviewSession(theme) : sessionForTheme(theme),
+    reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()),
   );
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<RoundState>('playing');
@@ -85,6 +91,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
   const reviewStarted = useRef(false);
   const runRecorded = useRef(false);
   const resultCounted = useRef(false);
+  const place = useRef({ index: 0, round: 'playing' as RoundState });
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
 
   const drill: DrillPosition | undefined = session.positions[index];
@@ -117,6 +124,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     bestPuzzleStreak,
     missedPlay,
   };
+  place.current = { index, round };
 
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
@@ -164,6 +172,12 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
   }, [reviewing, hydrated, theme]);
 
   useEffect(() => {
+    if (!hydrated || reviewing) return;
+    if (place.current.index !== 0 || place.current.round !== 'playing') return;
+    setSession(sessionForTheme(theme, buildPuzzlePool(ownDrills)));
+  }, [hydrated, reviewing, ownDrills, theme]);
+
+  useEffect(() => {
     if (!drill) return;
     resultCounted.current = false;
     setDisplayFen(drill.fen);
@@ -179,7 +193,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
   }, [done, mode, recordPuzzleRun, score.correct]);
 
   const restart = () => {
-    begin(reviewing ? reviewSession(theme) : sessionForTheme(theme));
+    begin(reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()));
   };
 
   const next = () => {
@@ -210,7 +224,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter) {
     if (correct) {
       if (latest.current.reviewing) recordSave(current.id);
     } else {
-      recordMiss(current.id);
+      recordMiss(reviewId(current.id));
     }
   };
 

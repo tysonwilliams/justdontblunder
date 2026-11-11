@@ -21,7 +21,13 @@ const HANGING_QUEEN = 'rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq
 
 describe('progress review pile', () => {
   beforeEach(() => {
-    useProgressStore.setState({ review: [], missedIds: [], missedDate: '2020-01-01' });
+    useProgressStore.setState({
+      review: [],
+      missedIds: [],
+      missedDate: '2020-01-01',
+      ownDrills: [],
+      gameProfile: null,
+    });
   });
 
   it('keeps an older miss when a new one is recorded, and drops it on the second save', () => {
@@ -54,8 +60,12 @@ describe('progress review pile', () => {
 
     useProgressStore.getState().saveImportedDrills([drill]);
     expect(useProgressStore.getState().review).toHaveLength(1);
-    expect(useProgressStore.getState().review[0]?.saves).toBe(0);
+    expect(useProgressStore.getState().review[0]?.saves).toBe(1);
+    expect(useProgressStore.getState().ownDrills).toHaveLength(1);
+
     useProgressStore.getState().resetProgress();
     expect(useProgressStore.getState().review).toEqual([]);
+    expect(useProgressStore.getState().ownDrills).toEqual([]);
+    expect(useProgressStore.getState().gameProfile).toBeNull();
   });
 });

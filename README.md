@@ -8,7 +8,7 @@ A Chessreps-style trainer for new and intermediate players. Build the pre-move h
 - Instant blunder feedback with square highlights
 - Pre-move habit checklist
 - Daily drill sessions from full-board positions with immediate danger (hanging pieces, live forks, absolute pins, mate-in-1)
-- Save one practice blunder, or turn a few of your public Chess.com or Lichess games into drills
+- Save one practice blunder, or build the puzzle list from your public Chess.com or Lichess games
 - Local streaks and progress (no account)
 
 ## Run locally
@@ -53,4 +53,4 @@ public/              Stockfish WASM assets for web
 
 ## Out of scope (for now)
 
-Accounts, multiplayer, openings, payments, and a full game database. A username only reads public games to build a few drills.
+Accounts, multiplayer, openings, payments, and a full game database. A username reads public games to build the puzzle list.

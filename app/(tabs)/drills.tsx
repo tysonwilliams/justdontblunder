@@ -1,7 +1,9 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
 
 import { DrillSession } from '@/src/components/DrillSession';
+import { DrillsPrompt } from '@/src/components/drills/DrillsPrompt';
 import { SafeChoiceSession } from '@/src/components/SafeChoiceSession';
 import { PlaySkeleton } from '@/src/components/ui/Skeleton';
 import {
@@ -41,11 +43,22 @@ export default function DrillsScreen() {
 
   if (pick) return <PlaySkeleton />;
 
-  if (mode === 'pick') {
-    return <SafeChoiceSession key={`pick-${theme}`} theme={theme} onMode={onMode} onTheme={onTheme} />;
-  }
-
   return (
-    <DrillSession key={`${mode}-${theme}`} mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />
+    <View style={styles.stage}>
+      {mode === 'pick' ? (
+        <SafeChoiceSession key={`pick-${theme}`} theme={theme} onMode={onMode} onTheme={onTheme} />
+      ) : (
+        <DrillSession key={`${mode}-${theme}`} mode={mode} theme={theme} onMode={onMode} onTheme={onTheme} />
+      )}
+      <DrillsPrompt />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  stage: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
+  },
+});

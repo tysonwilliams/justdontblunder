@@ -79,9 +79,9 @@ export function legacyLearnRedirect(params: { pick?: string; review?: string }):
   return null;
 }
 
-export function sessionForTheme(theme: ThemeFilter): DrillSession {
-  if (theme === 'all') return createAllSession();
-  return createThemeSession(theme);
+export function sessionForTheme(theme: ThemeFilter, source?: readonly DrillPosition[]): DrillSession {
+  if (theme === 'all') return createAllSession(source);
+  return createThemeSession(theme, source);
 }
 
 export function reviewForTheme(

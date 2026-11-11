@@ -17,7 +17,7 @@ import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { sessionForTheme, type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
+import type { DrillMode, ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT, themeLabel } from '@/src/logic/drills';
 import { spacing } from '@/src/theme';
 
@@ -43,7 +43,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
             {session.score.correct}/{session.score.total}
           </Text>
           <Text style={text.muted}>{pct}% safe on the first try</Text>
-          <Button label="Play again" onPress={() => session.begin(sessionForTheme(theme))} />
+          <Button label="Play again" onPress={() => session.restart()} />
         </View>
       </ScoreFrame>
     );
