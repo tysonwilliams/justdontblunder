@@ -21,7 +21,7 @@ import { playUnlocked } from '@/src/logic/earlyPlay';
 import { pastedGameDrills } from '@/src/logic/gameImport';
 import { resetOwnScanForTests, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
-import { SCAN_PERSIST_INTERVAL_MS } from '@/src/store/progressStorage';
+import { flushCoalescedPersistForTests, setScanPersistIntervalForTests } from '@/src/store/progressStorage';
 
 function queenHang(second: string): string {
   const game = new Chess();
@@ -157,6 +157,7 @@ describe('own scan', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
+    setScanPersistIntervalForTests(60_000);
     const pending = runOwnScan('chesscom', 'Me', async (url) => {
       if (String(url).endsWith('/archives')) return json({ archives: [older, newer] });
       if (String(url) === newer) {
@@ -167,7 +168,7 @@ describe('own scan', () => {
     });
     try {
       await waitUntil(() => useProgressStore.getState().scan.games >= 8);
-      await new Promise((resolve) => setTimeout(resolve, SCAN_PERSIST_INTERVAL_MS + 250));
+      await flushCoalescedPersistForTests();
       const played = useProgressStore.getState().scan.games;
       expect(played).toBeGreaterThanOrEqual(8);
       expect(writes.length).toBeGreaterThan(0);
