@@ -1,6 +1,7 @@
 import { Chess, type Color } from 'chess.js';
 
-import { drillFromBlunder } from '@/src/logic/personalDrill';
+import { blundersInGame, yieldToMain } from '@/src/logic/gameBlunders';
+import { analyzeGame } from '@/src/logic/scanWorkerClient';
 import type { DrillPosition } from '@/src/logic/drills';
 import { fenKey } from '@/src/logic/reviewPile';
 
@@ -101,7 +102,8 @@ export async function loadPublicGames(
 
 /**
  * Fetch and scan until 100 unique blunders, about 250 games, or the public history runs out.
- * Yields between games. The PGN archive is not stored.
+ * Replay runs off the UI thread in a worker, or yields between moves when that is unavailable.
+ * The PGN archive is not stored.
  */
 export async function collectPublicDrills(
   site: GameSite,
@@ -184,7 +186,7 @@ export function drillsFromGames(games: readonly GameRecord[], limit = IMPORT_DRI
   const drills: DrillPosition[] = [];
   for (const game of sorted) {
     if (isBullet(game.speed)) continue;
-    const found = userBlunders(game.pgn, game.userColor);
+    const found = blundersInGame(game.pgn, game.userColor);
     for (let index = found.length - 1; index >= 0; index -= 1) {
       const drill = found[index];
       if (!drill) continue;
@@ -198,7 +200,7 @@ export function drillsFromGames(games: readonly GameRecord[], limit = IMPORT_DRI
   return drills;
 }
 
-/** Same selection as `drillsFromGames`, yielding between games so a long history can paint. */
+/** Same selection as `drillsFromGames`, without blocking the UI on each game. */
 export async function collectImportedDrills(
   games: readonly GameRecord[],
   limit = IMPORT_DRILL_LIMIT,
@@ -208,14 +210,17 @@ export async function collectImportedDrills(
   const seen = new Set<string>();
   for (const game of sorted) {
     if (found.length >= limit) break;
-    for (const drill of drillsFromGames([game], limit - found.length)) {
+    if (isBullet(game.speed)) continue;
+    const blunders = await analyzeGame(game.pgn, game.userColor);
+    for (let index = blunders.length - 1; index >= 0 && found.length < limit; index -= 1) {
+      const drill = blunders[index];
+      if (!drill) continue;
       const key = fenKey(drill.fen);
       if (seen.has(key)) continue;
       seen.add(key);
       found.push(drill);
-      if (found.length >= limit) break;
     }
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await yieldToMain();
   }
   return found;
 }
@@ -240,39 +245,6 @@ export function pastedGameDrills(
       IMPORT_DRILL_LIMIT,
     ),
   };
-}
-
-function userBlunders(pgn: string, userColor: Color): DrillPosition[] {
-  let game: Chess;
-  try {
-    game = new Chess();
-    game.loadPgn(pgn);
-  } catch {
-    return [];
-  }
-  const moves = game.history({ verbose: true });
-  for (let index = moves.length - 1; index >= 0; index -= 1) game.undo();
-  const found: DrillPosition[] = [];
-  for (const move of moves) {
-    const before = game.fen();
-    const side = game.turn();
-    let played;
-    try {
-      played = game.move({ from: move.from, to: move.to, promotion: move.promotion });
-    } catch {
-      break;
-    }
-    if (!played) break;
-    if (side !== userColor) continue;
-    const drill = drillFromBlunder({
-      fen: before,
-      from: played.from,
-      to: played.to,
-      san: played.san,
-    });
-    if (drill) found.push(drill);
-  }
-  return found;
 }
 
 async function loadChessCom(username: string, fetchImpl: GameFetch): Promise<GameRecord[]> {
@@ -372,7 +344,7 @@ async function absorb(
     if (budgetFull(budget)) return true;
     if (isBullet(game.speed)) continue;
     budget.games += 1;
-    const found = userBlunders(game.pgn, game.userColor);
+    const found = await analyzeGame(game.pgn, game.userColor);
     for (let index = found.length - 1; index >= 0; index -= 1) {
       const drill = found[index];
       if (!drill) continue;
@@ -388,7 +360,7 @@ async function absorb(
       drills: budget.drills.slice(),
       incoming: !budgetFull(budget),
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await yieldToMain();
     if (budgetFull(budget)) return true;
   }
   return budgetFull(budget);

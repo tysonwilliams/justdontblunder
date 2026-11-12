@@ -1,6 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { persist, type PersistStorage } from 'zustand/middleware';
 
 import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
 import { profileFromSaved, type GameProfile } from '@/src/logic/gameImport';
@@ -15,6 +14,7 @@ import {
   type ReviewEntry,
 } from '@/src/logic/reviewPile';
 import { applyDrillResult } from '@/src/store/drillStats';
+import { progressStorage } from '@/src/store/progressStorage';
 import { xpAfterAward } from '@/src/store/xp';
 
 export type Experience = 'new' | 'basics';
@@ -229,7 +229,7 @@ export const useProgressStore = create<ProgressState>()(
     }),
     {
       name: 'jdb-progress-v1',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: progressStorage as unknown as PersistStorage<ProgressState>,
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<ProgressState>;
         const review = reviewFromSaved(saved);

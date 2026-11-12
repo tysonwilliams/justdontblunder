@@ -143,6 +143,35 @@ describe('early play', () => {
     expect(leadWithPersonal(session, [drill('p1'), drill('p2'), drill('p3'), drill('p4')], 4)).toEqual(session);
   });
 
+  it('unlocks at 3, then appends later finds behind the current puzzle without growing past 100', () => {
+    let positions: readonly DrillPosition[] = buildPuzzlePool([]);
+    expect(positions).toHaveLength(100);
+    let committed = false;
+    let locked: DrillPosition | null = null;
+    const personal: DrillPosition[] = [];
+    for (let n = 1; n <= 6; n += 1) {
+      personal.push(drill(`p${n}`));
+      const decision = nextSessionPositions({
+        current: positions,
+        personal,
+        rebuilt: buildPuzzlePool(personal),
+        index: 0,
+        engaged: false,
+        committed,
+        unlocked: personal.length >= EARLY_PLAY_COUNT,
+        scanning: true,
+      });
+      committed = decision.committed;
+      if (!decision.positions) continue;
+      if (!locked) locked = decision.positions[0] ?? null;
+      positions = decision.positions;
+    }
+    expect(locked?.id).toBe('p1');
+    expect(positions[0]).toBe(locked);
+    expect(positions).toHaveLength(100);
+    expect(positions.slice(0, 6).map((item) => item.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+  });
+
   it('keeps the resting counter on one line and adds a scan note beside it', () => {
     expect(puzzleCounter(0, 100, null, false)).toBe('1/100');
     expect(puzzleCounter(0, 7, null, true)).toBe('1 / 7');
