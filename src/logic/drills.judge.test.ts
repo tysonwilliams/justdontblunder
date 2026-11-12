@@ -15,6 +15,13 @@ function ok(id: string, uci: string): boolean {
   return isCorrectDrillMove(drill(id), uci.slice(0, 2) as Square, uci.slice(2, 4) as Square);
 }
 
+/** A silent sweep longer than 60s makes Vitest drop the worker call that reports the result. */
+function breathe(): Promise<void> {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
 /** Moves the one-move material rule already marks as a loss, so they stay failures. */
 const DISPUTED = [
   ['hang-q-01', 'h5g5'],
@@ -45,11 +52,12 @@ const QUEEN_ESCAPES = [
 ] as const;
 
 describe('the drill judge', () => {
-  it('passes every safe non-trap, rejects every trap, and never accepts a blunder', () => {
+  it('passes every safe non-trap, rejects every trap, and never accepts a blunder', async () => {
     let pass = 0;
     let fail = 0;
     const traps = [];
     for (const item of getAllDrills()) {
+      await breathe();
       const game = new Chess(item.fen);
       for (const move of game.moves({ verbose: true })) {
         const outcome = moveOutcome(item.fen, move.from, move.to, item.sideToMove);
