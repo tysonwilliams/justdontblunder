@@ -4,6 +4,7 @@ import type { EdgeInsets } from 'react-native-safe-area-context';
 import { XpChip } from '@/src/components/XpChip';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
+import { useScreenInsets } from '@/src/components/ui/screenInsets';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
@@ -49,12 +50,23 @@ type Props = {
 export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, wide }: Props) {
   const { colors } = useTheme();
   const { padX, contentW } = useLayout();
+  const screenInsets = useScreenInsets();
+  const top = Math.max(insets.top, screenInsets.top);
+  const bottom = Math.max(insets.bottom, screenInsets.bottom);
+  const side = Math.max(insets.left, screenInsets.left, insets.right, screenInsets.right);
 
   return (
     <View
       style={[
         wide ? styles.top : styles.bottom,
-        wide ? { paddingTop: insets.top } : { paddingBottom: Math.max(insets.bottom, spacing.xs) },
+        wide
+          ? { paddingTop: top, paddingLeft: side, paddingRight: side }
+          : {
+              // tabBarPhone already includes this resting pad. Add the home-indicator inset on top.
+              paddingBottom: bottom + spacing.xs,
+              paddingLeft: side,
+              paddingRight: side,
+            },
       ]}>
       <View
         style={[

@@ -128,7 +128,7 @@ export default function ProgressScreen() {
         <View style={styles.group}>
           <Text style={text.section}>Where you started</Text>
           <Text style={text.muted}>Brand new opens Learn. Know the basics opens Drills.</Text>
-          <View style={styles.toggles}>
+          <View style={[styles.toggles, styles.togglesWrap]}>
             {START.map((item) => (
               <Chip
                 key={item.id}
@@ -142,6 +142,7 @@ export default function ProgressScreen() {
               label="Show the welcome again"
               variant="ghost"
               fullWidth={false}
+              testID="show-welcome"
               onPress={() => {
                 setExperience(null);
                 router.push('/' as Href);
@@ -351,7 +352,13 @@ const styles = themedStyleSheet((colors) => ({
   },
   toggles: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
+  },
+  togglesWrap: {
+    flexWrap: 'wrap',
+    width: '100%',
+    maxWidth: '100%',
   },
   grid: {
     flexDirection: 'row',

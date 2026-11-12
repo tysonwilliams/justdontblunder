@@ -53,7 +53,7 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
       <View style={styles.phone}>
         <ModeRow mode={mode} onMode={onMode} phone streakToggle={streakToggle} />
         <SegmentedControl
-          height={26}
+          height={32}
           value={theme}
           onChange={onTheme}
           options={THEME_FILTERS.map((item) => ({
@@ -117,7 +117,6 @@ function ModeRow({
         <Chip
           key={item.id}
           label={item.label}
-          size="sm"
           selected={item.id === mode}
           testID={`drill-mode-${item.id}`}
           onPress={() => onMode(item.id)}

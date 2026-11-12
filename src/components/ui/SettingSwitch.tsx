@@ -34,12 +34,18 @@ export function SettingSwitch({ label, value, onChange, testID, compact = false 
         compact && value && styles.rowCompactOn,
       ]}>
       <Text
-        style={[styles.label, phone && styles.labelPhone, compact && value && styles.labelCompactOn]}
+        style={[
+          styles.label,
+          phone && !compact && styles.labelPhone,
+          phone && compact && styles.labelCompactPhone,
+          compact && !phone && styles.labelDesk,
+          compact && value && styles.labelCompactOn,
+        ]}
         numberOfLines={1}>
         {label}
       </Text>
-      <View style={[styles.track, value && styles.trackOn]}>
-        <View style={styles.knob} />
+      <View style={[styles.track, compact && !phone && styles.trackDesk, value && styles.trackOn]}>
+        <View style={[styles.knob, compact && !phone && styles.knobDesk]} />
       </View>
     </Pressable>
   );
@@ -47,7 +53,7 @@ export function SettingSwitch({ label, value, onChange, testID, compact = false 
 
 const styles = themedStyleSheet((colors) => ({
   row: {
-    minHeight: 40,
+    minHeight: 44,
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
@@ -64,14 +70,14 @@ const styles = themedStyleSheet((colors) => ({
     flex: 1,
   },
   rowPhone: {
-    minHeight: 32,
-    paddingHorizontal: spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing[12],
   },
   rowCompact: {
     alignSelf: 'center',
-    height: 36,
-    minHeight: 36,
-    paddingHorizontal: spacing[10],
+    height: 44,
+    minHeight: 44,
+    paddingHorizontal: spacing[14],
   },
   rowCompactPhone: {
     height: 32,
@@ -91,11 +97,27 @@ const styles = themedStyleSheet((colors) => ({
     lineHeight: lineHeights[18],
   },
   labelPhone: {
-    fontSize: fontSizes[12],
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[20],
+  },
+  labelCompactPhone: {
+    fontSize: fontSizes[13],
     lineHeight: lineHeights[16],
+  },
+  labelDesk: {
+    fontSize: fontSizes[16],
+    lineHeight: lineHeights[22],
   },
   labelCompactOn: {
     color: colors.accent,
+  },
+  trackDesk: {
+    width: 46,
+    height: 28,
+  },
+  knobDesk: {
+    width: 22,
+    height: 22,
   },
   track: {
     width: 40,

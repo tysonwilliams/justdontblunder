@@ -29,7 +29,7 @@ export function Chip({ label, selected = false, onPress, testID, size = 'md', fi
         const hovered = 'hovered' in state && Boolean(state.hovered);
         return [
           styles.chip,
-          phone && styles.chipPhone,
+          phone ? styles.chipPhone : styles.chipDesk,
           size === 'sm' && styles.chipSm,
           fill && styles.chipFill,
           selected && styles.chipOn,
@@ -39,7 +39,7 @@ export function Chip({ label, selected = false, onPress, testID, size = 'md', fi
       <Text
         style={[
           styles.chipText,
-          phone && styles.chipTextPhone,
+          phone ? styles.chipTextPhone : styles.chipTextDesk,
           size === 'sm' && styles.chipTextSm,
           selected && styles.chipTextOn,
         ]}
@@ -71,7 +71,6 @@ export function SegmentedControl<T extends string>({
             key={item.id}
             {...controlA11y('button', item.spoken ?? item.label, selected)}
             testID={item.testID}
-            hitSlop={spacing.xs}
             onPress={() => onChange(item.id)}
             style={({ pressed }) => [
               styles.segment,
@@ -97,19 +96,17 @@ export function FilterChips<T extends string>({
   value: T;
   onChange: (id: T) => void;
 }) {
-  const { phone } = useLayout();
   const items = options.map((item) => (
     <Chip
       key={item.id}
       label={item.label}
-      size="sm"
       selected={item.id === value}
       testID={item.testID}
       onPress={() => onChange(item.id)}
     />
   ));
 
-  return <View style={[styles.wrap, phone && styles.oneRow]}>{items}</View>;
+  return <View style={styles.wrap}>{items}</View>;
 }
 
 export function StatusPill({ children }: { children: ReactNode }) {
@@ -126,8 +123,8 @@ export function StatusPill({ children }: { children: ReactNode }) {
 
 const styles = themedStyleSheet((colors) => ({
   chip: {
-    minHeight: 36,
-    paddingHorizontal: spacing[12],
+    minHeight: 44,
+    paddingHorizontal: spacing[14],
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -139,10 +136,17 @@ const styles = themedStyleSheet((colors) => ({
     cursor: 'pointer',
   },
   chipPhone: {
-    minHeight: 28,
-    paddingHorizontal: spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing[12],
+  },
+  chipDesk: {
+    minHeight: 44,
+    minWidth: 72,
+    paddingHorizontal: spacing[16],
   },
   chipSm: {
+    minHeight: 36,
+    minWidth: 0,
     paddingHorizontal: spacing.sm,
   },
   chipFill: {
@@ -153,7 +157,7 @@ const styles = themedStyleSheet((colors) => ({
     paddingHorizontal: spacing[3],
   },
   chipOn: {
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
   chipHover: {
@@ -162,19 +166,23 @@ const styles = themedStyleSheet((colors) => ({
   chipText: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
-    fontSize: fontSizes[14],
-    lineHeight: lineHeights[18],
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[20],
   },
   chipTextPhone: {
-    fontSize: fontSizes[12],
-    lineHeight: lineHeights[15],
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[20],
+  },
+  chipTextDesk: {
+    fontSize: fontSizes[16],
+    lineHeight: lineHeights[22],
   },
   chipTextSm: {
-    fontSize: fontSizes[11],
-    lineHeight: lineHeights[14],
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
   },
   chipTextOn: {
-    color: colors.accent,
+    color: colors.accentText,
   },
   wrap: {
     width: '100%',
@@ -185,19 +193,15 @@ const styles = themedStyleSheet((colors) => ({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  oneRow: {
-    flexWrap: 'nowrap',
-    gap: spacing.xs,
-  },
   segmentTrack: {
     flexDirection: 'row',
     alignItems: 'stretch',
     backgroundColor: colors.surfaceRaised,
     borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing[2],
-    gap: spacing[2],
+    borderColor: colors.borderStrong,
+    padding: spacing[1],
+    gap: spacing[1],
   },
   segment: {
     flex: 1,
@@ -209,19 +213,19 @@ const styles = themedStyleSheet((colors) => ({
     cursor: 'pointer',
   },
   segmentOn: {
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.accent,
   },
   segmentPressed: {
     opacity: 0.82,
   },
   segmentText: {
     fontFamily: fonts.bodyBold,
-    color: colors.textMuted,
-    fontSize: fontSizes[11],
-    lineHeight: lineHeights[14],
+    color: colors.text,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
   },
   segmentTextOn: {
-    color: colors.accent,
+    color: colors.accentText,
   },
   pill: {
     alignSelf: 'flex-start',

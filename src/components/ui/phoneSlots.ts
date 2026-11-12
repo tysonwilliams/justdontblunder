@@ -15,10 +15,10 @@ export const PHONE_FOOT_MIN = 92;
 export const PHONE_BANNER = 88;
 
 /** Two-line prompt. A one-line prompt still occupies both lines. */
-export const PHONE_PROMPT_HEIGHT = 36;
+export const PHONE_PROMPT_HEIGHT = 34;
 
-/** Mode row, the gap, and the theme row. */
-export const PHONE_TOOLBAR_HEIGHT = 60;
+/** Mode row, the gap, and the theme row. Stays inside the 120px lead. */
+export const PHONE_TOOLBAR_HEIGHT = 66;
 
 export type PhoneSlots = {
   lead: number;

@@ -105,13 +105,16 @@ export function HomeTrainer() {
                 onSecondary={trainer.card.tone === 'danger' && trainer.replyReady ? trainer.next : undefined}
               />
             ) : (
-              <View style={[play.guide, phone && play.phoneCard]}>
+              <View style={[play.guide, phone && play.phoneCard, phone && styles.coachCard]}>
                 <Button
                   label="Start today's drill"
                   testID="start-drill"
                   onPress={() => router.push('/drills' as Href)}
                 />
-                <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={phone ? 1 : 2}>
+                <Text
+                  testID="home-coach"
+                  style={[text.muted, phone && text.mutedPhone, phone && styles.coachCopy]}
+                  numberOfLines={phone ? 2 : undefined}>
                   {themeInstruction(drill.theme)}
                 </Text>
               </View>
@@ -173,5 +176,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-end',
     overflow: 'hidden',
+  },
+  coachCard: {
+    paddingVertical: spacing[2],
+    gap: spacing[2],
+    justifyContent: 'center',
+  },
+  coachCopy: {
+    width: '100%',
   },
 });

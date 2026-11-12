@@ -82,7 +82,7 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
   if (!drill) return null;
   const title = session.guided ? drill.prompt : turnPrompt(drill.sideToMove);
   return (
-    <BoardLead>
+    <BoardLead gap={spacing[2]}>
       {toolbar}
       <LineBox height={PHONE_PROMPT_HEIGHT}>
         <Text style={play.phoneTitle} numberOfLines={2}>
@@ -108,8 +108,15 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
 function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode }) {
   const drill = session.drill;
   if (!drill) return null;
+  const task = session.guided ? drill.prompt : session.round === 'playing' ? turnPrompt(drill.sideToMove) : null;
   return (
     <BoardLead>
+      {task ? (
+        <Text style={text.title} testID="drill-task">
+          {task}
+        </Text>
+      ) : null}
+      {session.guided && session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
       {toolbar}
       <View style={play.metaRow}>
         <StatusPill>
@@ -123,12 +130,6 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
         />
       </View>
       <ProgressTrack progress={session.progress} />
-      {session.guided && session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
-      {session.guided ? (
-        <Text style={text.title}>{drill.prompt}</Text>
-      ) : session.round === 'playing' ? (
-        <Text style={text.title}>{turnPrompt(drill.sideToMove)}</Text>
-      ) : null}
       {session.guided && session.round === 'playing' ? <ColorLegend /> : null}
     </BoardLead>
   );
@@ -167,11 +168,11 @@ function GuidedAside({
 }) {
   if (phone) {
     return (
-      <View style={play.phoneCard}>
+      <View style={[play.phoneCard, styles.ideaCard]}>
         <Text style={[text.muted, text.mutedPhone]} numberOfLines={2}>
           {themeInstruction(theme)}
         </Text>
-        <Button compact label="Show the idea" variant="secondary" onPress={onReveal} />
+        <Button compact label="Show the idea" variant="secondary" onPress={onReveal} style={styles.trayButton} />
       </View>
     );
   }
@@ -187,14 +188,19 @@ function GuidedAside({
 function StreakAside({ phone, onReveal }: { phone: boolean; onReveal: () => void }) {
   const hint = <Text style={text.muted}>No hints. One miss ends the run.</Text>;
   const action = (
-    <Button compact={phone} label="Show the answer" variant="secondary" testID="show-answer" onPress={onReveal} />
+    <Button
+      compact={phone}
+      label="Show the answer"
+      variant="secondary"
+      testID="show-answer"
+      onPress={onReveal}
+      style={phone ? styles.trayButton : undefined}
+    />
   );
   if (phone) {
     return (
-      <View style={play.phoneCard}>
-        <Text style={[text.muted, text.mutedPhone]} numberOfLines={1}>
-          No hints. One miss ends the run.
-        </Text>
+      <View style={[play.phoneCard, styles.ideaCard]}>
+        <Text style={[text.muted, text.mutedPhone]}>No hints. One miss ends the run.</Text>
         {action}
       </View>
     );
@@ -278,5 +284,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  ideaCard: {
+    paddingVertical: spacing[4],
+    gap: spacing[2],
+  },
+  trayButton: {
+    minHeight: 40,
   },
 });

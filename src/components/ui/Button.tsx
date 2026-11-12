@@ -44,7 +44,7 @@ export function Button({
           styles.base,
           phone && styles.basePhone,
           compact && styles.compact,
-          fullWidth && styles.full,
+          fullWidth ? styles.full : styles.hug,
           variantStyle(colors, variant, state.pressed, hovered),
           state.pressed && styles.pressed,
           style,
@@ -133,6 +133,12 @@ const styles = StyleSheet.create({
   },
   full: {
     alignSelf: 'stretch',
+  },
+  hug: {
+    alignSelf: 'flex-start',
+    flexGrow: 0,
+    flexShrink: 0,
+    maxWidth: '100%',
   },
   label: {
     fontFamily: fonts.bodyExtra,
