@@ -12,7 +12,7 @@ import {
   type DrillPosition,
 } from '@/src/logic/drills';
 import { leadWithPersonal } from '@/src/logic/earlyPlay';
-import { buildPuzzlePool } from '@/src/logic/puzzlePool';
+import { buildPuzzlePool, reviewMiss } from '@/src/logic/puzzlePool';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { learnCard } from '@/src/logic/lessons';
 import { coachForRound } from '@/src/logic/coach';
@@ -144,7 +144,10 @@ export function useHomeTrainer() {
     resultCounted.current = claim.claimed;
     if (!claim.recorded) return;
     markDrillResult(correct, current.theme);
-    if (!correct) recordMiss(current.id);
+    if (!correct) {
+      const miss = reviewMiss(current);
+      recordMiss(miss.id, miss.drill);
+    }
   };
 
   const onMove = useCallback((event: BoardMoveEvent) => {

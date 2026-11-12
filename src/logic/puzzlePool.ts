@@ -7,12 +7,24 @@ export const PUZZLE_POOL_SIZE = 100;
 /** A repeated starter puzzle keeps the bank id before this mark. */
 const CYCLE_MARK = '~';
 
+const STARTER_IDS = new Set(getAllDrills().map((drill) => drill.id));
+
 export function reviewId(id: string): string {
   const mark = id.lastIndexOf(CYCLE_MARK);
   if (mark <= 0) return id;
   const suffix = id.slice(mark + 1);
   if (!/^\d+$/.test(suffix)) return id;
   return id.slice(0, mark);
+}
+
+/**
+ * Id stored for a miss. Repeated starter copies use the bank id.
+ * A personal position is stored with the miss, because Review cannot load it from the bank.
+ */
+export function reviewMiss(drill: DrillPosition): { id: string; drill?: DrillPosition } {
+  const id = reviewId(drill.id);
+  if (STARTER_IDS.has(id)) return { id };
+  return { id, drill: drill.id === id ? drill : { ...drill, id } };
 }
 
 /**
@@ -71,6 +83,40 @@ export function mergeOwnDrills(
   limit = PUZZLE_POOL_SIZE,
 ): DrillPosition[] {
   return keepOwnDrills([...incoming, ...existing], limit);
+}
+
+/**
+ * A username scan replaces the same id and fills the rest of the list.
+ * Pasted drills the scan did not return stay, even when the scan already fills the list.
+ * The same position keeps the scan copy.
+ */
+export function mergeScannedDrills(
+  existing: readonly DrillPosition[],
+  scanned: readonly DrillPosition[],
+  pastedIds: readonly string[],
+  limit = PUZZLE_POOL_SIZE,
+): DrillPosition[] {
+  const pasted = new Set(pastedIds);
+  const seenIds = new Set<string>();
+  const seenFens = new Set<string>();
+  const fresh: DrillPosition[] = [];
+  for (const drill of scanned) {
+    const key = fenKey(drill.fen);
+    if (seenIds.has(drill.id) || seenFens.has(key)) continue;
+    seenIds.add(drill.id);
+    seenFens.add(key);
+    fresh.push(drill);
+  }
+  const kept: DrillPosition[] = [];
+  for (const drill of existing) {
+    if (!pasted.has(drill.id)) continue;
+    const key = fenKey(drill.fen);
+    if (seenIds.has(drill.id) || seenFens.has(key)) continue;
+    seenIds.add(drill.id);
+    seenFens.add(key);
+    kept.push(drill);
+  }
+  return keepOwnDrills([...kept, ...fresh], limit);
 }
 
 export function foundLine(found: number): string {
