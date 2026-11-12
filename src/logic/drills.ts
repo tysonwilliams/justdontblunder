@@ -2,6 +2,7 @@ import type { Square } from 'chess.js';
 
 import beginnerBlunders from '@/src/data/beginner-blunders.json';
 import { moveRemovesDanger } from '@/src/logic/danger';
+import { localDateKey } from '@/src/logic/localDate';
 
 export type DrillTheme =
   | 'hanging'
@@ -108,7 +109,7 @@ export function createDailySession(
   stats?: ThemeAccuracy,
   source?: readonly DrillPosition[],
 ): DrillSession {
-  const key = date.toISOString().slice(0, 10);
+  const key = localDateKey(date);
   const seeded = shuffleWithSeed(source ?? ALL, hashDay(key));
   return {
     id: `daily-${key}`,

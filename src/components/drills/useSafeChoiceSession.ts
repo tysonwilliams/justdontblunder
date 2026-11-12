@@ -8,7 +8,7 @@ import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { sessionForTheme, type ThemeFilter } from '@/src/logic/drillLink';
 import { isCorrectDrillMove, type DrillPosition, type DrillSession as DrillSessionData } from '@/src/logic/drills';
-import { buildPuzzlePool, reviewId } from '@/src/logic/puzzlePool';
+import { buildPuzzlePool, reviewMiss } from '@/src/logic/puzzlePool';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/src/logic/safeChoice';
@@ -171,7 +171,10 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
       total: s.total + 1,
     }));
     markDrillResult(correct, drill.theme);
-    if (!correct) recordMiss(reviewId(drill.id));
+    if (!correct) {
+      const miss = reviewMiss(drill);
+      recordMiss(miss.id, miss.drill);
+    }
   };
 
   const choose = (key: 'A' | 'B') => {

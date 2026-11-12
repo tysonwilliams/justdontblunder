@@ -24,6 +24,24 @@ describe('review pile', () => {
     expect(entries).toEqual([{ id: 'mate-03', saves: 0 }]);
   });
 
+  it('keeps a personal miss attached so it can be restored', () => {
+    const hang = drillFromHang('rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3');
+    expect(hang).toBeTruthy();
+    if (!hang) return;
+    let entries = rememberBankMiss([], hang.id, hang);
+    expect(entries[0]?.drill?.fen).toBe(hang.fen);
+    entries = noteSave(entries, hang.id);
+    entries = rememberBankMiss(entries, hang.id);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.saves).toBe(0);
+    expect(entries[0]?.drill?.note).toBe(hang.note);
+
+    const restored = reviewFromSaved({ review: JSON.parse(JSON.stringify(entries)) as unknown });
+    expect(restored[0]?.drill?.id).toBe(hang.id);
+    expect(restored[0]?.drill?.solution).toEqual(hang.solution);
+    expect(restored[0]?.saves).toBe(0);
+  });
+
   it('keeps save progress when the same practice position is stored again', () => {
     const hang = drillFromHang('rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3');
     expect(hang).toBeTruthy();
