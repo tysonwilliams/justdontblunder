@@ -15,9 +15,12 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { playUnlocked } from '@/src/logic/earlyPlay';
 import { resetOwnScanForTests, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
+import { SCAN_PERSIST_INTERVAL_MS } from '@/src/store/progressStorage';
 
 function queenHang(second: string): string {
   const game = new Chess();
@@ -95,6 +98,9 @@ describe('own scan', () => {
     expect(useProgressStore.getState().scan.phase).toBe('done');
     expect(useProgressStore.getState().scan.incoming).toBe(false);
     expect(useProgressStore.getState().gameProfile).toEqual({ site: 'chesscom', username: 'Me' });
+    const saved = savedProgress();
+    expect(saved.ownDrills).toHaveLength(useProgressStore.getState().ownDrills.length);
+    expect(saved.scan).toMatchObject({ phase: 'done', incoming: false });
   });
 
   it('keeps blunders already found when a later request fails', async () => {
@@ -111,6 +117,9 @@ describe('own scan', () => {
     expect(state.scan.incoming).toBe(false);
     expect(playUnlocked({ found: state.scan.found, incoming: false, failed: true })).toBe(true);
     expect(state.gameProfile).toBeNull();
+    const saved = savedProgress();
+    expect(saved.ownDrills.length).toBe(state.ownDrills.length);
+    expect(saved.scan).toMatchObject({ phase: 'error', incoming: false });
   });
 
   it('finishes below three blunders without waiting for another', async () => {
@@ -131,10 +140,68 @@ describe('own scan', () => {
     expect(playUnlocked({ found: state.ownDrills.length, incoming: false, failed: false })).toBe(true);
     expect(playUnlocked({ found: state.ownDrills.length, incoming: true, failed: false })).toBe(false);
   });
+
+  it('does not flush the puzzle list after every game, and a refresh keeps blunders already found', async () => {
+    const writes: string[] = [];
+    const setItem = vi.spyOn(AsyncStorage, 'setItem').mockImplementation(async (key, value) => {
+      if (String(key) === 'jdb-progress-v1') writes.push(String(value));
+      memory.set(String(key), String(value));
+    });
+    let updates = 0;
+    const unsub = useProgressStore.subscribe((state, prev) => {
+      if (state.ownDrills !== prev.ownDrills) updates += 1;
+    });
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const pending = runOwnScan('chesscom', 'Me', async (url) => {
+      if (String(url).endsWith('/archives')) return json({ archives: [older, newer] });
+      if (String(url) === newer) {
+        return json({ games: games(['a3', 'a4', 'b3', 'b4', 'c3', 'c4', 'd3', 'd4'], 40) });
+      }
+      await gate;
+      throw new Error('offline');
+    });
+    try {
+      await waitUntil(() => useProgressStore.getState().scan.games >= 8);
+      await new Promise((resolve) => setTimeout(resolve, SCAN_PERSIST_INTERVAL_MS + 250));
+      const played = useProgressStore.getState().scan.games;
+      expect(played).toBeGreaterThanOrEqual(8);
+      expect(writes.length).toBeGreaterThan(0);
+      expect(writes.length).toBeLessThan(played);
+      expect(updates).toBeGreaterThanOrEqual(played);
+      const mid = savedProgress();
+      expect(mid.ownDrills.length).toBeGreaterThanOrEqual(3);
+      expect(useProgressStore.getState().scan.phase).toBe('scanning');
+      expect(useProgressStore.getState().ownDrills.length).toBe(mid.ownDrills.length);
+    } finally {
+      release();
+      unsub();
+      await pending.catch(() => undefined);
+      setItem.mockRestore();
+    }
+    const state = useProgressStore.getState();
+    expect(state.scan.phase).toBe('error');
+    expect(savedProgress().ownDrills.length).toBe(state.ownDrills.length);
+    expect(state.ownDrills.length).toBeGreaterThanOrEqual(3);
+    const raw = memory.get('jdb-progress-v1');
+    useProgressStore.setState({ ownDrills: [] });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    memory.set('jdb-progress-v1', raw ?? '');
+    await useProgressStore.persist.rehydrate();
+    expect(useProgressStore.getState().ownDrills).toHaveLength(state.ownDrills.length);
+  });
 });
 
+function savedProgress(): { ownDrills: unknown[]; scan: { phase?: string; incoming?: boolean } } {
+  const raw = memory.get('jdb-progress-v1');
+  if (!raw) throw new Error('progress was not written');
+  return JSON.parse(raw).state;
+}
+
 async function waitUntil(ready: () => boolean): Promise<void> {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
     if (ready()) return;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
