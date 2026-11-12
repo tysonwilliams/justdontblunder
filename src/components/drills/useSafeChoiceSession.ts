@@ -4,6 +4,7 @@ import type { Square } from 'chess.js';
 import type { BoardArrow } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
+import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { sessionForTheme, type ThemeFilter } from '@/src/logic/drillLink';
 import { isCorrectDrillMove, type DrillPosition, type DrillSession as DrillSessionData } from '@/src/logic/drills';
@@ -54,7 +55,6 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   const { colors, scheme } = useTheme();
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
-  const ownDrills = useProgressStore((s) => s.ownDrills);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
   const [session, setSession] = useState<DrillSessionData>(() =>
     sessionForTheme(theme, buildPuzzlePool(useProgressStore.getState().ownDrills)),
@@ -67,7 +67,10 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const resultCounted = useRef(false);
   const lock = useRef(false);
+  const started = useRef(false);
   const place = useRef({ index: 0, round: 'playing' as SafeRound });
+  const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
+  positionsRef.current = session.positions;
 
   const drill: DrillPosition | undefined = session.positions[index];
   const done = index >= session.positions.length;
@@ -91,6 +94,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   };
 
   const begin = (nextSession: DrillSessionData) => {
+    started.current = true;
     resultCounted.current = false;
     setSession(nextSession);
     setIndex(0);
@@ -106,11 +110,24 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    if (place.current.index !== 0 || place.current.round !== 'playing') return;
-    setSession(sessionForTheme(theme, buildPuzzlePool(ownDrills)));
-  }, [hydrated, ownDrills, theme]);
+  usePuzzleGrowth(
+    true,
+    hydrated,
+    place,
+    positionsRef,
+    started,
+    () => {
+      const own = useProgressStore.getState().ownDrills;
+      const personal = theme === 'all' ? own : own.filter((drill) => drill.theme === theme);
+      return {
+        personal,
+        rebuilt: sessionForTheme(theme, buildPuzzlePool(own)).positions,
+      };
+    },
+    (positions) => {
+      setSession((prev) => ({ ...prev, positions }));
+    },
+  );
 
   useEffect(() => {
     if (!drill || presented) return;
@@ -128,6 +145,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   }, [drill?.id, drill?.fen]);
 
   const next = () => {
+    started.current = true;
     resultCounted.current = false;
     lock.current = false;
     setIndex((i) => i + 1);
@@ -158,6 +176,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
 
   const choose = (key: 'A' | 'B') => {
     if (!drill || !presented || round !== 'playing' || lock.current) return;
+    started.current = true;
     const option = presented.options.find((item) => item.key === key);
     if (!option) return;
     const passed = isCorrectDrillMove(drill, option.from, option.to);

@@ -178,6 +178,32 @@ describe('game import', () => {
     expect(scan.drills.length).toBeLessThanOrEqual(1);
     expect(chessFetch.mock.calls.some((call) => String(call[0]) === older)).toBe(false);
   });
+
+  it('reports that a short history is finished even when fewer than 3 blunders were found', async () => {
+    const month = 'https://api.chess.com/pub/player/me/games/2026/10';
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (String(url).endsWith('/archives')) return json({ archives: [month] });
+      return json({
+        games: ['a3'].map((second, index) => ({
+          pgn: queenHang(second),
+          time_class: 'rapid',
+          end_time: 20 - index,
+          white: { username: 'Me' },
+          black: { username: 'them' },
+        })),
+      });
+    });
+    const incoming: boolean[] = [];
+    const scan = await collectPublicDrills('chesscom', 'Me', {
+      fetchImpl,
+      onProgress: (update) => incoming.push(update.incoming),
+    });
+    expect(scan.drills.length).toBeGreaterThan(0);
+    expect(scan.drills.length).toBeLessThan(3);
+    expect(incoming.length).toBeGreaterThan(1);
+    expect(incoming.slice(0, -1).every(Boolean)).toBe(true);
+    expect(incoming[incoming.length - 1]).toBe(false);
+  });
 });
 
 function json(body: unknown): Response {

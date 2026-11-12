@@ -4,6 +4,7 @@ import type { Square } from 'chess.js';
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
+import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import {
   reviewForTheme,
   sessionForTheme,
@@ -74,7 +75,6 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const recordSave = useProgressStore((s) => s.recordSave);
   const recordPuzzleRun = useProgressStore((s) => s.recordPuzzleRun);
   const bestPuzzleStreak = useProgressStore((s) => s.bestPuzzleStreak);
-  const ownDrills = useProgressStore((s) => s.ownDrills);
 
   const [session, setSession] = useState<DrillSessionData>(() =>
     reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()),
@@ -92,7 +92,10 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const reviewStarted = useRef(false);
   const runRecorded = useRef(false);
   const resultCounted = useRef(false);
+  const started = useRef(false);
   const place = useRef({ index: 0, round: 'playing' as RoundState });
+  const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
+  positionsRef.current = session.positions;
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
 
   const drill: DrillPosition | undefined = session.positions[index];
@@ -141,6 +144,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   };
 
   const begin = (nextSession: DrillSessionData) => {
+    started.current = true;
     runRecorded.current = false;
     resultCounted.current = false;
     setRunOver(false);
@@ -172,11 +176,24 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewing, hydrated, theme]);
 
-  useEffect(() => {
-    if (!hydrated || reviewing) return;
-    if (place.current.index !== 0 || place.current.round !== 'playing') return;
-    setSession(sessionForTheme(theme, buildPuzzlePool(ownDrills)));
-  }, [hydrated, reviewing, ownDrills, theme]);
+  usePuzzleGrowth(
+    !reviewing,
+    hydrated,
+    place,
+    positionsRef,
+    started,
+    () => {
+      const own = useProgressStore.getState().ownDrills;
+      const personal = theme === 'all' ? own : own.filter((drill) => drill.theme === theme);
+      return {
+        personal,
+        rebuilt: sessionForTheme(theme, buildPuzzlePool(own)).positions,
+      };
+    },
+    (positions) => {
+      setSession((prev) => ({ ...prev, positions }));
+    },
+  );
 
   useEffect(() => {
     if (!drill) return;
@@ -198,6 +215,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   };
 
   const next = () => {
+    started.current = true;
     setIndex((i) => i + 1);
   };
 
@@ -230,6 +248,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   };
 
   const revealIdea = () => {
+    started.current = true;
     const current = latest.current.drill;
     if (!current) return;
     setShownIdea(true);
@@ -260,6 +279,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     const now = latest.current;
     const current = now.drill;
     if (!current || now.round !== 'playing') return false;
+    started.current = true;
 
     setDisplayFen(event.afterFen);
     setLastMove({ from: event.from, to: event.to });
