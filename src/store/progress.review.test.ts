@@ -22,6 +22,7 @@ import { drillFromHang } from '@/src/logic/personalDrill';
 import { reviewMiss } from '@/src/logic/puzzlePool';
 import { reviewFromSaved } from '@/src/logic/reviewPile';
 import { useProgressStore } from '@/src/store/progress';
+import { persistTrainerResult } from '@/src/store/trainerResult';
 
 const HANGING_QUEEN = 'rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3';
 
@@ -75,6 +76,23 @@ describe('progress review pile', () => {
     expect(useProgressStore.getState().ownDrills).toEqual([]);
     expect(useProgressStore.getState().pastedIds).toEqual([]);
     expect(useProgressStore.getState().gameProfile).toBeNull();
+  });
+
+  it('records a repeated starter and a personal miss through the shared round result', () => {
+    const bank = getAllDrills().find((drill) => drill.id === 'hang-q-01');
+    expect(bank).toBeTruthy();
+    if (!bank) return;
+    persistTrainerResult(false, { ...bank, id: `${bank.id}~1` }, false);
+    expect(useProgressStore.getState().missedIds).toEqual(['hang-q-01']);
+    expect(useProgressStore.getState().review[0]?.drill).toBeUndefined();
+
+    const personal = drillFromHang(HANGING_QUEEN);
+    expect(personal).toBeTruthy();
+    if (!personal) return;
+    persistTrainerResult(false, personal, false);
+    expect(useProgressStore.getState().review[0]?.drill?.fen).toBe(personal.fen);
+    persistTrainerResult(true, personal, true);
+    expect(useProgressStore.getState().review.find((entry) => entry.id === personal.id)?.saves).toBe(1);
   });
 
   it('resolves a repeated home id to the bank puzzle', () => {
