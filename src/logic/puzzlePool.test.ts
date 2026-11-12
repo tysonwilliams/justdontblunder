@@ -70,11 +70,15 @@ describe('puzzle pool', () => {
     const personal = { ...bank, id: 'own-7' };
     expect(reviewMiss(personal)).toEqual({ id: 'own-7', drill: personal });
 
+    const commit = readFileSync(new URL('../store/trainerResult.ts', import.meta.url), 'utf8');
     const home = readFileSync(new URL('../components/home/useHomeTrainer.ts', import.meta.url), 'utf8');
     const play = readFileSync(new URL('../components/drills/useDrillSession.ts', import.meta.url), 'utf8');
     const pick = readFileSync(new URL('../components/drills/useSafeChoiceSession.ts', import.meta.url), 'utf8');
-    for (const source of [home, play, pick]) expect(source).toContain('reviewMiss(');
-    expect(home).not.toContain('recordMiss(current.id)');
+    expect(commit).toContain('reviewMiss(');
+    for (const source of [home, play, pick]) {
+      expect(source).toContain('applyRoundEffects(');
+      expect(source).not.toContain('recordMiss(');
+    }
   });
 
   it('keeps pasted drills a full scan did not return, and drops the previous scan', () => {
