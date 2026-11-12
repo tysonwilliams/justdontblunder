@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Platform, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { phoneSlots, type PhoneSlots } from '@/src/components/ui/phoneSlots';
+import { useScreenInsets } from '@/src/components/ui/screenInsets';
 import { stageMetrics, type StageMetrics } from '@/src/components/ui/stageMetrics';
 
 function useVisualWindow(): { width: number; height: number } {
@@ -40,7 +40,7 @@ export type LayoutMetrics = StageMetrics & {
 
 export function useLayout(): LayoutMetrics {
   const { width, height } = useVisualWindow();
-  const insets = useSafeAreaInsets();
+  const insets = useScreenInsets();
   const metrics = stageMetrics(width, height, insets.top, insets.bottom);
   const slots = metrics.phone ? phoneSlots(metrics.contentHeight, metrics.boardWidth, metrics.turnRow) : null;
   return { ...metrics, slots };

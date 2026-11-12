@@ -39,7 +39,7 @@ export const play = themedStyleSheet((colors) => ({
     fontFamily: fonts.display,
     color: colors.text,
     fontSize: fontSizes[15],
-    lineHeight: lineHeights[18],
+    lineHeight: lineHeights[16],
     letterSpacing: letterSpacing.tight,
   },
   phoneCard: {

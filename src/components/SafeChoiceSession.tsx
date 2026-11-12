@@ -58,7 +58,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
     <PlayFrame
       intro={
         phone ? (
-          <BoardLead>
+          <BoardLead gap={spacing[2]}>
             {toolbar}
             <LineBox height={PHONE_PROMPT_HEIGHT}>
               <Text style={play.phoneTitle} numberOfLines={2}>
@@ -74,15 +74,17 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
           </BoardLead>
         ) : (
           <BoardLead>
+            <Text style={text.title} testID="drill-task">
+              Which move is safe?
+            </Text>
+            {session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
+            {session.round === 'playing' ? <Text style={text.body}>{drill.prompt}</Text> : null}
             {toolbar}
             <View style={play.metaRow}>
               <StatusPill>{themeLabel(drill.theme)}</StatusPill>
               <PuzzleCount index={session.index} total={session.session.positions.length} spaced />
             </View>
             <ProgressTrack progress={session.progress} />
-            {session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
-            <Text style={text.title}>Which move is safe?</Text>
-            {session.round === 'playing' ? <Text style={text.body}>{drill.prompt}</Text> : null}
             {session.round === 'playing' ? <ColorLegend /> : null}
           </BoardLead>
         )
