@@ -2,7 +2,6 @@ import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 
 import { detectPatterns, findHangingPieces } from '@/src/engine/patterns';
-import { isBlunder } from '@/src/engine/stockfish';
 import {
   createAllSession,
   createReviewSession,
@@ -23,23 +22,6 @@ function mateMoves(fen: string): string[] {
     })
     .map((move) => move.san);
 }
-
-describe('isBlunder', () => {
-  it('classifies small drops as ok', () => {
-    expect(isBlunder(20, 40).severity).toBe('ok');
-    expect(isBlunder(20, 40).isBlunder).toBe(false);
-  });
-
-  it('classifies medium drops as inaccuracy', () => {
-    expect(isBlunder(0, 80).severity).toBe('inaccuracy');
-  });
-
-  it('classifies larger drops as mistake / blunder', () => {
-    expect(isBlunder(0, 120).severity).toBe('mistake');
-    expect(isBlunder(0, 120).isBlunder).toBe(true);
-    expect(isBlunder(0, 300).severity).toBe('blunder');
-  });
-});
 
 describe('pattern detectors', () => {
   it('flags a hanging queen on h4', () => {

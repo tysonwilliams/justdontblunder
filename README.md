@@ -1,56 +1,60 @@
 # Just Don't Blunder
 
-A Chessreps-style trainer for new and intermediate players. Build the pre-move habit — **Checks / Captures / Threats / Hanging?** — and catch beginner blunders with friendly feedback.
+A chess trainer for new and intermediate players. Build the habit of checking before you move. A blunder is mate in 1 or a net material loss. Equal trades are fine.
 
-## Features (v0.1)
+## Play
 
-- Interactive board (tap + drag, legal moves only)
-- Instant blunder feedback with square highlights
-- Pre-move habit checklist
-- Daily drill sessions from full-board positions with immediate danger (hanging pieces, live forks, absolute pins, mate-in-1)
-- Save one practice blunder, or build the puzzle list from your public Chess.com or Lichess games
-- Local streaks and progress (no account)
+- Guest-first. Progress stays on this device. There is no account and no sign-in.
+- Home, Learn, Drills, Practice, and Progress.
+- Drills pass any safe move. A blunder is red. A save is green.
+- Drill modes are Play (the default), Pick, and Review. Streak is a sudden-death toggle on Play only.
+- A miss shows the opponent's capture, a short explanation, and Try again. Review plays those misses again.
+- Add a public Chess.com or Lichess username, or paste a PGN. The app never asks for a chess-site password. Play opens after about 3 personal blunders while the scan continues.
+- Every position is one you could reach in a real game.
+- On a phone the board fills the width and stays put after a move: a 120px header, an 88px feedback tray, one screen, and no scroll. On a desktop the board fills most of the screen.
+- Legal-move dots show on click and for the whole press-and-hold drag.
 
 ## Run locally
 
 ```bash
 npm install
-npm run web          # Expo web on http://localhost:43127
-# or
-npx expo start       # then press `w` for web / scan for device
+npm run web
 ```
+
+Expo web serves at http://localhost:43127. `npm run start` opens the Expo dev server.
 
 ## Scripts
 
 | Command | What it does |
-|---------|----------------|
-| `npm run web` | Start Expo web on port **43127** |
+| --- | --- |
+| `npm run web` | Expo web on port 43127 |
 | `npm run start` | Expo dev server |
-| `npm test` | Unit tests (patterns, blunder thresholds, fixtures) |
-| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint (`expo lint` on `app/` and `src/`) |
+| `npm test` | Unit tests |
+| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
+| `node scripts/board-stability.mjs` | Checks that the phone board stays put after a move. Needs the web app running. |
+
+`scripts/refresh-acceptable.mts` rebuilds the offline teaching window with the Stockfish CLI. That CLI is the `stockfish` devDependency. The running app does not load Stockfish.
 
 ## Stack
 
-- Expo SDK 58 + Expo Router (tabs)
-- TypeScript, chess.js, Zustand + AsyncStorage
-- Stockfish.js lite (single-thread WASM) on **web** for engine eval
-- Pattern detectors for instant hanging-piece / fork / back-rank hints
+- Expo SDK 58 and Expo Router. Screens live in `app/`.
+- TypeScript, chess.js, Zustand, and AsyncStorage.
+- Blunders are judged in the app with chess.js. No chess engine is bundled into the web or native build.
+- Web export is configured for Vercel (`expo export -p web`).
 
-Native iOS/Android use the same UI; Stockfish falls back to a stub until a native engine module is wired. Pattern feedback still works offline everywhere.
+`ios/` and `android/` are not in this repo. Expo generates them for a native build. There is no EAS config and no store build here. There is no Supabase and no account system.
 
 ## Project layout
 
 ```
-app/(tabs)/          Home, Learn, Drills, Practice, Progress
-src/components/      Board, habit checklist, streak badge
-src/engine/          Stockfish wrapper, eval merge, patterns
-src/logic/           chess.js helpers, drills
+app/                 Expo Router screens (Home, Learn, Drills, Practice, Progress)
+src/components/      Board, drills, lessons, practice
+src/engine/          Pattern detectors (hanging pieces, forks, pins)
+src/logic/           chess.js judging, drills, import
 src/data/            beginner-blunders.json
 src/store/           local progress
-src/theme/           dark high-contrast tokens
-public/              Stockfish WASM assets for web
+src/theme/           color and type tokens
+public/              web shell (index.html)
+.github/workflows/   lint, test, and typecheck on pull requests and on main
 ```
-
-## Out of scope (for now)
-
-Accounts, multiplayer, openings, payments, and a full game database. A username reads public games to build the puzzle list.
