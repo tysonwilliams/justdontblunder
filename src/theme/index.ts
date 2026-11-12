@@ -3,7 +3,6 @@ export type { ThemePreference } from '@/src/theme/preference';
 export type { MarkRole } from '@/src/theme/marks';
 export {
   colors,
-  expoStarter,
   fontSizes,
   fontWeight,
   fonts,

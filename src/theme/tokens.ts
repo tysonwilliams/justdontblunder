@@ -465,31 +465,6 @@ export const layout = {
   padDesktop: spacing[28],
 } as const;
 
-/**
- * Expo starter palette. App screens do not use it. Kept so the unused
- * template helpers render the same colors they did before tokens existed.
- */
-export const expoStarter = {
-  light: {
-    text: '#0E1116',
-    background: '#F2F5F9',
-    tint: '#3DDC97',
-    tabIconDefault: '#6B7785',
-    tabIconSelected: '#3DDC97',
-    textSoft: 'rgba(0,0,0,0.8)',
-    code: 'rgba(0,0,0,0.05)',
-  },
-  dark: {
-    text: '#F2F5F9',
-    background: '#0E1116',
-    tint: '#3DDC97',
-    tabIconDefault: '#6B7785',
-    tabIconSelected: '#3DDC97',
-    textSoft: 'rgba(255,255,255,0.8)',
-    code: 'rgba(255,255,255,0.05)',
-  },
-} as const;
-
 const themeBase = {
   spacing,
   radii,
