@@ -4,12 +4,14 @@ import type { Square } from 'chess.js';
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
+import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import {
   createHomeSession,
   homePlayPrompt,
   isCorrectDrillMove,
   type DrillPosition,
 } from '@/src/logic/drills';
+import { leadWithPersonal } from '@/src/logic/earlyPlay';
 import { buildPuzzlePool } from '@/src/logic/puzzlePool';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { learnCard } from '@/src/logic/lessons';
@@ -53,15 +55,16 @@ export function homeResultCard(round: HomeRound): { title: string; tone: 'succes
   }
 }
 
+function buildHomeSession() {
+  const own = useProgressStore.getState().ownDrills;
+  const session = createHomeSession(new Date(), useProgressStore.getState().themeStats, buildPuzzlePool(own));
+  if (own.length === 0 || own.length >= session.positions.length) return session;
+  return { ...session, positions: leadWithPersonal(session.positions, own, session.positions.length) };
+}
+
 export function useHomeTrainer() {
   const { colors, scheme } = useTheme();
-  const [session, setSession] = useState(() =>
-    createHomeSession(
-      new Date(),
-      useProgressStore.getState().themeStats,
-      buildPuzzlePool(useProgressStore.getState().ownDrills),
-    ),
-  );
+  const [session, setSession] = useState(buildHomeSession);
   const [index, setIndex] = useState(0);
   const [round, setRound] = useState<HomeRound>('playing');
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
@@ -69,13 +72,15 @@ export function useHomeTrainer() {
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
   const resultCounted = useRef(false);
+  const started = useRef(false);
+  const positionsRef = useRef(session.positions);
+  positionsRef.current = session.positions;
   const replayActive = round === 'retry';
   const playback = usePunishmentPlayback(replayActive, replayLine);
   const replyReady = !replayActive || playback.done;
 
   const markDrillResult = useProgressStore((s) => s.markDrillResult);
   const recordMiss = useProgressStore((s) => s.recordMiss);
-  const ownDrills = useProgressStore((s) => s.ownDrills);
   const streak = useProgressStore((s) => s.dailyStreak);
   const completedLessons = useProgressStore((s) => s.completedLessons);
   const learn = hydrated
@@ -99,16 +104,24 @@ export function useHomeTrainer() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    if (latest.current.index !== 0 || latest.current.round !== 'playing') return;
-    setSession(
-      createHomeSession(new Date(), useProgressStore.getState().themeStats, buildPuzzlePool(ownDrills)),
-    );
-  }, [hydrated, ownDrills]);
+  usePuzzleGrowth(
+    true,
+    hydrated,
+    latest,
+    positionsRef,
+    started,
+    () => {
+      const own = useProgressStore.getState().ownDrills;
+      return { personal: own, rebuilt: buildHomeSession().positions };
+    },
+    (positions) => {
+      setSession((prev) => ({ ...prev, positions }));
+    },
+  );
 
   const next = () => {
     if (total === 0) return;
+    started.current = true;
     resultCounted.current = false;
     setRound('playing');
     setLastMove(null);
@@ -137,6 +150,7 @@ export function useHomeTrainer() {
   const onMove = useCallback((event: BoardMoveEvent) => {
     const current = latest.current.drill;
     if (!current || latest.current.round !== 'playing') return false;
+    started.current = true;
     setDisplayFen(event.afterFen);
     setLastMove({ from: event.from, to: event.to });
     const ok = isCorrectDrillMove(current, event.from, event.to);

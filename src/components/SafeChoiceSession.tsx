@@ -15,6 +15,7 @@ import { PhoneTray } from '@/src/components/ui/PhoneTray';
 import { PlayFrame, ScoreFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
+import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import type { DrillMode, ThemeFilter } from '@/src/logic/drillLink';
@@ -68,9 +69,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
               <View style={play.progressGrow}>
                 <ProgressTrack progress={session.progress} />
               </View>
-              <Text style={[text.meta, text.metaPhone]} numberOfLines={1}>
-                {session.index + 1}/{session.session.positions.length}
-              </Text>
+              <PuzzleCount index={session.index} total={session.session.positions.length} spaced={false} phone />
             </View>
           </BoardLead>
         ) : (
@@ -78,9 +77,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
             {toolbar}
             <View style={play.metaRow}>
               <StatusPill>{themeLabel(drill.theme)}</StatusPill>
-              <Text style={text.meta}>
-                {session.index + 1} / {session.session.positions.length}
-              </Text>
+              <PuzzleCount index={session.index} total={session.session.positions.length} spaced />
             </View>
             <ProgressTrack progress={session.progress} />
             {session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}

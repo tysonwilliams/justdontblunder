@@ -37,6 +37,8 @@ export type ScanUpdate = {
   found: number;
   games: number;
   drills: readonly DrillPosition[];
+  /** False once this source will not yield more blunders. */
+  incoming: boolean;
 };
 
 export type PublicScan = {
@@ -127,6 +129,12 @@ export async function collectPublicDrills(
       return _exhaustive;
     }
   }
+  options?.onProgress?.({
+    found: budget.drills.length,
+    games: budget.games,
+    drills: budget.drills.slice(),
+    incoming: false,
+  });
   return { drills: budget.drills, games: budget.games };
 }
 
@@ -378,6 +386,7 @@ async function absorb(
       found: budget.drills.length,
       games: budget.games,
       drills: budget.drills.slice(),
+      incoming: !budgetFull(budget),
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     if (budgetFull(budget)) return true;

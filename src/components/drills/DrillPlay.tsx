@@ -15,6 +15,7 @@ import { PhoneTray } from '@/src/components/ui/PhoneTray';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
+import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT, themeInstruction, themeLabel, turnPrompt, type DrillTheme } from '@/src/logic/drills';
@@ -92,10 +93,13 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
         <View style={play.progressGrow}>
           <ProgressTrack progress={session.progress} />
         </View>
-        <Text style={[text.meta, text.metaPhone]} numberOfLines={1}>
-          {session.index + 1}/{session.session.positions.length}
-          {session.streak ? ` · ${session.score.correct}` : ''}
-        </Text>
+        <PuzzleCount
+          index={session.index}
+          total={session.session.positions.length}
+          spaced={false}
+          phone
+          extra={session.streak ? String(session.score.correct) : undefined}
+        />
       </View>
     </BoardLead>
   );
@@ -111,10 +115,12 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
         <StatusPill>
           {session.reviewing ? 'Review' : session.streak ? 'Streak' : themeLabel(drill.theme)}
         </StatusPill>
-        <Text style={text.meta}>
-          {session.index + 1} / {session.session.positions.length}
-          {session.streak ? ` · ${session.score.correct} in a row` : ''}
-        </Text>
+        <PuzzleCount
+          index={session.index}
+          total={session.session.positions.length}
+          spaced
+          extra={session.streak ? `${session.score.correct} in a row` : undefined}
+        />
       </View>
       <ProgressTrack progress={session.progress} />
       {session.guided && session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}

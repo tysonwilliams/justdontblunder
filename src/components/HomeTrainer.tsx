@@ -19,6 +19,7 @@ import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { Bone, PlaySkeleton } from '@/src/components/ui/Skeleton';
 import { forceSkeleton } from '@/src/components/ui/skeletonMode';
+import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { themeInstruction } from '@/src/logic/drills';
@@ -46,9 +47,7 @@ export function HomeTrainer() {
           <View style={[styles.meta, phone && styles.metaPhone]}>
             <StatusPill>Daily trainer</StatusPill>
             <View style={play.metaRight}>
-              <Text style={[text.meta, phone && text.metaPhone]} numberOfLines={1}>
-                {trainer.index + 1} / {trainer.total}
-              </Text>
+              <PuzzleCount index={trainer.index} total={trainer.total} spaced phone={phone} />
               <StreakSlot phone={phone} hydrated={trainer.hydrated} streak={trainer.streak} />
             </View>
           </View>

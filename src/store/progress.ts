@@ -28,9 +28,11 @@ export type ScanProgress = {
   found: number;
   games: number;
   message: string;
+  /** True while this scan may still add blunders. */
+  incoming: boolean;
 };
 
-const IDLE_SCAN: ScanProgress = { phase: 'idle', found: 0, games: 0, message: '' };
+const IDLE_SCAN: ScanProgress = { phase: 'idle', found: 0, games: 0, message: '', incoming: false };
 
 export type ProgressState = {
   dailyStreak: number;
@@ -57,6 +59,8 @@ export type ProgressState = {
   /** Newest personal blunders. The starter set fills this out to 100 at play time. */
   ownDrills: DrillPosition[];
   scan: ScanProgress;
+  /** The player started the drills behind the username prompt. The scan can keep running. */
+  scanPromptDismissed: boolean;
   markDrillResult: (correct: boolean, theme: DrillTheme) => void;
   awardXp: (safe: boolean) => void;
   setExperience: (value: Experience | null) => void;
@@ -64,6 +68,7 @@ export type ProgressState = {
   skipDrillsPrompt: () => void;
   saveGameProfile: (profile: GameProfile) => void;
   setScan: (scan: ScanProgress) => void;
+  dismissScanPrompt: () => void;
   completeLesson: (id: string) => void;
   recordMiss: (drillId: string) => void;
   /** One correct review. The second one removes the position. */
@@ -110,6 +115,7 @@ function scanFromSaved(value: unknown): ScanProgress {
     found: typeof scan.found === 'number' ? scan.found : 0,
     games: typeof scan.games === 'number' ? scan.games : 0,
     message: typeof scan.message === 'string' ? scan.message : '',
+    incoming: false,
   };
 }
 
@@ -151,6 +157,7 @@ export const useProgressStore = create<ProgressState>()(
       drillsPromptSkipped: false,
       ownDrills: [],
       scan: IDLE_SCAN,
+      scanPromptDismissed: false,
       markDrillResult: (correct, theme) =>
         set((state) => {
           const streak = bumpStreak(state.lastDrillDate, state.dailyStreak);
@@ -175,6 +182,7 @@ export const useProgressStore = create<ProgressState>()(
       skipDrillsPrompt: () => set({ drillsPromptSkipped: true }),
       saveGameProfile: (profile) => set({ gameProfile: profile }),
       setScan: (scan) => set({ scan }),
+      dismissScanPrompt: () => set({ scanPromptDismissed: true }),
       completeLesson: (id) =>
         set((state) => ({ completedLessons: withLessonComplete(state.completedLessons, id) })),
       recordMiss: (drillId) => set((state) => withReview(rememberBankMiss(state.review, drillId))),
@@ -216,6 +224,7 @@ export const useProgressStore = create<ProgressState>()(
           drillsPromptSkipped: false,
           ownDrills: [],
           scan: IDLE_SCAN,
+          scanPromptDismissed: false,
         }),
     }),
     {
@@ -239,6 +248,7 @@ export const useProgressStore = create<ProgressState>()(
           drillsPromptSkipped: saved.drillsPromptSkipped ?? false,
           ownDrills: parseDrillList(saved.ownDrills, PUZZLE_POOL_SIZE),
           scan: scanFromSaved(saved.scan),
+          scanPromptDismissed: false,
         };
       },
     },
