@@ -11,6 +11,7 @@ let latest: { name: string; value: Stored } | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let lastCommit = 0;
 let chain: Promise<void> = Promise.resolve();
+let persistIntervalMs = SCAN_PERSIST_INTERVAL_MS;
 
 function commit(): Promise<void> {
   if (timer) {
@@ -29,7 +30,7 @@ function commit(): Promise<void> {
 
 function schedule(): void {
   if (timer) return;
-  const wait = SCAN_PERSIST_INTERVAL_MS - (Date.now() - lastCommit);
+  const wait = persistIntervalMs - (Date.now() - lastCommit);
   if (wait <= 0) {
     void commit();
     return;
@@ -58,9 +59,20 @@ export async function endCoalescedPersist(): Promise<void> {
   }
 }
 
+/** Tests widen this so a slow run still counts as one batch, not one write per game. */
+export function setScanPersistIntervalForTests(ms: number): void {
+  persistIntervalMs = ms;
+}
+
+/** Write the latest scan state without ending the batch. */
+export async function flushCoalescedPersistForTests(): Promise<void> {
+  await commit();
+}
+
 export function resetProgressPersistForTests(): void {
   coalescing = false;
   latest = null;
+  persistIntervalMs = SCAN_PERSIST_INTERVAL_MS;
   if (timer) clearTimeout(timer);
   timer = null;
 }

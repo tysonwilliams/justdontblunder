@@ -19,12 +19,17 @@ export function fenKey(fen: string): string {
   return fen.trim().split(/\s+/).slice(0, 4).join(' ');
 }
 
-/** A bank miss goes to the front. Saving progress starts over. */
-export function rememberBankMiss(entries: readonly ReviewEntry[], id: string): ReviewEntry[] {
+/** A miss goes to the front. Saving progress starts over. A personal position stays attached. */
+export function rememberBankMiss(
+  entries: readonly ReviewEntry[],
+  id: string,
+  drill?: DrillPosition,
+): ReviewEntry[] {
   const previous = entries.find((entry) => entry.id === id);
   const rest = entries.filter((entry) => entry.id !== id);
   const next: ReviewEntry = { id, saves: 0 };
-  if (previous?.drill) next.drill = previous.drill;
+  const attached = drill ?? previous?.drill;
+  if (attached) next.drill = attached.id === id ? attached : { ...attached, id };
   return [next, ...rest];
 }
 

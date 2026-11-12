@@ -133,3 +133,15 @@ export function reviewForTheme(
 ): DrillSession {
   return createReviewSession(ids, theme === 'all' ? undefined : theme, personal);
 }
+
+/** Review loads bank ids from the starter set and personal misses from the stored position. */
+export function reviewForEntries(
+  entries: readonly { id: string; drill?: DrillPosition }[],
+  theme: ThemeFilter,
+): DrillSession {
+  return reviewForTheme(
+    entries.map((entry) => entry.id),
+    theme,
+    entries.flatMap((entry) => (entry.drill ? [entry.drill] : [])),
+  );
+}

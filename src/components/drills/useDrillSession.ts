@@ -6,7 +6,7 @@ import { highlightsForRound } from '@/src/components/Board/highlight';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import {
-  reviewForTheme,
+  reviewForEntries,
   sessionForTheme,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
@@ -21,7 +21,7 @@ import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
 import { claimDrillResult } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
-import { buildPuzzlePool, reviewId } from '@/src/logic/puzzlePool';
+import { buildPuzzlePool, reviewMiss } from '@/src/logic/puzzlePool';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
@@ -56,12 +56,7 @@ function playingPool() {
 }
 
 function reviewSession(theme: ThemeFilter) {
-  const entries = useProgressStore.getState().review;
-  return reviewForTheme(
-    entries.map((entry) => entry.id),
-    theme,
-    entries.flatMap((entry) => (entry.drill ? [entry.drill] : [])),
-  );
+  return reviewForEntries(useProgressStore.getState().review, theme);
 }
 
 export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak: boolean) {
@@ -243,7 +238,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     if (correct) {
       if (latest.current.reviewing) recordSave(current.id);
     } else {
-      recordMiss(reviewId(current.id));
+      const miss = reviewMiss(current);
+      recordMiss(miss.id, miss.drill);
     }
   };
 

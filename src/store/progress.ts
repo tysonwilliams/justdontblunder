@@ -4,6 +4,7 @@ import { persist, type PersistStorage } from 'zustand/middleware';
 import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
 import { profileFromSaved, type GameProfile } from '@/src/logic/gameImport';
 import { withLessonComplete } from '@/src/logic/lessons';
+import { localDateKey, previousLocalDateKey } from '@/src/logic/localDate';
 import { PUZZLE_POOL_SIZE, keepOwnDrills, mergeOwnDrills } from '@/src/logic/puzzlePool';
 import {
   noteSave,
@@ -58,6 +59,8 @@ export type ProgressState = {
   drillsPromptSkipped: boolean;
   /** Newest personal blunders. The starter set fills this out to 100 at play time. */
   ownDrills: DrillPosition[];
+  /** Ids from a pasted PGN. A username scan keeps these when that position is not in the scan. */
+  pastedIds: string[];
   scan: ScanProgress;
   /** The player started the drills behind the username prompt. The scan can keep running. */
   scanPromptDismissed: boolean;
@@ -70,7 +73,7 @@ export type ProgressState = {
   setScan: (scan: ScanProgress) => void;
   dismissScanPrompt: () => void;
   completeLesson: (id: string) => void;
-  recordMiss: (drillId: string) => void;
+  recordMiss: (drillId: string, drill?: DrillPosition) => void;
   /** One correct review. The second one removes the position. */
   recordSave: (drillId: string) => void;
   savePersonalDrill: (drill: DrillPosition) => void;
@@ -85,7 +88,7 @@ export type ProgressState = {
 export function missesForDate(
   missedDate: string | null,
   missedIds: string[],
-  today = todayKey(),
+  today = localDateKey(),
 ): string[] {
   void missedDate;
   void today;
@@ -96,14 +99,16 @@ function withReview(review: ReviewEntry[]): { review: ReviewEntry[]; missedIds: 
   return { review, missedIds: review.map((entry) => entry.id) };
 }
 
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function yesterdayKey(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+function savedIdList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string' || item.length === 0 || seen.has(item)) continue;
+    seen.add(item);
+    ids.push(item);
+  }
+  return ids;
 }
 
 function scanFromSaved(value: unknown): ScanProgress {
@@ -119,15 +124,15 @@ function scanFromSaved(value: unknown): ScanProgress {
   };
 }
 
-function bumpStreak(lastDrillDate: string | null, dailyStreak: number): {
+function bumpStreak(lastDrillDate: string | null, dailyStreak: number, now = new Date()): {
   dailyStreak: number;
   lastDrillDate: string;
 } {
-  const today = todayKey();
+  const today = localDateKey(now);
   if (lastDrillDate === today) {
     return { dailyStreak, lastDrillDate: today };
   }
-  if (lastDrillDate === yesterdayKey()) {
+  if (lastDrillDate === previousLocalDateKey(now)) {
     return { dailyStreak: dailyStreak + 1, lastDrillDate: today };
   }
   return { dailyStreak: 1, lastDrillDate: today };
@@ -156,6 +161,7 @@ export const useProgressStore = create<ProgressState>()(
       gameProfile: null,
       drillsPromptSkipped: false,
       ownDrills: [],
+      pastedIds: [],
       scan: IDLE_SCAN,
       scanPromptDismissed: false,
       markDrillResult: (correct, theme) =>
@@ -185,12 +191,27 @@ export const useProgressStore = create<ProgressState>()(
       dismissScanPrompt: () => set({ scanPromptDismissed: true }),
       completeLesson: (id) =>
         set((state) => ({ completedLessons: withLessonComplete(state.completedLessons, id) })),
-      recordMiss: (drillId) => set((state) => withReview(rememberBankMiss(state.review, drillId))),
+      recordMiss: (drillId, drill) =>
+        set((state) => {
+          const position = drill ?? state.ownDrills.find((item) => item.id === drillId);
+          return withReview(rememberBankMiss(state.review, drillId, position));
+        }),
       recordSave: (drillId) => set((state) => withReview(noteSave(state.review, drillId))),
       savePersonalDrill: (drill) => set((state) => withReview(rememberPosition(state.review, drill))),
       saveImportedDrills: (drills) => set({ ownDrills: keepOwnDrills(drills, PUZZLE_POOL_SIZE) }),
       mergeImportedDrills: (drills) =>
-        set((state) => ({ ownDrills: mergeOwnDrills(state.ownDrills, drills, PUZZLE_POOL_SIZE) })),
+        set((state) => {
+          const ownDrills = mergeOwnDrills(state.ownDrills, drills, PUZZLE_POOL_SIZE);
+          const live = new Set(ownDrills.map((item) => item.id));
+          const pastedIds: string[] = [];
+          const seen = new Set<string>();
+          for (const id of [...state.pastedIds, ...drills.map((item) => item.id)]) {
+            if (!live.has(id) || seen.has(id)) continue;
+            seen.add(id);
+            pastedIds.push(id);
+          }
+          return { ownDrills, pastedIds };
+        }),
       recordPuzzleRun: (length) =>
         set((state) => ({
           bestPuzzleStreak: Math.max(state.bestPuzzleStreak, length),
@@ -223,6 +244,7 @@ export const useProgressStore = create<ProgressState>()(
           gameProfile: null,
           drillsPromptSkipped: false,
           ownDrills: [],
+          pastedIds: [],
           scan: IDLE_SCAN,
           scanPromptDismissed: false,
         }),
@@ -247,6 +269,7 @@ export const useProgressStore = create<ProgressState>()(
           gameProfile: profileFromSaved(saved.gameProfile),
           drillsPromptSkipped: saved.drillsPromptSkipped ?? false,
           ownDrills: parseDrillList(saved.ownDrills, PUZZLE_POOL_SIZE),
+          pastedIds: savedIdList(saved.pastedIds),
           scan: scanFromSaved(saved.scan),
           scanPromptDismissed: false,
         };

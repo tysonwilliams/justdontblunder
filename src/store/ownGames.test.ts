@@ -18,9 +18,10 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { playUnlocked } from '@/src/logic/earlyPlay';
+import { pastedGameDrills } from '@/src/logic/gameImport';
 import { resetOwnScanForTests, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
-import { SCAN_PERSIST_INTERVAL_MS } from '@/src/store/progressStorage';
+import { flushCoalescedPersistForTests, setScanPersistIntervalForTests } from '@/src/store/progressStorage';
 
 function queenHang(second: string): string {
   const game = new Chess();
@@ -60,6 +61,7 @@ describe('own scan', () => {
     resetOwnScanForTests();
     useProgressStore.setState({
       ownDrills: [],
+      pastedIds: [],
       gameProfile: null,
       scanPromptDismissed: false,
       scan: { phase: 'idle', found: 0, games: 0, message: '', incoming: false },
@@ -155,6 +157,7 @@ describe('own scan', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
+    setScanPersistIntervalForTests(60_000);
     const pending = runOwnScan('chesscom', 'Me', async (url) => {
       if (String(url).endsWith('/archives')) return json({ archives: [older, newer] });
       if (String(url) === newer) {
@@ -165,7 +168,7 @@ describe('own scan', () => {
     });
     try {
       await waitUntil(() => useProgressStore.getState().scan.games >= 8);
-      await new Promise((resolve) => setTimeout(resolve, SCAN_PERSIST_INTERVAL_MS + 250));
+      await flushCoalescedPersistForTests();
       const played = useProgressStore.getState().scan.games;
       expect(played).toBeGreaterThanOrEqual(8);
       expect(writes.length).toBeGreaterThan(0);
@@ -192,9 +195,50 @@ describe('own scan', () => {
     await useProgressStore.persist.rehydrate();
     expect(useProgressStore.getState().ownDrills).toHaveLength(state.ownDrills.length);
   });
+
+  it('keeps pasted games when a username scan publishes', async () => {
+    const pasted = pastedGameDrills(queenHang('h3'), 'w');
+    expect(pasted.readable).toBe(true);
+    expect(pasted.drills.length).toBeGreaterThan(0);
+    useProgressStore.getState().mergeImportedDrills(pasted.drills);
+    const pastedIds = pasted.drills.map((drill) => drill.id);
+    expect(useProgressStore.getState().pastedIds).toEqual(pastedIds);
+    const stray = { ...pasted.drills[0]!, id: 'own-not-pasted' };
+    useProgressStore.setState({
+      ownDrills: [...useProgressStore.getState().ownDrills, stray],
+    });
+
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (String(url).endsWith('/archives')) return json({ archives: [older, newer] });
+      if (String(url) === newer) return json({ games: games(['a3', 'a4', 'b3'], 30) });
+      return json({ games: games(['c3'], 10) });
+    });
+    await expect(runOwnScan('chesscom', 'Me', fetchImpl)).resolves.toBe('done');
+
+    const ids = useProgressStore.getState().ownDrills.map((drill) => drill.id);
+    for (const id of pastedIds) expect(ids).toContain(id);
+    expect(ids).not.toContain('own-not-pasted');
+    expect(ids.length).toBeGreaterThan(pastedIds.length);
+
+    const saved = savedProgress();
+    expect(saved.pastedIds).toEqual(pastedIds);
+    const raw = memory.get('jdb-progress-v1');
+    useProgressStore.setState({ ownDrills: [], pastedIds: [] });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    memory.set('jdb-progress-v1', raw ?? '');
+    await useProgressStore.persist.rehydrate();
+    const restored = useProgressStore.getState().ownDrills.map((drill) => drill.id);
+    for (const id of pastedIds) expect(restored).toContain(id);
+    expect(restored).not.toContain('own-not-pasted');
+    expect(useProgressStore.getState().pastedIds).toEqual(pastedIds);
+  });
 });
 
-function savedProgress(): { ownDrills: unknown[]; scan: { phase?: string; incoming?: boolean } } {
+function savedProgress(): {
+  ownDrills: unknown[];
+  pastedIds?: string[];
+  scan: { phase?: string; incoming?: boolean };
+} {
   const raw = memory.get('jdb-progress-v1');
   if (!raw) throw new Error('progress was not written');
   return JSON.parse(raw).state;

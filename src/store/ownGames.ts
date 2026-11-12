@@ -1,7 +1,7 @@
 import type { DrillPosition } from '@/src/logic/drills';
 import { collectPublicDrills, ImportError, type GameFetch, type GameProfile, type GameSite } from '@/src/logic/gameImport';
 import { resetScanWorkerForTests } from '@/src/logic/scanWorkerClient';
-import { foundLine, keepOwnDrills, poolSummary, PUZZLE_POOL_SIZE } from '@/src/logic/puzzlePool';
+import { foundLine, mergeScannedDrills, poolSummary, PUZZLE_POOL_SIZE } from '@/src/logic/puzzlePool';
 import { beginCoalescedPersist, endCoalescedPersist, resetProgressPersistForTests } from '@/src/store/progressStorage';
 import { useProgressStore, type ScanProgress } from '@/src/store/progress';
 
@@ -19,10 +19,24 @@ export function resetOwnScanForTests(): void {
 }
 
 function publish(scan: ScanProgress, drills?: readonly DrillPosition[], profile?: GameProfile): void {
-  const next: { scan: ScanProgress; ownDrills?: DrillPosition[]; gameProfile?: GameProfile } = { scan };
-  if (drills) next.ownDrills = keepOwnDrills(drills, PUZZLE_POOL_SIZE);
-  if (profile) next.gameProfile = profile;
-  useProgressStore.setState(next);
+  useProgressStore.setState((state) => {
+    const next: {
+      scan: ScanProgress;
+      ownDrills?: DrillPosition[];
+      pastedIds?: string[];
+      gameProfile?: GameProfile;
+    } = { scan };
+    if (drills) {
+      const ownDrills = mergeScannedDrills(state.ownDrills, drills, state.pastedIds, PUZZLE_POOL_SIZE);
+      next.ownDrills = ownDrills;
+      const live = new Set(ownDrills.map((drill) => drill.id));
+      if (state.pastedIds.some((id) => !live.has(id))) {
+        next.pastedIds = state.pastedIds.filter((id) => live.has(id));
+      }
+    }
+    if (profile) next.gameProfile = profile;
+    return next;
+  });
 }
 
 /** Scan public games into the saved puzzle list. A saved username means the lookup finished. */
