@@ -2,7 +2,7 @@ import { useRouter, type Href } from 'expo-router';
 import { Children, type ReactNode, useState } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
 
-import { PIECE_CREDIT } from '@/src/components/Board/pieceCredit';
+import { AboutFooter } from '@/src/components/legal/AboutFooter';
 import { GameImport } from '@/src/components/progress/GameImport';
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
@@ -238,7 +238,30 @@ export default function ProgressScreen() {
             </>
           )}
         </View>
-        <Text style={text.muted}>{PIECE_CREDIT}</Text>
+
+        <View style={styles.group}>
+          <Text style={text.section}>Privacy and data</Text>
+          <Text style={text.muted}>
+            Progress on this device stays here until you erase it. Optional accounts are coming soon.
+          </Text>
+          <View style={[styles.toggles, styles.togglesWrap]}>
+            <Button
+              label="Privacy policy"
+              variant="secondary"
+              fullWidth={false}
+              testID="progress-privacy"
+              onPress={() => router.push('/privacy' as Href)}
+            />
+            <Button
+              label="Delete data"
+              variant="secondary"
+              fullWidth={false}
+              testID="progress-delete"
+              onPress={() => router.push('/delete-account' as Href)}
+            />
+          </View>
+        </View>
+        <AboutFooter />
       </View>
 
       <Dialog visible={confirmReset}>
