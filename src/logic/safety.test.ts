@@ -42,11 +42,12 @@ describe('the save judge', () => {
     expect(moveOutcome(drill('hang-p-01').fen, 'd8', 'g5', 'b')).toBeLessThan(0);
   });
 
-  it('rejects walking into the fork and accepts taking the knight', () => {
+  it('rejects a king step into the fork and passes the queen step that only loses later', () => {
     expect(ok('fork-04', 'd1c2')).toBe(true);
     expect(ok('fork-04', 'e1e2')).toBe(false);
     expect(ok('fork-05', 'e1e2')).toBe(false);
-    expect(ok('fork-06', 'd2e2')).toBe(false);
+    expect(ok('fork-06', 'd2e2')).toBe(true);
+    expect(moveOutcome(drill('fork-06').fen, 'd2', 'e2', 'w')).toBeGreaterThanOrEqual(0);
     expect(ok('fork-06', 'd3e4')).toBe(true);
   });
 

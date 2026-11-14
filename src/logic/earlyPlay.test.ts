@@ -46,7 +46,7 @@ describe('early play', () => {
     expect(next.map((item) => item.id)).toEqual(['p1', 'p2', 'p3', 's1']);
   });
 
-  it('keeps cycled starter fillers so a 100-puzzle session does not shrink', () => {
+  it('keeps a 100-puzzle session from shrinking when a new blunder arrives', () => {
     const personal = [drill('p1'), drill('p2'), drill('p3')];
     const current = buildPuzzlePool(personal);
     const next = appendIncomingPuzzles(current, [...personal, drill('p4')], 0);
@@ -54,7 +54,11 @@ describe('early play', () => {
     expect(next).toHaveLength(100);
     expect(next[0]).toBe(current[0]);
     expect(next.map((item) => item.id)).toContain('p4');
-    expect(next.some((item) => item.id.includes('~'))).toBe(true);
+    const short = buildPuzzlePool(personal, getAllDrills().slice(0, 4));
+    expect(short.some((item) => item.id.includes('~'))).toBe(true);
+    const grown = appendIncomingPuzzles(short, [...personal, drill('p4')], 0);
+    expect(grown).toHaveLength(short.length);
+    expect(grown.map((item) => item.id)).toContain('p4');
   });
 
   it('holds the board until play unlocks, then adopts once and appends after that', () => {
