@@ -4,7 +4,7 @@ A chess trainer for new and intermediate players. Build the habit of checking be
 
 ## Play
 
-- Guest-first. Progress stays on this device. There is no account and no sign-in.
+- Guest-first. Play stays open with no account. Optional sign-in is an email magic link, email and password, Google, or Apple. Progress stays on this device either way.
 - Home, Learn, Drills, Practice, and Progress.
 - Drills pass any safe move. A blunder is red. A save is green.
 - Drill modes are Play (the default), Pick, and Review. Streak is a sudden-death toggle on Play only.
@@ -52,7 +52,7 @@ npm run grow-bank
 - Blunders are judged in the app with chess.js. No chess engine is bundled into the web or native build.
 - Web export is configured for Vercel (`expo export -p web`).
 
-`ios/` and `android/` are not in this repo. Expo generates them for a native build. There is no EAS config and no store build here. There is no sign-in. Optional Supabase sync stays off unless its env flag is set. See `docs/supabase.md`.
+`ios/` and `android/` are not in this repo. Expo generates them for a native build. There is no EAS config and no store build here. Optional Supabase sync runs when someone is signed in, unless `EXPO_PUBLIC_SYNC_ENABLED` is the string `false`. See `docs/supabase.md`.
 
 ## Project layout
 

@@ -1,13 +1,14 @@
-import { useRouter, type Href } from 'expo-router';
+import { Link, useRouter, type Href } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
 import { text } from '@/src/components/ui/text';
+import { accountsConfigured } from '@/src/auth/session';
 import { useProgressStore, type Experience } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { radii, spacing } from '@/src/theme/tokens';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme/tokens';
 
 const CHOICES: readonly { id: Experience; label: string; href: Href }[] = [
   { id: 'new', label: "I'm brand new", href: '/learn' },
@@ -45,6 +46,11 @@ export function Welcome() {
           />
         ))}
         <Button label="Skip" variant="ghost" testID="welcome-skip" onPress={skipWelcome} />
+        {accountsConfigured() ? (
+          <Link href={'/account' as Href} testID="welcome-sign-in" style={styles.link}>
+            <Text style={styles.linkText}>Have an account? Sign in</Text>
+          </Link>
+        ) : null}
       </View>
     </View>
   );
@@ -71,5 +77,17 @@ const styles = themedStyleSheet((colors) => ({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
+  },
+  link: {
+    alignSelf: 'center',
+    paddingVertical: spacing[2],
+    cursor: 'pointer',
+  },
+  linkText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[22],
+    color: colors.accent,
+    textAlign: 'center',
   },
 }));

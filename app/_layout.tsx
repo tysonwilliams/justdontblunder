@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { BootSkeleton } from '@/src/components/ui/Skeleton';
+import { startAccountSession } from '@/src/auth/session';
 import { startProgressSync } from '@/src/data/sync/gate';
 import { unlockFeedback } from '@/src/feedback/playFeedback';
 import { useResumeScan } from '@/src/store/useResumeScan';
@@ -80,6 +81,7 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
+  useEffect(() => startAccountSession(), []);
   useEffect(() => startProgressSync(), []);
 
   useEffect(() => {

@@ -16,7 +16,7 @@ Keep these on every change:
 - Public Chess.com / Lichess username import never asks for a chess-site password. Pasted PGN is the other import path.
 - Keep the core loop: concrete threat language, the opponent's capture on the board, a short explanation, Try again, and Review.
 
-Sign-in UI and store builds stay out of scope. The Supabase data layer is off unless `EXPO_PUBLIC_SYNC_ENABLED=true`. See `docs/supabase.md`. `ios/` and `android/` are not checked in. There is no `eas.json`. Do not claim those exist.
+Optional accounts never gate play. Sign-in is an email magic link, email and password, Google, or Apple on the web. Sync runs when a publishable Supabase client and a session exist, unless `EXPO_PUBLIC_SYNC_ENABLED` is the string `false`. See `docs/supabase.md`. Store builds stay out of scope. `ios/` and `android/` are not checked in. There is no `eas.json`. Do not claim those exist.
 
 The running app does not load a chess engine. Do not add Stockfish (or any engine) back into the web or native bundle. `scripts/refresh-acceptable.mts` is the only Stockfish caller. It uses the `stockfish` devDependency to rebuild the offline teaching window in `src/data/beginner-blunders.json`.
 

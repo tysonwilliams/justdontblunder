@@ -23,20 +23,29 @@ export function syncClientFrom(client: SupabaseClient): SyncClient {
   return client as unknown as SyncClient;
 }
 
+/**
+ * Sync is allowed unless this is exactly "false".
+ * Unset and "true" both allow sync once a publishable client and a session exist.
+ */
 export function isSyncEnabled(): boolean {
-  return process.env.EXPO_PUBLIC_SYNC_ENABLED === 'true';
+  return process.env.EXPO_PUBLIC_SYNC_ENABLED !== 'false';
+}
+
+/** URL and publishable key, or null when the client would refuse to start. */
+export function getSupabasePublicConfig(): { url: string; anonKey: string } | null {
+  return publicConfig();
 }
 
 function createSupabase(): SupabaseClient | null {
-  const url = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
-  const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';
-  if (!url || !key || isServiceRoleKey(key)) return null;
+  const config = publicConfig();
+  if (!config) return null;
   try {
-    return createClient(url, key, {
+    return createClient(config.url, config.anonKey, {
       auth: {
         storage: AsyncStorage,
         autoRefreshToken: true,
         persistSession: true,
+        // /auth/callback exchanges the code. Detecting it here would consume the code twice.
         detectSessionInUrl: false,
         flowType: 'pkce',
       },
@@ -44,6 +53,13 @@ function createSupabase(): SupabaseClient | null {
   } catch {
     return null;
   }
+}
+
+function publicConfig(): { url: string; anonKey: string } | null {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
+  const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';
+  if (!url || !key || isServiceRoleKey(key)) return null;
+  return { url, anonKey: key };
 }
 
 function isServiceRoleKey(key: string): boolean {

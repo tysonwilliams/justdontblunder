@@ -260,6 +260,94 @@ describe('mergeSnapshots', () => {
     });
   });
 
+  it('keeps both the guest and the account when someone signs in', () => {
+    const guestDrill = bank[0];
+    const accountDrill = bank[1];
+    if (!guestDrill || !accountDrill) throw new Error('bank is short');
+    const merged = mergeSnapshots(
+      snapshot(
+        {
+          training: { xp: 4, completedLessons: ['guest-lesson'], dailyStreak: 2 },
+          review: { review: [{ id: guestDrill.id, saves: 0, drill: guestDrill }] },
+          library: { ownDrills: [guestDrill] },
+          preferences: { experience: 'basics', welcomeSkipped: true, drillsPromptSkipped: false },
+          scan: {
+            phase: 'paused',
+            found: 1,
+            games: 1,
+            message: 'Paused.',
+            incoming: false,
+            cursor: { ...emptyCursor('lichess', 'ada'), seen: ['l:guest'], games: 1, resume: true },
+          },
+        },
+        {
+          attempts: [
+            {
+              clientId: 'guest-attempt',
+              drillId: guestDrill.id,
+              move: 'e7e5',
+              outcome: 'safe',
+              createdAt: '2026-03-04T00:00:00.000Z',
+            },
+          ],
+        },
+      ),
+      snapshot(
+        {
+          training: { xp: 9, completedLessons: ['account-lesson'], dailyStreak: 5 },
+          review: { review: [{ id: accountDrill.id, saves: 1, drill: accountDrill }] },
+          library: { ownDrills: [accountDrill] },
+          preferences: { experience: 'new', welcomeSkipped: false, drillsPromptSkipped: true },
+          scan: {
+            phase: 'done',
+            found: 2,
+            games: 2,
+            message: 'Done.',
+            incoming: false,
+            cursor: { ...emptyCursor('lichess', 'ada'), seen: ['l:account'], games: 2, resume: false },
+          },
+        },
+        {
+          attempts: [
+            {
+              clientId: 'account-attempt',
+              drillId: accountDrill.id,
+              move: 'd2d4',
+              outcome: 'blunder',
+              createdAt: '2026-03-05T00:00:00.000Z',
+            },
+          ],
+        },
+      ),
+    );
+    expect(merged.progress.library.ownDrills.map((drill) => drill.id)).toEqual([guestDrill.id, accountDrill.id]);
+    expect(merged.progress.training.xp).toBe(9);
+    expect(merged.progress.training.dailyStreak).toBe(5);
+    expect(merged.progress.training.completedLessons).toEqual(['guest-lesson', 'account-lesson']);
+    expect(merged.progress.review.review.map((entry) => entry.id)).toEqual([guestDrill.id, accountDrill.id]);
+    expect(merged.progress.preferences.experience).toBe('basics');
+    expect(merged.progress.scan.cursor?.seen).toEqual(['l:guest', 'l:account']);
+    expect(merged.attempts.map((attempt) => attempt.clientId)).toEqual(['guest-attempt', 'account-attempt']);
+  });
+
+  it('keeps account progress when the guest document is still blank', () => {
+    const accountDrill = bank[1];
+    if (!accountDrill) throw new Error('bank is short');
+    const merged = mergeSnapshots(
+      snapshot(),
+      snapshot({
+        training: { xp: 8, completedLessons: ['pin'] },
+        library: { ownDrills: [accountDrill] },
+        preferences: { experience: 'basics', welcomeSkipped: true, drillsPromptSkipped: true },
+      }),
+    );
+    expect(merged.progress.training.xp).toBe(8);
+    expect(merged.progress.training.completedLessons).toEqual(['pin']);
+    expect(merged.progress.library.ownDrills.map((drill) => drill.id)).toEqual([accountDrill.id]);
+    expect(merged.progress.preferences.experience).toBe('basics');
+    expect(merged.progress.preferences.welcomeSkipped).toBe(true);
+  });
+
   it('does not mix seen games from a different username', () => {
     const merged = mergeSnapshots(
       snapshot({
