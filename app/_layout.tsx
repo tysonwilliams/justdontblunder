@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import 'react-native-url-polyfill/auto';
 import {
   Nunito_500Medium,
   Nunito_700Bold,
@@ -19,6 +20,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { BootSkeleton } from '@/src/components/ui/Skeleton';
+import { startProgressSync } from '@/src/data/sync/gate';
 import { unlockFeedback } from '@/src/feedback/playFeedback';
 import { useResumeScan } from '@/src/store/useResumeScan';
 import { useThemePreference } from '@/src/store/themePreference';
@@ -77,6 +79,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) throw error;
   }, [error]);
+
+  useEffect(() => startProgressSync(), []);
 
   useEffect(() => {
     if (!themeReady) return;

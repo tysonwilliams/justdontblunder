@@ -33,6 +33,7 @@ Expo web serves at http://localhost:43127. `npm run start` opens the Expo dev se
 | `npm test` | Unit tests |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
 | `node scripts/board-stability.mjs` | Checks that the phone board stays put after a move. Needs the web app running. |
+| `npm run seed:puzzles` | Writes `supabase/seeds/puzzles.sql` from the starter bank. |
 
 `scripts/refresh-acceptable.mts` rebuilds the offline teaching window with the Stockfish CLI. That CLI is the `stockfish` devDependency. The running app does not load Stockfish.
 
@@ -51,7 +52,7 @@ npm run grow-bank
 - Blunders are judged in the app with chess.js. No chess engine is bundled into the web or native build.
 - Web export is configured for Vercel (`expo export -p web`).
 
-`ios/` and `android/` are not in this repo. Expo generates them for a native build. There is no EAS config and no store build here. There is no Supabase and no account system.
+`ios/` and `android/` are not in this repo. Expo generates them for a native build. There is no EAS config and no store build here. There is no sign-in. Optional Supabase sync stays off unless its env flag is set. See `docs/supabase.md`.
 
 ## Project layout
 
@@ -60,8 +61,10 @@ app/                 Expo Router screens (Home, Learn, Drills, Practice, Progres
 src/components/      Board, drills, lessons, practice
 src/engine/          Pattern detectors (hanging pieces, forks, pins)
 src/logic/           chess.js judging, drills, import
-src/data/            beginner-blunders.json
+src/data/            beginner-blunders.json, the optional Supabase client
 src/store/           local progress
+supabase/            schema, local config, and the puzzle seed
+docs/supabase.md     how to apply the schema and turn sync on
 src/theme/           color and type tokens
 public/              web shell (index.html)
 .github/workflows/   lint, test, and typecheck on pull requests and on main

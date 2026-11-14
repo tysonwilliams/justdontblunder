@@ -9,8 +9,8 @@ import type { Experience, ProgressState, ScanProgress, ThemeTally } from '@/src/
  * v0 is the flat `jdb-progress-v1` document.
  * v1 splits it into training, review, library, preferences, and scan.
  * v2 adds a scan cursor so a username scan can pause, resume, and skip games
- * it already read. Scan stays on the device. A later sync can ship the other
- * slices and leave this one behind.
+ * it already read. The scan still runs on this device. src/data/sync can upload
+ * the cursor and the other slices when sync is turned on.
  */
 export const PROGRESS_VERSION = 2;
 
