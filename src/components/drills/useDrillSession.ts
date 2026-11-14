@@ -3,6 +3,7 @@ import type { Square } from 'chess.js';
 
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
+import { useTrainerRound } from '@/src/components/trainer/useTrainerRound';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import {
@@ -16,17 +17,18 @@ import {
   type DrillSession as DrillSessionData,
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
-import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
+import { punishmentLine } from '@/src/logic/punishment';
 import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound, missFeedback } from '@/src/logic/saveFeedback';
-import { claimDrillResult } from '@/src/store/drillStats';
+import { buildPuzzlePool } from '@/src/logic/puzzlePool';
+import { roundProgress, trainerBoard, type TrainerMove } from '@/src/logic/trainerRound';
+import { applyRoundEffects } from '@/src/store/trainerResult';
 import { useProgressStore } from '@/src/store/progress';
-import { buildPuzzlePool, reviewMiss } from '@/src/logic/puzzlePool';
+import { useHydrated } from '@/src/store/useHydrated';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
 export type DrillPlayMode = 'play' | 'review';
-type RoundState = 'playing' | 'correct' | 'retry' | 'revealed' | 'streakEnd';
 
 export type DrillRunSummary = {
   saved: number;
@@ -34,21 +36,25 @@ export type DrillRunSummary = {
   playedSan: string | null;
   missText: string;
   fen: string;
-  lastMove: { from: Square; to: Square } | null;
+  lastMove: TrainerMove | null;
   orientation: 'white' | 'black';
   atRisk: Square;
-};
-
-type MissedPlay = {
-  san: string | null;
-  text: string;
-  fen: string;
-  lastMove: { from: Square; to: Square };
 };
 
 function playedSan(fen: string, from: Square, to: Square): string | null {
   const moved = tryMove(createGame(fen), from, to);
   return moved?.san ?? null;
+}
+
+function solutionMove(drill: DrillPosition): { from: Square; to: Square; fen: string } | null {
+  const uci = drill.solution[0];
+  if (!uci || uci.length < 4) return null;
+  const from = uci.slice(0, 2) as Square;
+  const to = uci.slice(2, 4) as Square;
+  const game = createGame(drill.fen);
+  const moved = tryMove(game, from, to);
+  if (!moved) return null;
+  return { from: moved.from, to: moved.to, fen: game.fen() };
 }
 
 function playingPool() {
@@ -64,100 +70,42 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const sudden = mode === 'play' && streak;
   const guided = !sudden;
   const reviewing = mode === 'review';
+  const { state, dispatch } = useTrainerRound();
 
-  const markDrillResult = useProgressStore((s) => s.markDrillResult);
-  const recordMiss = useProgressStore((s) => s.recordMiss);
-  const recordSave = useProgressStore((s) => s.recordSave);
-  const recordPuzzleRun = useProgressStore((s) => s.recordPuzzleRun);
   const bestPuzzleStreak = useProgressStore((s) => s.bestPuzzleStreak);
+  const hydrated = useHydrated(useProgressStore.persist);
 
   const [session, setSession] = useState<DrillSessionData>(() =>
     reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()),
   );
-  const [index, setIndex] = useState(0);
-  const [round, setRound] = useState<RoundState>('playing');
-  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [runSummary, setRunSummary] = useState<DrillRunSummary | null>(null);
-  const [displayFen, setDisplayFen] = useState<string | null>(null);
-  const [shownIdea, setShownIdea] = useState(false);
-  const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
-  const [runOver, setRunOver] = useState(false);
-  const [missedPlay, setMissedPlay] = useState<MissedPlay | null>(null);
   const reviewStarted = useRef(false);
-  const runRecorded = useRef(false);
-  const resultCounted = useRef(false);
   const started = useRef(false);
-  const place = useRef({ index: 0, round: 'playing' as RoundState });
   const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
   positionsRef.current = session.positions;
-  const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
 
+  const index = state.index;
+  const round = state.phase;
   const drill: DrillPosition | undefined = session.positions[index];
+  const puzzleId = drill?.id;
+  const puzzleFen = drill?.fen;
   const done = index >= session.positions.length;
-  const replayActive = runSummary == null && (round === 'retry' || round === 'streakEnd');
-  const playback = usePunishmentPlayback(replayActive, replayLine);
-  const latest = useRef({
-    drill,
-    round,
-    runOver,
-    sudden,
-    score,
-    reviewing,
-    shownIdea,
-    lastMove,
-    displayFen,
-    bestPuzzleStreak,
-    missedPlay,
-  });
-  latest.current = {
-    drill,
-    round,
-    runOver,
-    sudden,
-    score,
-    reviewing,
-    shownIdea,
-    lastMove,
-    displayFen,
-    bestPuzzleStreak,
-    missedPlay,
-  };
+  const place = useRef({ index, round });
   place.current = { index, round };
+  const latest = useRef({ drill, sudden, reviewing });
+  latest.current = { drill, sudden, reviewing };
 
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
     [drill?.sideToMove],
   );
 
-  const resetBoard = () => {
-    setRound('playing');
-    setLastMove(null);
-    setDisplayFen(null);
-    setShownIdea(false);
-    setReplayLine([]);
-  };
-
   const begin = (nextSession: DrillSessionData) => {
     started.current = true;
-    runRecorded.current = false;
-    resultCounted.current = false;
-    setRunOver(false);
-    setMissedPlay(null);
+    dispatch({ type: 'begin' });
     setRunSummary(null);
     setSession(nextSession);
-    setIndex(0);
-    setScore({ correct: 0, total: 0 });
-    resetBoard();
   };
-
-  useEffect(() => {
-    const unsub = useProgressStore.persist.onFinishHydration(() => setHydrated(true));
-    if (useProgressStore.persist.hasHydrated()) setHydrated(true);
-    return () => {
-      unsub();
-    };
-  }, []);
 
   useEffect(() => {
     if (!reviewing) {
@@ -167,7 +115,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     if (!hydrated || reviewStarted.current) return;
     reviewStarted.current = true;
     begin(reviewSession(theme));
-    // begin reads the latest setters. The screen remounts when the filter changes.
+    // The screen remounts when the filter changes. begin reads the latest setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewing, hydrated, theme]);
 
@@ -179,7 +127,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     started,
     () => {
       const own = useProgressStore.getState().ownDrills;
-      const personal = theme === 'all' ? own : own.filter((drill) => drill.theme === theme);
+      const personal = theme === 'all' ? own : own.filter((item) => item.theme === theme);
       return {
         personal,
         rebuilt: sessionForTheme(theme, buildPuzzlePool(own)).positions,
@@ -191,19 +139,14 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   );
 
   useEffect(() => {
-    if (!drill) return;
-    resultCounted.current = false;
-    setDisplayFen(drill.fen);
-    setRound('playing');
-    setLastMove(null);
-    setReplayLine([]);
-  }, [drill?.id, drill?.fen]);
+    if (!puzzleId || !puzzleFen) return;
+    dispatch({ type: 'loadPuzzle', fen: puzzleFen });
+  }, [puzzleId, puzzleFen, dispatch]);
 
   useEffect(() => {
-    if (!sudden || !done || runRecorded.current) return;
-    runRecorded.current = true;
-    recordPuzzleRun(score.correct);
-  }, [done, sudden, recordPuzzleRun, score.correct]);
+    if (!sudden || !done) return;
+    applyRoundEffects(dispatch({ type: 'finishRun' }).effects, undefined, false);
+  }, [done, sudden, dispatch]);
 
   const restart = () => {
     begin(reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()));
@@ -211,140 +154,94 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
 
   const next = () => {
     started.current = true;
-    setIndex((i) => i + 1);
+    dispatch({ type: 'advance', length: session.positions.length, wrap: false });
   };
 
   const tryAgain = () => {
     const current = latest.current.drill;
     if (!current) return;
-    setReplayLine([]);
-    setDisplayFen(current.fen);
-    setLastMove(null);
-    setRound('playing');
-  };
-
-  /** Persist and score each puzzle once, on its first outcome. */
-  const recordFirstResult = (correct: boolean) => {
-    const current = latest.current.drill;
-    if (!current) return;
-    const claim = claimDrillResult(resultCounted.current);
-    resultCounted.current = claim.claimed;
-    if (!claim.recorded) return;
-    setScore((s) => ({
-      correct: s.correct + (correct ? 1 : 0),
-      total: s.total + 1,
-    }));
-    markDrillResult(correct, current.theme);
-    if (correct) {
-      if (latest.current.reviewing) recordSave(current.id);
-    } else {
-      const miss = reviewMiss(current);
-      recordMiss(miss.id, miss.drill);
-    }
+    dispatch({ type: 'tryAgain', fen: current.fen });
   };
 
   const revealIdea = () => {
-    started.current = true;
     const current = latest.current.drill;
     if (!current) return;
-    setShownIdea(true);
-    recordFirstResult(false);
-    const uci = current.solution[0];
-    if (uci && uci.length >= 4) {
-      const from = uci.slice(0, 2) as Square;
-      const to = uci.slice(2, 4) as Square;
-      const game = createGame(current.fen);
-      const moved = tryMove(game, from, to);
-      if (moved) {
-        setDisplayFen(game.fen());
-        setLastMove({ from: moved.from, to: moved.to });
-      }
-    }
-    if (latest.current.sudden) {
-      if (!runRecorded.current) {
-        runRecorded.current = true;
-        recordPuzzleRun(latest.current.score.correct);
-      }
-      setRound('streakEnd');
-      return;
-    }
-    setRound('revealed');
+    const result = dispatch({
+      type: 'reveal',
+      sudden: latest.current.sudden,
+      move: solutionMove(current),
+    });
+    if (!result.accepted) return;
+    started.current = true;
+    applyRoundEffects(result.effects, current, latest.current.reviewing);
   };
 
-  const onMove = useCallback((event: BoardMoveEvent) => {
-    const now = latest.current;
-    const current = now.drill;
-    if (!current || now.round !== 'playing') return false;
-    started.current = true;
+  const onMove = useCallback(
+    (event: BoardMoveEvent) => {
+      const now = latest.current;
+      const current = now.drill;
+      if (!current) return false;
+      const ok = isCorrectDrillMove(current, event.from, event.to);
+      const result = dispatch({
+        type: 'answer',
+        correct: ok,
+        afterFen: event.afterFen,
+        move: { from: event.from, to: event.to },
+        san: event.san,
+        line: ok ? [] : punishmentLine(current, event.from, event.to),
+        sudden: now.sudden,
+        missText: ok ? '' : missFeedback(current, event.from, event.to),
+      });
+      if (!result.accepted) return false;
+      started.current = true;
+      applyRoundEffects(result.effects, current, now.reviewing);
+      return ok;
+    },
+    [dispatch],
+  );
 
-    setDisplayFen(event.afterFen);
-    setLastMove({ from: event.from, to: event.to });
-
-    const ok = isCorrectDrillMove(current, event.from, event.to);
-    if (ok) {
-      if (!now.runOver) recordFirstResult(true);
-      setReplayLine([]);
-      setRound('correct');
-      return true;
-    }
-    setReplayLine(punishmentLine(current, event.from, event.to));
-    if (now.sudden) {
-      if (!now.runOver) {
-        recordFirstResult(false);
-        setMissedPlay({
-          san: event.san,
-          text: missFeedback(current, event.from, event.to),
-          fen: event.afterFen,
-          lastMove: { from: event.from, to: event.to },
-        });
-        if (!runRecorded.current) {
-          runRecorded.current = true;
-          recordPuzzleRun(now.score.correct);
-        }
-        setRunOver(true);
-      }
-      setRound('streakEnd');
-    } else {
-      recordFirstResult(false);
-      setRound('retry');
-    }
-    return false;
-  }, []);
+  const replayActive = runSummary == null && (round === 'retry' || round === 'streakEnd');
+  const playback = usePunishmentPlayback(replayActive, state.replayLine);
+  const board = trainerBoard(playback, state, drill?.fen ?? '', replayActive);
 
   const showRunSummary = () => {
-    const now = latest.current;
-    const current = now.drill;
+    const current = drill;
     if (!current) return;
-    const stillOnMiss = now.round === 'streakEnd';
+    const stillOnMiss = round === 'streakEnd';
     const played =
-      now.missedPlay?.san ?? (now.lastMove ? playedSan(current.fen, now.lastMove.from, now.lastMove.to) : null);
+      state.missedPlay?.san ??
+      (state.lastMove ? playedSan(current.fen, state.lastMove.from, state.lastMove.to) : null);
     setRunSummary({
-      saved: now.score.correct,
-      best: Math.max(now.bestPuzzleStreak, now.score.correct),
+      saved: state.score.correct,
+      best: Math.max(bestPuzzleStreak, state.score.correct),
       playedSan: played,
       missText:
-        now.missedPlay?.text ??
-        (!now.shownIdea && now.lastMove ? missFeedback(current, now.lastMove.from, now.lastMove.to) : current.note),
-      fen: stillOnMiss ? (playback.fen ?? now.displayFen ?? current.fen) : (now.missedPlay?.fen ?? current.fen),
-      lastMove: stillOnMiss ? (playback.move ?? now.lastMove) : (now.missedPlay?.lastMove ?? null),
+        state.missedPlay?.text ??
+        (!state.shownIdea && state.lastMove
+          ? missFeedback(current, state.lastMove.from, state.lastMove.to)
+          : current.note),
+      fen: stillOnMiss ? board.fen : (state.missedPlay?.fen ?? current.fen),
+      lastMove: stillOnMiss ? board.lastMove : (state.missedPlay?.lastMove ?? null),
       orientation: current.sideToMove === 'b' ? 'black' : 'white',
       atRisk: current.atRiskSquare,
     });
   };
 
-  const replyReady = !replayActive || playback.done;
-  const boardFen = playback.fen ?? displayFen ?? drill?.fen ?? '';
-  const boardLastMove = playback.move ?? lastMove;
-  const progress = drill ? (index + (round === 'playing' ? 0 : 1)) / session.positions.length : 0;
+  const progress = drill ? roundProgress(index, round, session.positions.length) : 0;
   const marks = useMemo(
-    () => (drill ? highlightsForRound(round, lastMove, drill.atRiskSquare) : { squares: [] as Square[], tone: 'danger' as const }),
-    [drill, round, lastMove],
+    () =>
+      drill
+        ? highlightsForRound(round, state.lastMove, drill.atRiskSquare)
+        : { squares: [] as Square[], tone: 'danger' as const },
+    [drill, round, state.lastMove],
   );
-  const taught = drill ? (feedbackForRound(round, drill, shownIdea ? null : lastMove) ?? '') : '';
+  const taught = drill ? (feedbackForRound(round, drill, state.shownIdea ? null : state.lastMove) ?? '') : '';
   const coachKind = round === 'correct' ? 'save' : round === 'retry' || round === 'streakEnd' ? 'blunder' : 'idea';
-  const roundCopy = drill ? coachForRound(coachKind, drill.fen, shownIdea ? null : lastMove, taught) : '';
-  const threatFrom = !shownIdea ? playback.arrow?.from : undefined;
-  const threatTo = !shownIdea ? playback.arrow?.to : undefined;
+  const roundCopy = drill
+    ? coachForRound(coachKind, drill.fen, state.shownIdea ? null : state.lastMove, taught)
+    : '';
+  const threatFrom = !state.shownIdea ? playback.arrow?.from : undefined;
+  const threatTo = !state.shownIdea ? playback.arrow?.to : undefined;
   const threatArrow = useMemo<BoardArrow[]>(() => {
     if (!threatFrom || !threatTo) return [];
     return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
@@ -353,7 +250,6 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     () => (guided && round === 'playing' && drill ? [drill.atRiskSquare] : []),
     [guided, round, drill],
   );
-  const watchingReply = replayActive && !playback.done;
 
   return {
     guided,
@@ -366,19 +262,19 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     session,
     index,
     round,
-    score,
+    score: state.score,
     orientation,
-    boardFen,
-    boardLastMove,
+    boardFen: board.fen,
+    boardLastMove: board.lastMove,
     progress,
     marks,
     roundCopy,
     threatArrow,
     attentionSquares,
-    watchingReply,
-    replyReady,
-    shownIdea,
-    runOver,
+    watchingReply: board.watchingReply,
+    replyReady: board.replyReady,
+    shownIdea: state.shownIdea,
+    runOver: state.runOver,
     bestPuzzleStreak,
     onMove,
     revealIdea,

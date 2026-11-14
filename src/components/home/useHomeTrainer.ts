@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
+import { useTrainerRound } from '@/src/components/trainer/useTrainerRound';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import {
@@ -12,13 +13,15 @@ import {
   type DrillPosition,
 } from '@/src/logic/drills';
 import { leadWithPersonal } from '@/src/logic/earlyPlay';
-import { buildPuzzlePool, reviewMiss } from '@/src/logic/puzzlePool';
-import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
+import { buildPuzzlePool } from '@/src/logic/puzzlePool';
+import { punishmentLine } from '@/src/logic/punishment';
 import { learnCard } from '@/src/logic/lessons';
 import { coachForRound } from '@/src/logic/coach';
 import { feedbackForRound } from '@/src/logic/saveFeedback';
-import { claimDrillResult } from '@/src/store/drillStats';
+import { roundProgress, trainerBoard, type TrainerPhase } from '@/src/logic/trainerRound';
+import { applyRoundEffects } from '@/src/store/trainerResult';
 import { useProgressStore } from '@/src/store/progress';
+import { useHydrated } from '@/src/store/useHydrated';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
@@ -40,14 +43,17 @@ export function homeEntryHref(id: HomeEntryId, learnHref: string): string {
   }
 }
 
-export function homeResultCard(round: HomeRound): { title: string; tone: 'success' | 'danger' } | null {
+export function homeResultCard(round: TrainerPhase): { title: string; tone: 'success' | 'danger' } | null {
   switch (round) {
     case 'playing':
       return null;
     case 'correct':
       return { title: 'Nice save', tone: 'success' };
     case 'retry':
+    case 'streakEnd':
       return { title: 'Blunder', tone: 'danger' };
+    case 'revealed':
+      return null;
     default: {
       const _exhaustive: never = round;
       return _exhaustive;
@@ -64,45 +70,25 @@ function buildHomeSession() {
 
 export function useHomeTrainer() {
   const { colors, scheme } = useTheme();
+  const { state, dispatch } = useTrainerRound();
   const [session, setSession] = useState(buildHomeSession);
-  const [index, setIndex] = useState(0);
-  const [round, setRound] = useState<HomeRound>('playing');
-  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
-  const [displayFen, setDisplayFen] = useState<string | null>(null);
-  const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
-  const [hydrated, setHydrated] = useState(() => useProgressStore.persist.hasHydrated());
-  const resultCounted = useRef(false);
+  const hydrated = useHydrated(useProgressStore.persist);
   const started = useRef(false);
   const positionsRef = useRef(session.positions);
   positionsRef.current = session.positions;
-  const replayActive = round === 'retry';
-  const playback = usePunishmentPlayback(replayActive, replayLine);
-  const replyReady = !replayActive || playback.done;
 
-  const markDrillResult = useProgressStore((s) => s.markDrillResult);
-  const recordMiss = useProgressStore((s) => s.recordMiss);
   const streak = useProgressStore((s) => s.dailyStreak);
   const completedLessons = useProgressStore((s) => s.completedLessons);
   const learn = hydrated
     ? learnCard(completedLessons)
     : { href: '/learn', title: 'Learn', body: 'Six short lessons on blunders.' };
 
+  const index = state.index;
+  const round = state.phase;
   const drill: DrillPosition | undefined = session.positions[index];
   const total = session.positions.length;
-  const orientation = useMemo(
-    () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
-    [drill?.sideToMove],
-  );
   const latest = useRef({ drill, round, index });
   latest.current = { drill, round, index };
-
-  useEffect(() => {
-    const unsub = useProgressStore.persist.onFinishHydration(() => setHydrated(true));
-    if (useProgressStore.persist.hasHydrated()) setHydrated(true);
-    return () => {
-      unsub();
-    };
-  }, []);
 
   usePuzzleGrowth(
     true,
@@ -122,59 +108,55 @@ export function useHomeTrainer() {
   const next = () => {
     if (total === 0) return;
     started.current = true;
-    resultCounted.current = false;
-    setRound('playing');
-    setLastMove(null);
-    setDisplayFen(null);
-    setReplayLine([]);
-    setIndex((i) => (i + 1) % total);
+    dispatch({ type: 'advance', length: total, wrap: true });
   };
 
   const tryAgain = () => {
-    setReplayLine([]);
-    setRound('playing');
-    setLastMove(null);
-    setDisplayFen(null);
+    dispatch({ type: 'tryAgain', fen: null });
   };
 
-  const recordFirstResult = (correct: boolean) => {
-    const current = latest.current.drill;
-    if (!current) return;
-    const claim = claimDrillResult(resultCounted.current);
-    resultCounted.current = claim.claimed;
-    if (!claim.recorded) return;
-    markDrillResult(correct, current.theme);
-    if (!correct) {
-      const miss = reviewMiss(current);
-      recordMiss(miss.id, miss.drill);
-    }
-  };
+  const onMove = useCallback(
+    (event: BoardMoveEvent) => {
+      const current = latest.current.drill;
+      if (!current || latest.current.round !== 'playing') return false;
+      const ok = isCorrectDrillMove(current, event.from, event.to);
+      const result = dispatch({
+        type: 'answer',
+        correct: ok,
+        afterFen: event.afterFen,
+        move: { from: event.from, to: event.to },
+        san: event.san,
+        line: ok ? [] : punishmentLine(current, event.from, event.to),
+        sudden: false,
+        missText: '',
+      });
+      if (!result.accepted) return false;
+      started.current = true;
+      applyRoundEffects(result.effects, current, false);
+      return ok;
+    },
+    [dispatch],
+  );
 
-  const onMove = useCallback((event: BoardMoveEvent) => {
-    const current = latest.current.drill;
-    if (!current || latest.current.round !== 'playing') return false;
-    started.current = true;
-    setDisplayFen(event.afterFen);
-    setLastMove({ from: event.from, to: event.to });
-    const ok = isCorrectDrillMove(current, event.from, event.to);
-    recordFirstResult(ok);
-    if (ok) setReplayLine([]);
-    else setReplayLine(punishmentLine(current, event.from, event.to));
-    setRound(ok ? 'correct' : 'retry');
-    return ok;
-  }, []);
-
-  const boardFen = playback.fen ?? displayFen ?? drill?.fen ?? '';
-  const boardLastMove = playback.move ?? lastMove;
-  const progress = drill ? (index + (round === 'playing' ? 0 : 1)) / total : 0;
+  const replayActive = round === 'retry';
+  const playback = usePunishmentPlayback(replayActive, state.replayLine);
+  const board = trainerBoard(playback, state, drill?.fen ?? '', replayActive);
+  const orientation = useMemo(
+    () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
+    [drill?.sideToMove],
+  );
+  const progress = drill ? roundProgress(index, round, total) : 0;
   const marks = useMemo(
-    () => (drill ? highlightsForRound(round, lastMove, drill.atRiskSquare) : { squares: [] as Square[], tone: 'danger' as const }),
-    [drill, round, lastMove],
+    () =>
+      drill
+        ? highlightsForRound(round, state.lastMove, drill.atRiskSquare)
+        : { squares: [] as Square[], tone: 'danger' as const },
+    [drill, round, state.lastMove],
   );
   const card = homeResultCard(round);
-  const taught = drill ? (feedbackForRound(round, drill, lastMove) ?? '') : '';
-  const coachKind = round === 'correct' ? 'save' : round === 'retry' ? 'blunder' : 'idea';
-  const roundCopy = drill ? coachForRound(coachKind, drill.fen, lastMove, taught) : '';
+  const taught = drill ? (feedbackForRound(round, drill, state.lastMove) ?? '') : '';
+  const coachKind = round === 'correct' ? 'save' : round === 'retry' || round === 'streakEnd' ? 'blunder' : 'idea';
+  const roundCopy = drill ? coachForRound(coachKind, drill.fen, state.lastMove, taught) : '';
   const threatFrom = playback.arrow?.from;
   const threatTo = playback.arrow?.to;
   const threatArrow = useMemo<BoardArrow[]>(() => {
@@ -196,8 +178,8 @@ export function useHomeTrainer() {
     streak,
     learn,
     orientation,
-    boardFen,
-    boardLastMove,
+    boardFen: board.fen,
+    boardLastMove: board.lastMove,
     progress,
     marks,
     card,
@@ -205,8 +187,8 @@ export function useHomeTrainer() {
     threatArrow,
     attentionSquares,
     prompt,
-    replyReady,
-    watchingReply: replayActive && !playback.done,
+    replyReady: board.replyReady,
+    watchingReply: board.watchingReply,
     onMove,
     next,
     tryAgain,

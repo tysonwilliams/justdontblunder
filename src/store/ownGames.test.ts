@@ -241,7 +241,21 @@ function savedProgress(): {
 } {
   const raw = memory.get('jdb-progress-v1');
   if (!raw) throw new Error('progress was not written');
-  return JSON.parse(raw).state;
+  const parsed = JSON.parse(raw) as {
+    version?: number;
+    state: {
+      library?: { ownDrills?: unknown[]; pastedIds?: string[] };
+      scan?: { phase?: string; incoming?: boolean };
+    };
+  };
+  if (parsed.version !== 1 || !parsed.state.library) {
+    throw new Error('progress blob was not the sliced v1 document');
+  }
+  return {
+    ownDrills: parsed.state.library.ownDrills ?? [],
+    pastedIds: parsed.state.library.pastedIds,
+    scan: parsed.state.scan ?? {},
+  };
 }
 
 async function waitUntil(ready: () => boolean): Promise<void> {
