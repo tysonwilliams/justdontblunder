@@ -12,11 +12,21 @@ function drill(id: string) {
   return found;
 }
 
+/** A silent sweep longer than 60s makes Vitest drop the worker call that reports the result. */
+function breathe(): Promise<void> {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
 describe('pick the safe move', () => {
-  it('builds one passing move and one real blunder for every drill', () => {
+  it('builds one passing move and one real blunder for every drill', async () => {
     let safeOnA = 0;
     let safeOnB = 0;
+    let seen = 0;
     for (const item of getAllDrills()) {
+      if (seen % 4 === 0) await breathe();
+      seen += 1;
       const choice = safeChoiceFor(item);
       expect(choice, item.id).not.toBeNull();
       if (!choice) continue;
@@ -56,7 +66,7 @@ describe('pick the safe move', () => {
     }
     expect(safeOnA).toBeGreaterThan(0);
     expect(safeOnB).toBeGreaterThan(0);
-  }, 60000);
+  }, 180_000);
 
   it('keeps the teaching save and a curated trap when the drill has one', () => {
     const queen = safeChoiceFor(drill('hang-q-01'));
@@ -96,8 +106,11 @@ describe('punishment line', () => {
     expect(punishmentLine(item, 'd5', 'c6')).toEqual([]);
   });
 
-  it('is a legal punishment for every selected blunder', () => {
+  it('is a legal punishment for every selected blunder', async () => {
+    let seen = 0;
     for (const item of getAllDrills()) {
+      if (seen % 4 === 0) await breathe();
+      seen += 1;
       const choice = safeChoiceFor(item);
       expect(choice, item.id).not.toBeNull();
       if (!choice) continue;
@@ -128,5 +141,5 @@ describe('punishment line', () => {
         expect(game.fen(), item.id).toBe(step.fen);
       }
     }
-  }, 60000);
+  }, 180_000);
 });
