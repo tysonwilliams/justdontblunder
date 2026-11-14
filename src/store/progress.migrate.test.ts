@@ -14,6 +14,9 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+import { Chess } from 'chess.js';
+
+import { pastedGameDrills } from '@/src/logic/gameImport';
 import { drillFromHang } from '@/src/logic/personalDrill';
 import {
   blankPersisted,
@@ -198,6 +201,76 @@ describe('progress migration', () => {
     expect(useProgressStore.getState().experience).toBe('new');
     expect(useProgressStore.getState().scan.phase).toBe('error');
     expect(useProgressStore.getState().markDrillResult).toEqual(expect.any(Function));
+  });
+
+  it('reloads a flat blob without losing a streak, xp, an own- miss, or a pasted game', async () => {
+    const game = new Chess();
+    game.move('e4');
+    game.move('Nf6');
+    game.move('c3');
+    game.move('a6');
+    game.move('Qh5');
+    game.move('Nxh5');
+    const pasted = pastedGameDrills(game.pgn(), 'w').drills[0];
+    const missed = drillFromHang(HANGING_QUEEN);
+    const scanned = drillFromHang('rnb1kbnr/ppp1pppp/8/3q4/8/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 3');
+    expect(pasted?.id.startsWith('own-')).toBe(true);
+    expect(missed?.id.startsWith('own-')).toBe(true);
+    expect(scanned?.id.startsWith('own-')).toBe(true);
+    if (!pasted || !missed || !scanned) return;
+    expect(new Set([pasted.id, missed.id, scanned.id]).size).toBe(3);
+
+    memory.set(
+      PROGRESS_STORAGE_KEY,
+      JSON.stringify(
+        legacyBlob({
+          dailyStreak: 6,
+          lastDrillDate: '2026-11-13',
+          xp: 80,
+          missedIds: ['hang-q-01', missed.id, 'own-without-a-drill'],
+          review: [
+            { id: 'hang-q-01', saves: 1 },
+            { id: missed.id, saves: 0, drill: missed },
+            { id: 'own-without-a-drill', saves: 0 },
+          ],
+          ownDrills: [pasted, scanned],
+          pastedIds: [pasted.id],
+        }),
+      ),
+    );
+
+    await useProgressStore.persist.rehydrate();
+    const state = useProgressStore.getState();
+    expect(state.dailyStreak).toBe(6);
+    expect(state.lastDrillDate).toBe('2026-11-13');
+    expect(state.xp).toBe(80);
+    expect(state.review.find((entry) => entry.id === 'hang-q-01')).toMatchObject({ saves: 1 });
+    expect(state.review.find((entry) => entry.id === missed.id)?.drill).toMatchObject({
+      id: missed.id,
+      fen: missed.fen,
+      note: missed.note,
+    });
+    expect(state.review.some((entry) => entry.id === 'own-without-a-drill')).toBe(false);
+    expect(state.missedIds).toEqual(['hang-q-01', missed.id]);
+    expect(state.ownDrills.map((drill) => drill.id)).toEqual([pasted.id, scanned.id]);
+    expect(state.ownDrills[0]).toMatchObject({ fen: pasted.fen, note: pasted.note });
+    expect(state.ownDrills[1]).toMatchObject({ fen: scanned.fen, note: scanned.note });
+    expect(state.pastedIds).toEqual([pasted.id]);
+
+    const written = JSON.parse(memory.get(PROGRESS_STORAGE_KEY) ?? '') as {
+      version: number;
+      state: {
+        training: { dailyStreak: number; xp: number };
+        review: { review: { id: string; drill?: { fen: string } }[]; missedIds: string[] };
+        library: { ownDrills: { id: string; fen: string }[]; pastedIds: string[] };
+      };
+    };
+    expect(written.version).toBe(PROGRESS_VERSION);
+    expect(written.state.training).toMatchObject({ dailyStreak: 6, xp: 80 });
+    expect(written.state.review.missedIds).toEqual(['hang-q-01', missed.id]);
+    expect(written.state.review.review.find((entry) => entry.id === missed.id)?.drill?.fen).toBe(missed.fen);
+    expect(written.state.library.pastedIds).toEqual([pasted.id]);
+    expect(written.state.library.ownDrills.map((drill) => drill.fen)).toEqual([pasted.fen, scanned.fen]);
   });
 
   it('loads a versionless flat blob, and the next save is sliced', async () => {
