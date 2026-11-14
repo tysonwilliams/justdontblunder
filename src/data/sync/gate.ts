@@ -1,0 +1,152 @@
+import { snapshotFromProgress } from '@/src/data/sync/map';
+import { createLocalProgressRepo } from '@/src/data/sync/localRepo';
+import { createSupabaseProgressRepo } from '@/src/data/sync/supabaseRepo';
+import { deviceTimeZone } from '@/src/data/sync/dates';
+import type { SyncClient } from '@/src/data/sync/types';
+import { getSupabase, isSyncEnabled, syncClientFrom } from '@/src/data/supabase';
+import { ownScanRunning } from '@/src/store/ownGames';
+import { useProgressStore } from '@/src/store/progress';
+import { partializeProgress, type PersistedProgress } from '@/src/store/progressMigrate';
+
+const PUSH_DELAY_MS = 1500;
+
+export function shouldSyncNow(input: {
+  enabled: boolean;
+  configured: boolean;
+  userId: string | null;
+  hydrated: boolean;
+  scanning: boolean;
+}): boolean {
+  return input.enabled && input.configured && input.userId !== null && input.hydrated && !input.scanning;
+}
+
+/**
+ * Push local changes and pull on sign-in. Returns immediately unless
+ * EXPO_PUBLIC_SYNC_ENABLED is the string "true" and a publishable client exists.
+ * With the flag off, this does not read storage or open a socket.
+ */
+export function startProgressSync(): () => void {
+  if (!isSyncEnabled()) return () => undefined;
+  const supabase = safeClient();
+  if (!supabase) return () => undefined;
+  const client = syncClientFrom(supabase);
+  return watch(client, supabase);
+}
+
+function safeClient(): ReturnType<typeof getSupabase> {
+  try {
+    return getSupabase();
+  } catch {
+    return null;
+  }
+}
+
+function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSupabase>>): () => void {
+  let userId: string | null = null;
+  let writing = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+  let syncing = false;
+  let again = false;
+
+  const local = createLocalProgressRepo({
+    read: () => partializeProgress(useProgressStore.getState()),
+    write: (progress) => {
+      writing = true;
+      try {
+        useProgressStore.setState(progressFields(progress));
+      } finally {
+        writing = false;
+      }
+    },
+  });
+
+  const sync = () => {
+    if (stopped || !userId) return;
+    if (syncing) {
+      again = true;
+      return;
+    }
+    const current = useProgressStore.getState();
+    if (
+      !shouldSyncNow({
+        enabled: isSyncEnabled(),
+        configured: true,
+        userId,
+        hydrated: useProgressStore.persist.hasHydrated(),
+        scanning: ownScanRunning() || current.scan.phase === 'scanning',
+      })
+    ) {
+      return;
+    }
+    const repo = createSupabaseProgressRepo(client, userId, local);
+    const guest = snapshotFromProgress(partializeProgress(current), { timezone: deviceTimeZone() });
+    syncing = true;
+    void repo
+      .mergeOnSignIn(guest)
+      .catch(() => undefined)
+      .finally(() => {
+        syncing = false;
+        if (!again || stopped) {
+          again = false;
+          return;
+        }
+        again = false;
+        sync();
+      });
+  };
+
+  const schedule = () => {
+    if (stopped) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(sync, PUSH_DELAY_MS);
+  };
+
+  const unsubStore = useProgressStore.subscribe(() => {
+    if (writing || !userId) return;
+    schedule();
+  });
+
+  let waitingForStore = false;
+
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    userId = session?.user.id ?? null;
+    if (!userId) {
+      if (timer) clearTimeout(timer);
+      return;
+    }
+    if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') return;
+    if (useProgressStore.persist.hasHydrated()) {
+      schedule();
+      return;
+    }
+    if (waitingForStore) return;
+    waitingForStore = true;
+    useProgressStore.persist.onFinishHydration(() => {
+      if (!stopped) schedule();
+    });
+  });
+
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+    unsubStore();
+    data.subscription.unsubscribe();
+  };
+}
+
+function progressFields(progress: PersistedProgress) {
+  return {
+    ...progress.training,
+    missedDate: progress.review.missedDate,
+    review: progress.review.review,
+    missedIds: progress.review.missedIds,
+    ownDrills: progress.library.ownDrills,
+    pastedIds: progress.library.pastedIds,
+    gameProfile: progress.library.gameProfile,
+    experience: progress.preferences.experience,
+    welcomeSkipped: progress.preferences.welcomeSkipped,
+    drillsPromptSkipped: progress.preferences.drillsPromptSkipped,
+    scan: progress.scan,
+  };
+}
