@@ -13,8 +13,7 @@ import { buildPuzzlePool } from '@/src/logic/puzzlePool';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
 import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/src/logic/safeChoice';
-import { coachForRound } from '@/src/logic/coach';
-import { feedbackForRound } from '@/src/logic/saveFeedback';
+import { roundSpeech } from '@/src/logic/saveFeedback';
 import { roundProgress, trainerBoard, type TrainerPhase } from '@/src/logic/trainerRound';
 import { applyRoundEffects } from '@/src/store/trainerResult';
 import { useProgressStore } from '@/src/store/progress';
@@ -150,9 +149,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     [drill, round, state.lastMove],
   );
   const card = safeResultCard(round);
-  const taught = drill ? (feedbackForRound(round, drill, state.lastMove) ?? '') : '';
-  const coachKind = round === 'correct' ? 'save' : round === 'retry' || round === 'streakEnd' ? 'blunder' : 'idea';
-  const roundCopy = drill ? coachForRound(coachKind, drill.fen, state.lastMove, taught) : '';
+  const roundCopy = drill ? roundSpeech(round, drill, state.lastMove) : '';
   const arrows = useMemo<BoardArrow[]>(() => {
     if (round === 'playing' && presented) {
       return presented.options.map((option) => ({

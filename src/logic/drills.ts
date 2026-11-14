@@ -11,7 +11,7 @@ export type DrillTheme =
   | 'back_rank'
   | 'missed_mate';
 
-/** A move that looks safe until the opponent's short refutation. */
+/** A move that is safe now, with a short reply worth watching. */
 export type DrillTrap = {
   move: string;
   /** UCI moves starting with the opponent's reply. */
@@ -34,8 +34,8 @@ export type DrillPosition = {
    */
   acceptable: string[];
   /**
-   * Safe on the one-move material rule, but a short tactic still wins material.
-   * Precomputed offline. The judge reads this list and does not search at runtime.
+   * Safe on the one-move rule. The opponent has a short reply worth a look.
+   * Precomputed offline. The judge still passes the move. The note is a hint, not a miss.
    */
   traps: DrillTrap[];
   note: string;
@@ -113,9 +113,23 @@ export function createDailySession(
   const seeded = shuffleWithSeed(source ?? ALL, hashDay(key));
   return {
     id: `daily-${key}`,
-    positions: leanTowardWeak(seeded, count, stats),
+    positions: withWhiteHanging(leanTowardWeak(seeded, count, stats), seeded, count),
     startedAt: new Date().toISOString(),
   };
+}
+
+/** Home opens on a white hanging save when the bank has one. */
+function withWhiteHanging(
+  picked: readonly DrillPosition[],
+  seeded: readonly DrillPosition[],
+  count: number,
+): DrillPosition[] {
+  if (picked.some((drill) => drill.theme === 'hanging' && drill.sideToMove === 'w')) return [...picked];
+  const habit = seeded.find((drill) => drill.theme === 'hanging' && drill.sideToMove === 'w');
+  if (!habit || count <= 0) return [...picked];
+  const rest = picked.filter((drill) => drill.id !== habit.id);
+  if (rest.length >= count) return [...rest.slice(0, count - 1), habit];
+  return [...rest, habit].slice(0, count);
 }
 
 /**
@@ -131,7 +145,8 @@ function leanTowardWeak(seeded: readonly DrillPosition[], count: number, stats?:
   const firstPass: DrillPosition[] = [];
   for (const theme of THEME_ORDER) {
     if (theme === weak) continue;
-    const drill = byTheme.get(theme)?.[0];
+    const list = byTheme.get(theme) ?? [];
+    const drill = theme === 'hanging' ? (list.find((item) => item.sideToMove === 'w') ?? list[0]) : list[0];
     if (drill) firstPass.push(drill);
   }
   return fillSeats(firstPass, count, [...(byTheme.get(weak) ?? []), ...seeded]);
@@ -250,11 +265,10 @@ export function drillTrap(drill: DrillPosition, from: Square, to: Square): Drill
 /**
  * A move passes when it avoids a blunder: no mate in 1, and no material loss.
  * Equal trades pass. Checkmate always passes. Mate in 2 or more does not fail a move.
- * A precomputed two-move trap still fails. The engine window never turns a pass into a fail.
+ * A two-move trap is still a save. The engine window never turns a pass into a fail.
  */
 export function isCorrectDrillMove(drill: DrillPosition, from: Square, to: Square): boolean {
-  if (!moveRemovesDanger(drill, from, to)) return false;
-  return drillTrap(drill, from, to) === null;
+  return moveRemovesDanger(drill, from, to);
 }
 
 export const HABIT_PROMPT = 'Before you move: is anything of yours hanging?';

@@ -1,6 +1,6 @@
 import { Chess, type Square } from 'chess.js';
 
-import { drillTrap, type DrillPosition } from '@/src/logic/drills';
+import type { DrillPosition } from '@/src/logic/drills';
 import { bestPunishment } from '@/src/logic/safety';
 
 /** One ply of the opponent's punishment, after the move that failed. */
@@ -40,21 +40,16 @@ function playUci(game: Chess, uci: string): PunishmentStep | null {
 
 /**
  * Moves to show after a failed drill move.
- * A precomputed trap plays its whole line (the two-move trick).
- * Anything else plays the single capture or mate in 1.
+ * Plays the single capture or mate in 1.
+ * A two-move trap is a save, so it has no punishment line.
  */
 export function punishmentLine(drill: DrillPosition, from: Square, to: Square): PunishmentStep[] {
   const game = new Chess(drill.fen);
   const student = playUci(game, `${from}${to}`);
   if (!student) return [];
 
-  const trap = drillTrap(drill, from, to);
-  const script = trap?.line?.length
-    ? trap.line
-    : (() => {
-        const hit = bestPunishment(game.fen());
-        return hit ? [`${hit.from}${hit.to}`] : [];
-      })();
+  const hit = bestPunishment(game.fen());
+  const script = hit ? [`${hit.from}${hit.to}`] : [];
 
   const steps: PunishmentStep[] = [];
   for (const uci of script) {

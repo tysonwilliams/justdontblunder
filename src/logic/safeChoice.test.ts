@@ -41,12 +41,9 @@ describe('pick the safe move', () => {
         choice.blunder.to,
         item.sideToMove,
       );
-      const trap = drillTrap(item, choice.blunder.from, choice.blunder.to);
+      expect(drillTrap(item, choice.blunder.from, choice.blunder.to), `${item.id} blunder trap`).toBeNull();
       expect(blunderOutcome, `${item.id} blunder material`).not.toBeNull();
-      expect(
-        blunderOutcome! < 0 || trap !== null,
-        `${item.id} blunder is material, mate, or a trap`,
-      ).toBe(true);
+      expect(blunderOutcome!, `${item.id} blunder is material or mate`).toBeLessThan(0);
 
       const shown = presentSafeChoice(choice);
       const safe = shown.options.find((option) => option.key === shown.safeKey);
@@ -68,9 +65,11 @@ describe('pick the safe move', () => {
     expect(isCorrectDrillMove(drill('hang-q-01'), 'h5', 'e5')).toBe(true);
 
     const trapped = safeChoiceFor(drill('hang-q-02'));
-    expect(trapped?.blunder.uci).toBe('d5c6');
-    expect(isCorrectDrillMove(drill('hang-q-02'), 'd5', 'c6')).toBe(false);
+    expect(trapped?.blunder.uci).not.toBe('d5c6');
+    expect(isCorrectDrillMove(drill('hang-q-02'), 'd5', 'c6')).toBe(true);
     expect(drillTrap(drill('hang-q-02'), 'd5', 'c6')).not.toBeNull();
+    const loss = moveOutcome(drill('hang-q-02').fen, trapped!.blunder.from, trapped!.blunder.to, 'b');
+    expect(loss).toBeLessThan(0);
   });
 });
 
@@ -91,13 +90,10 @@ describe('punishment line', () => {
     expect(line[0]?.san).toBe('Re8#');
   });
 
-  it('steps through the precomputed two-move trap', () => {
+  it('does not punish a two-move trap, because that move is a save', () => {
     const item = drill('hang-q-02');
-    const trap = drillTrap(item, 'd5', 'c6');
-    const line = punishmentLine(item, 'd5', 'c6');
-    expect(line.map((step) => `${step.from}${step.to}`)).toEqual(trap?.line);
-    expect(line.at(-1)?.san).toBe('Bxc6+');
-    expect(line.at(-1)?.captured).toBe(true);
+    expect(drillTrap(item, 'd5', 'c6')).not.toBeNull();
+    expect(punishmentLine(item, 'd5', 'c6')).toEqual([]);
   });
 
   it('is a legal punishment for every selected blunder', () => {
@@ -116,15 +112,11 @@ describe('punishment line', () => {
       });
       expect(student, item.id).toBeTruthy();
 
-      const trap = drillTrap(item, choice.blunder.from, choice.blunder.to);
-      if (trap) {
-        expect(line.map((step) => `${step.from}${step.to}`), item.id).toEqual(trap.line);
-      } else {
-        const hit = bestPunishment(game.fen());
-        expect(hit, item.id).not.toBeNull();
-        expect(`${line[0]?.from}${line[0]?.to}`, item.id).toBe(`${hit?.from}${hit?.to}`);
-        expect(line[0]?.mate || line[0]?.captured, item.id).toBe(true);
-      }
+      expect(drillTrap(item, choice.blunder.from, choice.blunder.to), item.id).toBeNull();
+      const hit = bestPunishment(game.fen());
+      expect(hit, item.id).not.toBeNull();
+      expect(`${line[0]?.from}${line[0]?.to}`, item.id).toBe(`${hit?.from}${hit?.to}`);
+      expect(line[0]?.mate || line[0]?.captured, item.id).toBe(true);
 
       for (const step of line) {
         const played = game.move({

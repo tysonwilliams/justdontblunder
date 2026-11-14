@@ -36,6 +36,14 @@ Expo web serves at http://localhost:43127. `npm run start` opens the Expo dev se
 
 `scripts/refresh-acceptable.mts` rebuilds the offline teaching window with the Stockfish CLI. That CLI is the `stockfish` devDependency. The running app does not load Stockfish.
 
+## Starter puzzles
+
+`src/data/beginner-blunders.json` is the guest drill bank. The hand-checked set in `scripts/build-save-drills.mjs` stays first, so Play still opens on the queen on h5. `scripts/grow-starter-bank.mts` adds more by playing legal moves from the starting position, then keeps a position only when this app's own checks say it is reachable, matches one theme, contains a one-move blunder, and has a safe move. These positions are generated in this repo. They are not copied from the Lichess puzzle database.
+
+```bash
+npm run grow-bank
+```
+
 ## Stack
 
 - Expo SDK 58 and Expo Router. Screens live in `app/`.

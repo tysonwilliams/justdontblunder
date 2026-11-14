@@ -50,13 +50,18 @@ export function coachForRound(
   fen: string,
   move: { from: Square; to: Square } | null,
   fallback: string,
+  note?: string | null,
 ): string {
   if (kind === 'idea' || !move) return fallback;
+  let line: string;
   try {
-    return coachSpeech({ kind, fen, from: move.from, to: move.to });
+    line = coachSpeech({ kind, fen, from: move.from, to: move.to });
   } catch {
-    return fallback;
+    line = fallback;
   }
+  if (kind !== 'save' || !note) return line;
+  const combined = `${line} ${note}`;
+  return combined.length <= MAX_CHARS ? combined : line;
 }
 
 function fit(line: string): string {

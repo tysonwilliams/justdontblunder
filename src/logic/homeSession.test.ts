@@ -60,6 +60,17 @@ describe('home session', () => {
     ).toBe(true);
   });
 
+  it('puts a white hanging save in the daily pack when the bank has one', () => {
+    for (const day of [1, 8, 15, 22, 28]) {
+      const date = new Date(Date.UTC(2026, 9, day, 12));
+      const daily = createDailySession(date);
+      expect(
+        daily.positions.some((drill) => drill.theme === 'hanging' && drill.sideToMove === 'w'),
+        String(day),
+      ).toBe(true);
+    }
+  });
+
   it('uses the plain hanging line and never the luft tip', () => {
     for (const drill of getAllDrills()) {
       const prompt = homePlayPrompt(drill);

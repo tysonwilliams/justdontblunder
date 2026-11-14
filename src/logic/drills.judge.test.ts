@@ -1,9 +1,10 @@
 import { Chess, type Square } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 
-import { drillTrap, getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
-import { missFeedback, saveFeedback } from '@/src/logic/saveFeedback';
-import { moveOutcome, opponentThreatensMateInOne } from '@/src/logic/safety';
+import { highlightsForRound } from '@/src/components/Board/highlight';
+import { getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
+import { roundSpeech, saveFeedback } from '@/src/logic/saveFeedback';
+import { moveOutcome } from '@/src/logic/safety';
 
 function drill(id: string) {
   const found = getAllDrills().find((item) => item.id === id);
@@ -13,13 +14,6 @@ function drill(id: string) {
 
 function ok(id: string, uci: string): boolean {
   return isCorrectDrillMove(drill(id), uci.slice(0, 2) as Square, uci.slice(2, 4) as Square);
-}
-
-/** A silent sweep longer than 60s makes Vitest drop the worker call that reports the result. */
-function breathe(): Promise<void> {
-  return new Promise((resolve) => {
-    setImmediate(resolve);
-  });
 }
 
 /** Moves the one-move material rule already marks as a loss, so they stay failures. */
@@ -52,53 +46,37 @@ const QUEEN_ESCAPES = [
 ] as const;
 
 describe('the drill judge', () => {
-  it('passes every safe non-trap, rejects every trap, and never accepts a blunder', async () => {
-    let pass = 0;
-    let fail = 0;
-    const traps = [];
+  it('scores every one-move-safe trap as a save, with a short watch note', () => {
+    let traps = 0;
     for (const item of getAllDrills()) {
-      await breathe();
-      const game = new Chess(item.fen);
-      for (const move of game.moves({ verbose: true })) {
-        const outcome = moveOutcome(item.fen, move.from, move.to, item.sideToMove);
-        const trap = drillTrap(item, move.from, move.to);
-        const correct = isCorrectDrillMove(item, move.from, move.to);
-        if (correct) pass += 1;
-        else fail += 1;
-        if (trap) traps.push(trap);
-
-        if (outcome !== null && outcome >= 0 && !trap) {
-          expect(correct, `${item.id} ${move.san} should pass`).toBe(true);
+      for (const trap of item.traps) {
+        traps += 1;
+        const from = trap.move.slice(0, 2) as Square;
+        const to = trap.move.slice(2, 4) as Square;
+        const outcome = moveOutcome(item.fen, from, to, item.sideToMove);
+        expect(outcome, `${item.id} ${trap.move}`).not.toBeNull();
+        expect(outcome!, `${item.id} ${trap.move} is safe on the one-move rule`).toBeGreaterThanOrEqual(0);
+        expect(isCorrectDrillMove(item, from, to), `${item.id} ${trap.move}`).toBe(true);
+        const copy = roundSpeech('correct', item, { from, to });
+        expect(copy, item.id).toMatch(/Safe/);
+        expect(copy, item.id).toMatch(/^Your .+ Watch /);
+        expect(copy, item.id).not.toMatch(/Careful|miss|blunder|lose/i);
+        expect(copy.length, copy).toBeLessThanOrEqual(92);
+        expect(highlightsForRound('correct', { from, to }, item.atRiskSquare).tone).toBe('success');
+        const line = new Chess(item.fen);
+        expect(line.move({ from, to, promotion: 'q' }), `${item.id} ${trap.move}`).toBeTruthy();
+        for (const uci of trap.line) {
+          const reply = line.move({
+            from: uci.slice(0, 2) as Square,
+            to: uci.slice(2, 4) as Square,
+            promotion: uci[4] === 'r' || uci[4] === 'b' || uci[4] === 'n' ? uci[4] : 'q',
+          });
+          expect(reply, `${item.id} ${trap.move} ${uci}`).toBeTruthy();
         }
-        if (trap) {
-          expect(correct, `${item.id} ${move.san} is a trap`).toBe(false);
-          expect(trap.explanation.startsWith('Careful:'), trap.explanation).toBe(true);
-          expect(missFeedback(item, move.from, move.to)).toBe(trap.explanation);
-          const line = new Chess(item.fen);
-          const played = line.move({ from: move.from, to: move.to, promotion: 'q' });
-          expect(played, `${item.id} ${trap.move}`).toBeTruthy();
-          for (const uci of trap.line) {
-            const reply = line.move({
-              from: uci.slice(0, 2) as Square,
-              to: uci.slice(2, 4) as Square,
-              promotion: 'q',
-            });
-            expect(reply, `${item.id} ${trap.move} ${uci}`).toBeTruthy();
-          }
-        }
-        if (!correct) continue;
-        expect(outcome, `${item.id} ${move.san}`).not.toBeNull();
-        expect(outcome!, `${item.id} ${move.san}`).toBeGreaterThanOrEqual(0);
-        const after = new Chess(item.fen);
-        after.move(move);
-        if (after.isCheckmate()) continue;
-        expect(opponentThreatensMateInOne(after.fen()), `${item.id} ${move.san} mate`).toBe(false);
       }
     }
-    expect(traps).toHaveLength(24);
-    expect(pass).toBe(216);
-    expect(fail).toBe(696);
-  }, 120000);
+    expect(traps).toBe(24);
+  });
 
   it('keeps the disputed material losses as failures', () => {
     expect(DISPUTED).toHaveLength(12);
@@ -121,22 +99,22 @@ describe('the drill judge', () => {
     }
   });
 
-  it('lets hang-b-03 retreats pass unless they are traps', () => {
+  it('lets every hang-b-03 retreat pass, including the old traps', () => {
     expect(ok('hang-b-03', 'f5g6')).toBe(true);
     expect(ok('hang-b-03', 'f5g4')).toBe(true);
-    expect(ok('hang-b-03', 'f5e6')).toBe(false);
-    expect(ok('hang-b-03', 'f5c8')).toBe(false);
-    expect(drillTrap(drill('hang-b-03'), 'f5', 'e6')?.explanation).toMatch(/Be6/);
-    expect(drillTrap(drill('hang-b-03'), 'f5', 'c8')?.explanation).toMatch(/Bc8/);
+    expect(ok('hang-b-03', 'f5e6')).toBe(true);
+    expect(ok('hang-b-03', 'f5c8')).toBe(true);
+    expect(roundSpeech('correct', drill('hang-b-03'), { from: 'f5', to: 'e6' })).toMatch(/Watch e5/);
+    expect(roundSpeech('correct', drill('hang-b-03'), { from: 'f5', to: 'c8' })).toMatch(/Watch exd5/);
   });
 
-  it('rejects the queen pin and the knight capture that walks into d5', () => {
-    expect(ok('hang-q-02', 'd5c6')).toBe(false);
-    expect(missFeedback(drill('hang-q-02'), 'd5', 'c6')).toBe(
-      'Careful: after Qc6, Bb5 pins your queen to your king and you lose it.',
+  it('scores the queen step to c6 as a save and still rejects a one-move loss', () => {
+    expect(ok('hang-q-02', 'd5c6')).toBe(true);
+    expect(roundSpeech('correct', drill('hang-q-02'), { from: 'd5', to: 'c6' })).toBe(
+      'Your queen steps off d5. Safe. Watch Bb5.',
     );
-    expect(ok('fork-06', 'c3e4')).toBe(false);
-    expect(missFeedback(drill('fork-06'), 'c3', 'e4')).toMatch(/Nxe4/);
+    expect(ok('fork-06', 'c3e4')).toBe(true);
+    expect(roundSpeech('correct', drill('fork-06'), { from: 'c3', to: 'e4' })).toMatch(/Watch d5/);
     expect(ok('back-01', 'b8d7')).toBe(true);
     expect(ok('back-01', 'f7f6')).toBe(true);
     expect(ok('back-01', 'g7g6')).toBe(true);

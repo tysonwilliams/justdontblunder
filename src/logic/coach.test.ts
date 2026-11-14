@@ -44,4 +44,17 @@ describe('coachForRound', () => {
     );
     expect(coachForRound('blunder', HANGING_KNIGHT, null, 'Step the knight away.')).toBe('Step the knight away.');
   });
+
+  it('adds a short watch note to a save and leaves the save line when the note would not fit', () => {
+    expect(coachForRound('save', HANGING_KNIGHT, { from: 'f3', to: 'd4' }, 'fallback', 'Watch Bb5.')).toBe(
+      'Your knight steps off f3. Safe. Watch Bb5.',
+    );
+    const huge = `Watch ${'x'.repeat(80)}.`;
+    expect(coachForRound('save', HANGING_KNIGHT, { from: 'f3', to: 'd4' }, 'fallback', huge)).toBe(
+      'Your knight steps off f3. Safe.',
+    );
+    expect(coachForRound('blunder', HANGING_KNIGHT, { from: 'a2', to: 'a3' }, 'fallback', 'Watch Bb5.')).not.toMatch(
+      /Watch/,
+    );
+  });
 });

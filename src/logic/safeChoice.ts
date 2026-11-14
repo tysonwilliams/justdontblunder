@@ -61,40 +61,32 @@ function toChoice(move: Move): ChoiceMove {
   };
 }
 
-/** Passes the drill judge: no mate in 1, no material loss, and not a listed trap. */
+/** Passes the drill judge: no mate in 1 and no material loss. A two-move trap still passes. */
 function isReallySafe(drill: DrillPosition, from: Square, to: Square): boolean {
   if (!isCorrectDrillMove(drill, from, to)) return false;
-  if (drillTrap(drill, from, to)) return false;
   const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
   return outcome !== null && outcome >= 0;
 }
 
-/**
- * Fails the drill judge by hanging material, allowing mate in 1,
- * or walking into a precomputed two-move trap.
- */
+/** Fails the drill judge by hanging material or allowing mate in 1. */
 function isRealBlunder(drill: DrillPosition, from: Square, to: Square): boolean {
   if (isCorrectDrillMove(drill, from, to)) return false;
   const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
-  if (outcome === null) return false;
-  if (outcome < 0) return true;
-  return drillTrap(drill, from, to) !== null;
+  return outcome !== null && outcome < 0;
 }
 
 function pickSafe(drill: DrillPosition, moves: Move[]): Move | null {
   const preferred = [...drill.solution, ...(drill.acceptable ?? [])];
   for (const uci of preferred) {
     const move = findUci(moves, uci);
-    if (move && isReallySafe(drill, move.from, move.to)) return move;
+    if (move && isReallySafe(drill, move.from, move.to) && !drillTrap(drill, move.from, move.to)) return move;
   }
+  const clean = moves.find((move) => isReallySafe(drill, move.from, move.to) && !drillTrap(drill, move.from, move.to));
+  if (clean) return clean;
   return moves.find((move) => isReallySafe(drill, move.from, move.to)) ?? null;
 }
 
 function pickBlunder(drill: DrillPosition, moves: Move[]): Move | null {
-  for (const trap of drill.traps) {
-    const move = findUci(moves, trap.move);
-    if (move && isRealBlunder(drill, move.from, move.to)) return move;
-  }
   const fromRisk = moves.find(
     (move) => move.from === drill.atRiskSquare && isRealBlunder(drill, move.from, move.to),
   );
