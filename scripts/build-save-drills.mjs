@@ -325,7 +325,7 @@ function validate(d) {
   if (piece.color !== d.sideToMove) return `wrong color`;
 
   const legal = game.moves({ verbose: true }).map((m) => `${m.from}${m.to}${m.promotion ?? ''}`);
-  // Pass/fail is material safety minus the precomputed traps in src/logic/drills.ts.
+  // Pass/fail is material safety. A two-move trap is still a save.
   // This script only keeps a legal teaching move; refresh-acceptable.mts rewrites the full set.
   d.solution = d.solution.filter((sol) => legal.some((u) => u.startsWith(sol.slice(0, 4))));
   if (!d.solution.length) return `no legal solution`;
@@ -713,9 +713,9 @@ const drills = [
 
 /**
  * Two-move traps from the drill audit. Each move is safe on the one-move material
- * rule (nothing hangs, no mate in 1) but a short tactic still wins material.
+ * rule (nothing hangs, no mate in 1). A short reply can still win material later.
+ * The app passes the move and may show the first reply as a watch note.
  * Lines are Stockfish depth-12 refutations, checked by replaying them here.
- * The app reads `traps` at runtime and does not search.
  */
 const TRAPS = {
   'hang-q-02': [
@@ -899,6 +899,7 @@ try {
   previous = [];
 }
 const prevById = new Map(previous.map((drill) => [drill.id, drill]));
+const handById = new Map(kept.map((drill) => [drill.id, drill]));
 let trapCount = 0;
 for (const drill of kept) {
   const old = prevById.get(drill.id);
@@ -910,7 +911,37 @@ for (const drill of kept) {
   }
   drill.traps = TRAPS[drill.id] ?? [];
   trapCount += drill.traps.length;
-  for (const trap of drill.traps) {
+}
+if (trapCount !== 24) {
+  console.error(`Expected 24 two-move traps on the hand-checked set, found ${trapCount}`);
+  process.exit(1);
+}
+
+const merged = [];
+const seen = new Set();
+for (const old of previous) {
+  const hand = handById.get(old.id);
+  if (hand) {
+    merged.push(hand);
+    seen.add(old.id);
+    continue;
+  }
+  const err = validate(old);
+  if (err) {
+    console.error(`Dropping ${old.id}: ${err}`);
+    continue;
+  }
+  if (!Array.isArray(old.traps)) old.traps = [];
+  merged.push(old);
+  seen.add(old.id);
+}
+for (const drill of kept) {
+  if (seen.has(drill.id)) continue;
+  merged.push(drill);
+}
+
+for (const drill of merged) {
+  for (const trap of drill.traps ?? []) {
     const err = replayTrap(drill, trap);
     if (err) {
       console.error(err);
@@ -922,10 +953,6 @@ for (const drill of kept) {
     }
   }
 }
-if (trapCount !== 24) {
-  console.error(`Expected 24 two-move traps, found ${trapCount}`);
-  process.exit(1);
-}
 
-fs.writeFileSync(outUrl, `${JSON.stringify(kept, null, 2)}\n`);
-console.log(`Wrote ${kept.length} full-board immediate-danger drills (min ${MIN_PIECES} pieces)`);
+fs.writeFileSync(outUrl, `${JSON.stringify(merged, null, 2)}\n`);
+console.log(`Wrote ${merged.length} drills (${kept.length} hand-checked, min ${MIN_PIECES} pieces)`);

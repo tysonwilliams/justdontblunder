@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "grow-bank": "node --experimental-strip-types --import ./scripts/register-alias.mjs scripts/grow-starter-bank.mts"
   },
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",

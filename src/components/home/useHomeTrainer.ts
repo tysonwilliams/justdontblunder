@@ -16,8 +16,7 @@ import { leadWithPersonal } from '@/src/logic/earlyPlay';
 import { buildPuzzlePool } from '@/src/logic/puzzlePool';
 import { punishmentLine } from '@/src/logic/punishment';
 import { learnCard } from '@/src/logic/lessons';
-import { coachForRound } from '@/src/logic/coach';
-import { feedbackForRound } from '@/src/logic/saveFeedback';
+import { roundSpeech } from '@/src/logic/saveFeedback';
 import { roundProgress, trainerBoard, type TrainerPhase } from '@/src/logic/trainerRound';
 import { applyRoundEffects } from '@/src/store/trainerResult';
 import { useProgressStore } from '@/src/store/progress';
@@ -154,9 +153,7 @@ export function useHomeTrainer() {
     [drill, round, state.lastMove],
   );
   const card = homeResultCard(round);
-  const taught = drill ? (feedbackForRound(round, drill, state.lastMove) ?? '') : '';
-  const coachKind = round === 'correct' ? 'save' : round === 'retry' || round === 'streakEnd' ? 'blunder' : 'idea';
-  const roundCopy = drill ? coachForRound(coachKind, drill.fen, state.lastMove, taught) : '';
+  const roundCopy = drill ? roundSpeech(round, drill, state.lastMove) : '';
   const threatFrom = playback.arrow?.from;
   const threatTo = playback.arrow?.to;
   const threatArrow = useMemo<BoardArrow[]>(() => {

@@ -1,5 +1,6 @@
 import { Chess, type PieceSymbol, type Square } from 'chess.js';
 
+import { coachForRound } from '@/src/logic/coach';
 import { drillTrap, teachingMoves, type DrillPosition } from '@/src/logic/drills';
 import { bestPunishment, pieceName } from '@/src/logic/safety';
 
@@ -113,10 +114,41 @@ function describeSave(drill: DrillPosition, from: Square, to: Square): string {
 
 const RETRY_COPY = "That doesn't save your piece. Look again and try another move.";
 
+function promotionPiece(uci: string): 'q' | 'r' | 'b' | 'n' {
+  const flag = uci[4];
+  switch (flag) {
+    case 'q':
+    case 'r':
+    case 'b':
+    case 'n':
+      return flag;
+    default:
+      return 'q';
+  }
+}
+
+/** A short save-side note for a two-move trap. It never marks the move as a miss. */
+export function trapWatch(drill: DrillPosition, from: Square, to: Square): string | null {
+  const reply = drillTrap(drill, from, to)?.line[0];
+  if (!reply || reply.length < 4) return null;
+  try {
+    const game = new Chess(drill.fen);
+    if (!game.move({ from, to, promotion: 'q' })) return null;
+    const played = game.move({
+      from: reply.slice(0, 2) as Square,
+      to: reply.slice(2, 4) as Square,
+      promotion: promotionPiece(reply),
+    });
+    if (!played) return null;
+    const note = `Watch ${played.san}.`;
+    return note.length <= 28 ? note : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Why the move just played fails: the opponent's reply, not a repeat of the hint. */
 export function missFeedback(drill: DrillPosition, from: Square, to: Square): string {
-  const trap = drillTrap(drill, from, to);
-  if (trap) return trap.explanation;
   const game = new Chess(drill.fen);
   let playedSan = '';
   try {
@@ -174,4 +206,16 @@ export function feedbackForRound(
       return _exhaustive;
     }
   }
+}
+
+/** The line under the board. A trap save can add one short watch note. */
+export function roundSpeech(
+  round: DrillRound,
+  drill: DrillPosition,
+  move: { from: Square; to: Square } | null,
+): string {
+  const taught = feedbackForRound(round, drill, move) ?? '';
+  const kind = round === 'correct' ? 'save' : round === 'retry' || round === 'streakEnd' ? 'blunder' : 'idea';
+  const note = round === 'correct' && move ? trapWatch(drill, move.from, move.to) : null;
+  return coachForRound(kind, drill.fen, move, taught, note);
 }

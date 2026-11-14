@@ -9,6 +9,7 @@ import {
   getAllDrills,
   type DrillPosition,
 } from '@/src/logic/drills';
+import { fenKey } from '@/src/logic/reviewPile';
 import {
   buildPuzzlePool,
   keepOwnDrills,
@@ -26,13 +27,15 @@ function own(n: number): DrillPosition {
 }
 
 describe('puzzle pool', () => {
-  it('cycles starter puzzles until the list reaches 100, and never repeats a personal position', () => {
+  it('fills 100 unique starters, and still cycles when the starter list is short', () => {
     const empty = buildPuzzlePool([]);
     expect(empty).toHaveLength(PUZZLE_POOL_SIZE);
     expect(empty[0]?.id).toBe(getAllDrills()[0]?.id);
-    expect(empty.some((drill) => drill.id.includes('~'))).toBe(true);
-    expect(reviewId(empty.find((drill) => drill.id.includes('~'))?.id ?? '')).toBe(
-      empty.find((drill) => drill.id.includes('~'))?.id.split('~')[0],
+    expect(new Set(empty.map((drill) => fenKey(drill.fen))).size).toBe(PUZZLE_POOL_SIZE);
+    const cycled = buildPuzzlePool([], getAllDrills().slice(0, 3));
+    expect(cycled.some((drill) => drill.id.includes('~'))).toBe(true);
+    expect(reviewId(cycled.find((drill) => drill.id.includes('~'))?.id ?? '')).toBe(
+      cycled.find((drill) => drill.id.includes('~'))?.id.split('~')[0],
     );
 
     const repeated = buildPuzzlePool([own(1), own(1)]);
