@@ -18,6 +18,7 @@ import { Chess } from 'chess.js';
 
 import { pastedGameDrills } from '@/src/logic/gameImport';
 import { drillFromHang } from '@/src/logic/personalDrill';
+import { SCAN_PAUSED_MESSAGE } from '@/src/logic/scanCursor';
 import {
   blankPersisted,
   migrateProgress,
@@ -110,6 +111,7 @@ describe('progress migration', () => {
       games: 4,
       message: '1 from your games.',
       incoming: false,
+      cursor: null,
     });
   });
 
@@ -121,7 +123,7 @@ describe('progress migration', () => {
 
   it('drops a scan that was still running and fills a partial welcome seed', () => {
     expect(migrateProgress({ scan: { phase: 'scanning', found: 3, games: 8, message: 'Looking', incoming: true } }, 0).scan).toEqual(
-      { phase: 'idle', found: 0, games: 0, message: '', incoming: false },
+      { phase: 'idle', found: 0, games: 0, message: '', incoming: false, cursor: null },
     );
     const seeded = migrateProgress(
       { welcomeSkipped: true, experience: 'basics', drillsPromptSkipped: true },
@@ -138,7 +140,7 @@ describe('progress migration', () => {
     expect(seeded.scan.phase).toBe('idle');
   });
 
-  it('loads a saved v0 document through the store and writes version 1', async () => {
+  it('loads a saved v0 document through the store and writes the current version', async () => {
     const drill = drillFromHang(HANGING_QUEEN);
     expect(drill).toBeTruthy();
     if (!drill) return;
@@ -295,6 +297,48 @@ describe('progress migration', () => {
     expect(written.version).toBe(PROGRESS_VERSION);
     expect(written.state.training).toMatchObject({ dailyStreak: 3, xp: 20 });
     expect(written.state.preferences.drillsPromptSkipped).toBe(true);
+  });
+
+  it('keeps a v2 cursor when a scan was still running, and drops a v1 scan that cannot resume', () => {
+    const sliced = {
+      training: { dailyStreak: 2 },
+      review: { review: [] },
+      library: { ownDrills: [] },
+      preferences: { welcomeSkipped: true },
+      scan: { phase: 'scanning', found: 3, games: 8, message: 'Looking', incoming: true },
+    };
+    expect(migrateProgress(sliced, 1).scan).toMatchObject({ phase: 'idle', cursor: null });
+
+    const cursor = {
+      site: 'chesscom',
+      username: 'Me',
+      seen: ['c:1'],
+      newestMs: 30_000,
+      doneArchives: ['https://api.chess.com/pub/player/me/games/2026/11'],
+      lichessUntil: null,
+      backfillDone: false,
+      games: 6,
+      resume: false,
+    };
+    const running = migrateProgress(
+      {
+        ...sliced,
+        scan: { phase: 'scanning', found: 4, games: 6, message: 'Found 4 of your blunders.', incoming: true, cursor },
+      },
+      2,
+    );
+    expect(running.scan.phase).toBe('paused');
+    expect(running.scan.found).toBe(4);
+    expect(running.scan.games).toBe(6);
+    expect(running.scan.incoming).toBe(false);
+    expect(running.scan.message).toBe(SCAN_PAUSED_MESSAGE);
+    expect(running.scan.cursor).toMatchObject({
+      seen: ['c:1'],
+      resume: true,
+      backfillDone: false,
+      doneArchives: ['https://api.chess.com/pub/player/me/games/2026/11'],
+    });
+    expect(running.training.dailyStreak).toBe(2);
   });
 
   it('round-trips the blank store and leaves the scan prompt out of the document', () => {

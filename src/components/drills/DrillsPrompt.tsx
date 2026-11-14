@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
@@ -6,8 +6,8 @@ import { FilterChips } from '@/src/components/ui/Chip';
 import { text } from '@/src/components/ui/text';
 import { playUnlocked } from '@/src/logic/earlyPlay';
 import { cleanUsername, type GameSite } from '@/src/logic/gameImport';
+import { cancelOwnScan, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore, type ScanProgress } from '@/src/store/progress';
-import { runOwnScan } from '@/src/store/ownGames';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
@@ -22,7 +22,7 @@ type Phase = 'ask' | 'scanning' | 'done';
 
 function initialPhase(): Phase {
   const scan = useProgressStore.getState().scan;
-  if (scan.phase === 'scanning') return 'scanning';
+  if (scan.phase === 'scanning' || (scan.phase === 'paused' && scan.cursor?.resume)) return 'scanning';
   if (scan.phase === 'error' && playUnlocked({ found: scan.found, incoming: scan.incoming, failed: true })) {
     return 'done';
   }
@@ -30,7 +30,7 @@ function initialPhase(): Phase {
 }
 
 function statusCopy(phase: Phase, scan: ScanProgress): string {
-  if (scan.phase === 'error') return scan.message;
+  if (scan.phase === 'error' || scan.phase === 'paused') return scan.message;
   const unlocked = playUnlocked({ found: scan.found, incoming: scan.incoming, failed: false });
   if (phase === 'scanning' && scan.phase === 'scanning' && scan.incoming && unlocked) {
     return `${scan.message} You can play these while the rest load.`;
@@ -55,26 +55,43 @@ export function DrillsPrompt() {
   const showingResult = useRef(false);
   const failed = scan.phase === 'error';
   const unlocked = playUnlocked({ found: scan.found, incoming: scan.incoming, failed });
+  const live = scan.phase === 'scanning';
   const showPlay = phase === 'done' || (phase === 'scanning' && unlocked);
+
+  useEffect(() => {
+    if (scan.phase === 'scanning') setPhase('scanning');
+  }, [scan.phase]);
 
   if (!hydrated || skipped || closed || scanPromptDismissed) return null;
   if (profile && phase === 'ask' && !showingResult.current) return null;
 
+  const stop = () => {
+    cancelOwnScan();
+    setPhase('ask');
+  };
+
   const submit = async () => {
-    if (phase === 'scanning') return;
+    if (phase === 'scanning' || live) return;
     const name = cleanUsername(username);
     if (!name) {
+      const current = useProgressStore.getState().scan;
       useProgressStore.getState().setScan({
         phase: 'error',
-        found: 0,
-        games: 0,
+        found: current.found,
+        games: current.games,
         incoming: false,
         message: 'Use the public username, with no spaces.',
+        cursor: current.cursor,
       });
       return;
     }
     setPhase('scanning');
     const result = await runOwnScan(site, name);
+    if (result === 'scanning') return;
+    if (result === 'paused') {
+      setPhase('ask');
+      return;
+    }
     const now = useProgressStore.getState().scan;
     const kept = playUnlocked({
       found: now.found,
@@ -125,7 +142,7 @@ export function DrillsPrompt() {
             />
           </>
         ) : null}
-        {phase === 'ask' && scan.phase === 'error' ? (
+        {phase === 'ask' && (scan.phase === 'error' || scan.phase === 'paused') ? (
           <Text style={text.body} testID="drills-status">
             {scan.message}
           </Text>
@@ -134,13 +151,18 @@ export function DrillsPrompt() {
           <Button label="Play these" testID="drills-play" onPress={play} />
         ) : (
           <Button
-            label={phase === 'scanning' ? 'Looking…' : 'Use my games'}
+            label={live ? 'Stop' : 'Use my games'}
             testID="drills-find"
             onPress={() => {
+              if (live) {
+                stop();
+                return;
+              }
               void submit();
             }}
           />
         )}
+        {showPlay && live ? <Button label="Stop" variant="ghost" testID="drills-stop" onPress={stop} /> : null}
         {phase === 'done' ? null : (
           <Button label="Not now" variant="ghost" testID="drills-skip" onPress={skipDrillsPrompt} />
         )}

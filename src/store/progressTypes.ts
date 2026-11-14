@@ -1,12 +1,13 @@
 import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
 import type { GameProfile } from '@/src/logic/gameImport';
 import type { ReviewEntry } from '@/src/logic/reviewPile';
+import type { ScanCursor } from '@/src/logic/scanCursor';
 
 export type Experience = 'new' | 'basics';
 
 export type ThemeTally = { attempts: number; correct: number };
 
-export type ScanPhase = 'idle' | 'scanning' | 'done' | 'error';
+export type ScanPhase = 'idle' | 'scanning' | 'paused' | 'done' | 'error';
 
 export type ScanProgress = {
   phase: ScanPhase;
@@ -15,6 +16,8 @@ export type ScanProgress = {
   message: string;
   /** True while this scan may still add blunders. */
   incoming: boolean;
+  /** Games already read. A later scan of the same username continues from here. */
+  cursor: ScanCursor | null;
 };
 
 export type ProgressState = {

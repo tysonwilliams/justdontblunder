@@ -1,7 +1,7 @@
 import type { DrillPosition } from '@/src/logic/drills';
 import { fenKey } from '@/src/logic/reviewPile';
 
-type ScanActivity = 'idle' | 'scanning' | 'done' | 'error';
+type ScanActivity = 'idle' | 'scanning' | 'paused' | 'done' | 'error';
 
 /** Personal blunders that unlock play while the rest of a scan is still running. */
 export const EARLY_PLAY_COUNT = 3;
@@ -34,6 +34,9 @@ export function scanNote(phase: ScanActivity, found: number): string | null {
     case 'error':
       if (found <= 0) return null;
       return 'scan stopped';
+    case 'paused':
+      if (found <= 0) return null;
+      return 'paused';
     case 'idle':
     case 'done':
       return null;

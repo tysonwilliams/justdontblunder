@@ -20,6 +20,7 @@ import 'react-native-reanimated';
 
 import { BootSkeleton } from '@/src/components/ui/Skeleton';
 import { unlockFeedback } from '@/src/feedback/playFeedback';
+import { useResumeScan } from '@/src/store/useResumeScan';
 import { useThemePreference } from '@/src/store/themePreference';
 import { useTheme } from '@/src/theme/useTheme';
 import { applyDocumentTheme } from '@/src/theme/chrome';
@@ -61,6 +62,7 @@ function useThemeChrome(theme: Theme) {
 export default function RootLayout() {
   const theme = useTheme();
   const themeReady = useThemeReady();
+  useResumeScan();
   useThemeChrome(theme);
   const { colors } = theme;
   const [, error] = useFonts({

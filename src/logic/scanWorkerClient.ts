@@ -1,13 +1,19 @@
 import type { Color } from 'chess.js';
 
-import { blundersInGameYielding } from '@/src/logic/gameBlunders';
 import type { DrillPosition } from '@/src/logic/drills';
+import { blundersInGameYielding, readPastedGame } from '@/src/logic/gameBlunders';
+import { abortError, isAbortError, throwIfAborted } from '@/src/logic/scanAbort';
 import type { ScanWorkerRequest, ScanWorkerResponse } from '@/src/logic/scanProtocol';
 
 const GAME_TIMEOUT_MS = 20000;
 
+type WorkerResult = {
+  drills: DrillPosition[];
+  readable?: boolean;
+};
+
 type Waiter = {
-  resolve: (drills: DrillPosition[]) => void;
+  resolve: (result: WorkerResult) => void;
   reject: (error: Error) => void;
 };
 
@@ -46,6 +52,15 @@ function failWorker(error: Error): void {
   pending.clear();
 }
 
+/** Stop the current job. The next game can open a fresh worker. */
+function stopWorker(error: Error): void {
+  const current = worker;
+  worker = null;
+  current?.terminate();
+  for (const waiter of pending.values()) waiter.reject(error);
+  pending.clear();
+}
+
 function ensureWorker(): Worker {
   if (worker) return worker;
   const created = openScanWorker();
@@ -59,7 +74,7 @@ function ensureWorker(): Worker {
       waiter.reject(new Error(message.error ?? 'bad worker response'));
       return;
     }
-    waiter.resolve(message.drills);
+    waiter.resolve({ drills: message.drills, readable: message.readable });
   };
   created.onerror = () => {
     failWorker(new Error('Blunder scan worker failed'));
@@ -68,28 +83,43 @@ function ensureWorker(): Worker {
   return created;
 }
 
-function askWorker(pgn: string, userColor: Color): Promise<DrillPosition[]> {
+function askWorker(
+  pgn: string,
+  userColor: Color,
+  signal: AbortSignal | undefined,
+  paste: boolean,
+): Promise<WorkerResult> {
+  throwIfAborted(signal);
   const id = nextId;
   nextId += 1;
   const engine = ensureWorker();
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const settle = (error?: Error, result?: WorkerResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+      pending.delete(id);
+      if (error) reject(error);
+      else resolve(result ?? { drills: [] });
+    };
+    const onAbort = () => {
+      pending.delete(id);
+      stopWorker(abortError());
+      settle(abortError());
+    };
     const timer = setTimeout(() => {
       if (!pending.has(id)) return;
-      pending.delete(id);
       workerBroken = true;
-      reject(new Error('Blunder scan worker timed out'));
+      settle(new Error('Blunder scan worker timed out'));
     }, GAME_TIMEOUT_MS);
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
     pending.set(id, {
-      resolve: (drills) => {
-        clearTimeout(timer);
-        resolve(drills);
-      },
-      reject: (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
+      resolve: (result) => settle(undefined, result),
+      reject: (error) => settle(error),
     });
-    const request: ScanWorkerRequest = { id, pgn, userColor };
+    const request: ScanWorkerRequest = paste ? { id, pgn, userColor, paste: true } : { id, pgn, userColor };
     engine.postMessage(request);
   });
 }
@@ -97,14 +127,38 @@ function askWorker(pgn: string, userColor: Color): Promise<DrillPosition[]> {
 /**
  * Replay one game away from the UI thread.
  * A missing or failed worker yields between moves instead, and keeps the same blunders.
+ * An aborted signal stops the worker instead of falling back onto the main thread.
  */
-export async function analyzeGame(pgn: string, userColor: Color): Promise<DrillPosition[]> {
+export async function analyzeGame(pgn: string, userColor: Color, signal?: AbortSignal): Promise<DrillPosition[]> {
+  throwIfAborted(signal);
   if (!workerBroken && scanWorkerSupported()) {
     try {
-      return await askWorker(pgn, userColor);
-    } catch {
-      return blundersInGameYielding(pgn, userColor);
+      const result = await askWorker(pgn, userColor, signal, false);
+      return result.drills;
+    } catch (error) {
+      if (isAbortError(error) || signal?.aborted) throw abortError();
+      return blundersInGameYielding(pgn, userColor, undefined, signal);
     }
   }
-  return blundersInGameYielding(pgn, userColor);
+  return blundersInGameYielding(pgn, userColor, undefined, signal);
+}
+
+/** Paste analysis uses the scan worker so a long PGN does not freeze the board. */
+export async function analyzePastedPgn(
+  pgn: string,
+  userColor: Color,
+  signal?: AbortSignal,
+): Promise<{ readable: boolean; drills: DrillPosition[] }> {
+  const trimmed = pgn.trim();
+  if (!trimmed) return { readable: false, drills: [] };
+  throwIfAborted(signal);
+  if (!workerBroken && scanWorkerSupported()) {
+    try {
+      const result = await askWorker(trimmed, userColor, signal, true);
+      return { readable: result.readable === true, drills: result.drills };
+    } catch (error) {
+      if (isAbortError(error) || signal?.aborted) throw abortError();
+    }
+  }
+  return readPastedGame(trimmed, userColor);
 }
