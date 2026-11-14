@@ -12,6 +12,8 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let lastCommit = 0;
 let chain: Promise<void> = Promise.resolve();
 let persistIntervalMs = SCAN_PERSIST_INTERVAL_MS;
+/** Bumped when a device erase drops a scan batch that was already queued. */
+let writeEpoch = 0;
 
 function commit(): Promise<void> {
   if (timer) {
@@ -19,11 +21,15 @@ function commit(): Promise<void> {
     timer = null;
   }
   const pending = latest;
+  const epoch = writeEpoch;
   latest = null;
   if (!pending) return chain;
   lastCommit = Date.now();
   const json = JSON.stringify(pending.value);
-  const write = () => Promise.resolve(AsyncStorage.setItem(pending.name, json)).then(() => undefined);
+  const write = () => {
+    if (epoch !== writeEpoch) return undefined;
+    return Promise.resolve(AsyncStorage.setItem(pending.name, json)).then(() => undefined);
+  };
   chain = chain.then(write, write);
   return chain;
 }
@@ -75,6 +81,32 @@ export function resetProgressPersistForTests(): void {
   persistIntervalMs = SCAN_PERSIST_INTERVAL_MS;
   if (timer) clearTimeout(timer);
   timer = null;
+}
+
+/**
+ * Drop a scan batch that has not landed yet.
+ * A write already queued sees the new epoch and does not store the old cursor.
+ */
+export function discardPendingProgressWrites(): void {
+  writeEpoch += 1;
+  coalescing = false;
+  latest = null;
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+}
+
+/** Remove the progress document after any write that was already queued. */
+export async function removePersistedProgress(name: string): Promise<void> {
+  latest = null;
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  const remove = () => Promise.resolve(AsyncStorage.removeItem(name)).then(() => undefined);
+  chain = chain.then(remove, remove);
+  await chain;
 }
 
 export const progressStorage: PersistStorage<Record<string, unknown>> = {
