@@ -5,9 +5,10 @@ import type { Color } from 'chess.js';
 import { Button } from '@/src/components/ui/Button';
 import { FilterChips } from '@/src/components/ui/Chip';
 import { text } from '@/src/components/ui/text';
-import { cleanUsername, pastedGameDrills, type GameSite } from '@/src/logic/gameImport';
+import { cleanUsername, type GameSite } from '@/src/logic/gameImport';
 import { poolSummary } from '@/src/logic/puzzlePool';
-import { runOwnScan } from '@/src/store/ownGames';
+import { analyzePastedPgn } from '@/src/logic/scanWorkerClient';
+import { cancelOwnScan, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
@@ -41,7 +42,13 @@ export function GameImport() {
     setUsername(profile.username);
   }, [profile]);
 
+  const scanning = scan.phase === 'scanning';
+
   const findGames = async () => {
+    if (scanning) {
+      cancelOwnScan();
+      return;
+    }
     if (busy) return;
     const name = cleanUsername(username);
     if (!name) {
@@ -51,19 +58,19 @@ export function GameImport() {
     setBusy(true);
     setStatus('');
     const result = await runOwnScan(site, name);
-    if (result === 'error') {
+    if (result === 'error' || result === 'paused') {
       setStatus(useProgressStore.getState().scan.message);
     }
     setBusy(false);
   };
 
   const usePgn = async () => {
-    if (busy) return;
+    if (busy || scanning) return;
     setBusy(true);
     setStatus('Reading that game.');
     await new Promise((resolve) => setTimeout(resolve, 0));
     try {
-      const result = pastedGameDrills(pgn, userColor);
+      const result = await analyzePastedPgn(pgn, userColor);
       if (!result.readable) {
         setStatus('That PGN could not be read.');
         return;
@@ -99,7 +106,7 @@ export function GameImport() {
         style={[styles.field, { color: colors.text }]}
       />
       <Button
-        label={busy ? 'Looking…' : 'Find my blunders'}
+        label={scanning ? 'Stop' : 'Find my blunders'}
         onPress={() => {
           void findGames();
         }}

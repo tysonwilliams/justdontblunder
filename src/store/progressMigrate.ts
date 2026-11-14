@@ -8,10 +8,11 @@ import type { Experience, ProgressState, ScanProgress, ThemeTally } from '@/src/
 /**
  * v0 is the flat `jdb-progress-v1` document.
  * v1 splits it into training, review, library, preferences, and scan.
- * Scan stays in the document so a refresh can show the last result. A later
- * sync can ship the other slices and leave scan on the device.
+ * v2 adds a scan cursor so a username scan can pause, resume, and skip games
+ * it already read. Scan stays on the device. A later sync can ship the other
+ * slices and leave this one behind.
  */
-export const PROGRESS_VERSION = 1;
+export const PROGRESS_VERSION = 2;
 
 export const PROGRESS_STORAGE_KEY = 'jdb-progress-v1';
 
@@ -117,7 +118,7 @@ export function partializeProgress(state: ProgressState): PersistedProgress {
 }
 
 export function migrateProgress(persisted: unknown, version: number): PersistedProgress {
-  if (version < PROGRESS_VERSION) return persistedFromLegacy(persisted);
+  if (version < 1) return persistedFromLegacy(persisted);
   return persistedFromSlices(persisted);
 }
 

@@ -19,7 +19,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { playUnlocked } from '@/src/logic/earlyPlay';
 import { pastedGameDrills } from '@/src/logic/gameImport';
-import { resetOwnScanForTests, runOwnScan } from '@/src/store/ownGames';
+import { abortError } from '@/src/logic/scanAbort';
+import { PROGRESS_VERSION } from '@/src/store/progressMigrate';
+import { cancelOwnScan, resetOwnScanForTests, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
 import { flushCoalescedPersistForTests, setScanPersistIntervalForTests } from '@/src/store/progressStorage';
 
@@ -64,7 +66,7 @@ describe('own scan', () => {
       pastedIds: [],
       gameProfile: null,
       scanPromptDismissed: false,
-      scan: { phase: 'idle', found: 0, games: 0, message: '', incoming: false },
+      scan: { phase: 'idle', found: 0, games: 0, message: '', incoming: false, cursor: null },
     });
   });
 
@@ -111,7 +113,7 @@ describe('own scan', () => {
       if (String(url) === newer) return json({ games: games(['a3', 'a4', 'b3', 'b4'], 40) });
       throw new Error('offline');
     });
-    await expect(runOwnScan('chesscom', 'Me', fetchImpl)).resolves.toBe('error');
+    await expect(runOwnScan('chesscom', 'Me', fetchImpl, { sleep: async () => {} })).resolves.toBe('error');
     const state = useProgressStore.getState();
     expect(state.ownDrills.length).toBeGreaterThanOrEqual(3);
     expect(state.scan.phase).toBe('error');
@@ -158,14 +160,19 @@ describe('own scan', () => {
       release = resolve;
     });
     setScanPersistIntervalForTests(60_000);
-    const pending = runOwnScan('chesscom', 'Me', async (url) => {
-      if (String(url).endsWith('/archives')) return json({ archives: [older, newer] });
-      if (String(url) === newer) {
-        return json({ games: games(['a3', 'a4', 'b3', 'b4', 'c3', 'c4', 'd3', 'd4'], 40) });
-      }
-      await gate;
-      throw new Error('offline');
-    });
+    const pending = runOwnScan(
+      'chesscom',
+      'Me',
+      async (url) => {
+        if (String(url).endsWith('/archives')) return json({ archives: [older, newer] });
+        if (String(url) === newer) {
+          return json({ games: games(['a3', 'a4', 'b3', 'b4', 'c3', 'c4', 'd3', 'd4'], 40) });
+        }
+        await gate;
+        throw new Error('offline');
+      },
+      { sleep: async () => {} },
+    );
     try {
       await waitUntil(() => useProgressStore.getState().scan.games >= 8);
       await flushCoalescedPersistForTests();
@@ -232,6 +239,243 @@ describe('own scan', () => {
     expect(restored).not.toContain('own-not-pasted');
     expect(useProgressStore.getState().pastedIds).toEqual(pastedIds);
   });
+
+  it('stops an in-flight request and keeps a paused cursor', async () => {
+    const calls: string[] = [];
+    const pending = runOwnScan('chesscom', 'Me', (url, init) => {
+      const href = String(url);
+      calls.push(href);
+      if (href.endsWith('/archives')) return Promise.resolve(json({ archives: [older, newer] }));
+      if (href === newer) {
+        return new Promise((_resolve, reject) => {
+          const onAbort = () => reject(abortError());
+          if (init?.signal?.aborted) {
+            onAbort();
+            return;
+          }
+          init?.signal?.addEventListener('abort', onAbort, { once: true });
+        });
+      }
+      return Promise.resolve(json({ games: games(['c3'], 10) }));
+    });
+    try {
+      await waitUntil(() => calls.includes(newer));
+      cancelOwnScan();
+      await expect(pending).resolves.toBe('paused');
+    } finally {
+      cancelOwnScan();
+      await pending.catch(() => undefined);
+    }
+    expect(calls).not.toContain(older);
+    const scan = useProgressStore.getState().scan;
+    expect(scan.phase).toBe('paused');
+    expect(scan.incoming).toBe(false);
+    expect(scan.cursor?.resume).toBe(false);
+    expect(scan.message).toBe('Scan paused.');
+    await flushCoalescedPersistForTests();
+    const raw = memory.get('jdb-progress-v1');
+    useProgressStore.setState({
+      ownDrills: [],
+      scan: { phase: 'idle', found: 0, games: 0, message: '', incoming: false, cursor: null },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    memory.set('jdb-progress-v1', raw ?? '');
+    await useProgressStore.persist.rehydrate();
+    expect(useProgressStore.getState().scan.phase).toBe('paused');
+    expect(useProgressStore.getState().scan.cursor?.resume).toBe(false);
+  });
+
+  it('stops the scan worker when the player cancels', async () => {
+    let terminated = 0;
+    let posted!: () => void;
+    const postedWait = new Promise<void>((resolve) => {
+      posted = resolve;
+    });
+    class FakeWorker {
+      onmessage: ((event: { data: unknown }) => void) | null = null;
+      onerror: (() => void) | null = null;
+      postMessage() {
+        posted();
+      }
+      terminate() {
+        terminated += 1;
+      }
+    }
+    vi.stubGlobal('Worker', FakeWorker);
+    vi.stubGlobal('window', { location: { href: 'http://localhost/app' } });
+    const pending = runOwnScan('chesscom', 'Me', async (url) => {
+      if (String(url).endsWith('/archives')) return json({ archives: [older] });
+      return json({ games: games(['a3'], 20) });
+    });
+    try {
+      await postedWait;
+      cancelOwnScan();
+      await expect(pending).resolves.toBe('paused');
+      expect(terminated).toBeGreaterThan(0);
+    } finally {
+      cancelOwnScan();
+      await pending.catch(() => undefined);
+      vi.unstubAllGlobals();
+      resetOwnScanForTests();
+    }
+  });
+
+  it('resumes after a reload without refetching a month already finished', async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const first = runOwnScan(
+      'chesscom',
+      'Me',
+      async (url) => {
+        const href = String(url);
+        if (href.endsWith('/archives')) return json({ archives: [older, newer] });
+        if (href === newer) return json({ games: games(['a3', 'a4', 'b3'], 30) });
+        await gate;
+        throw abortError();
+      },
+      { sleep: async () => {} },
+    );
+    let raw = '';
+    try {
+      await waitUntil(() => (useProgressStore.getState().scan.cursor?.doneArchives ?? []).includes(newer));
+      await flushCoalescedPersistForTests();
+      raw = memory.get('jdb-progress-v1') ?? '';
+      expect(useProgressStore.getState().scan.games).toBeGreaterThanOrEqual(3);
+      cancelOwnScan();
+      release();
+      await first;
+    } finally {
+      release();
+      await first.catch(() => undefined);
+    }
+    expect(useProgressStore.getState().scan.phase).toBe('paused');
+    expect(useProgressStore.getState().ownDrills.length).toBeGreaterThanOrEqual(3);
+    const found = useProgressStore.getState().ownDrills.length;
+
+    useProgressStore.setState({
+      ownDrills: [],
+      pastedIds: [],
+      gameProfile: null,
+      scan: { phase: 'idle', found: 0, games: 0, message: '', incoming: false, cursor: null },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    memory.set('jdb-progress-v1', raw);
+    await useProgressStore.persist.rehydrate();
+    const restored = useProgressStore.getState();
+    expect(restored.scan.phase).toBe('paused');
+    expect(restored.scan.cursor?.resume).toBe(true);
+    expect(restored.scan.cursor?.doneArchives).toContain(newer);
+    expect(restored.ownDrills).toHaveLength(found);
+    expect(
+      restored.ownDrills.some((drill) => drill.source?.move === 'Qh5' && drill.source.gameId.startsWith('c:')),
+    ).toBe(true);
+
+    const calls: string[] = [];
+    await runOwnScan('chesscom', 'Me', async (url) => {
+      const href = String(url);
+      calls.push(href);
+      if (href.endsWith('/archives')) return json({ archives: [older, newer] });
+      if (href === newer) throw new Error('refetched a finished month');
+      return json({ games: games(['c3', 'c4'], 10) });
+    });
+    expect(calls).not.toContain(newer);
+    expect(calls).toContain(older);
+    expect(useProgressStore.getState().ownDrills.length).toBeGreaterThan(found);
+    expect(useProgressStore.getState().scan.phase).toBe('done');
+    expect(useProgressStore.getState().scan.cursor?.resume).toBe(false);
+    expect(useProgressStore.getState().gameProfile).toEqual({ site: 'chesscom', username: 'Me' });
+  });
+
+  it('rescans only new games and keeps pasted drills', async () => {
+    const pasted = pastedGameDrills(queenHang('h3'), 'w');
+    expect(pasted.readable).toBe(true);
+    useProgressStore.getState().mergeImportedDrills(pasted.drills);
+    const pastedIds = pasted.drills.map((drill) => drill.id);
+
+    await runOwnScan('chesscom', 'Me', async (url) => {
+      const href = String(url);
+      if (href.endsWith('/archives')) return json({ archives: [older, newer] });
+      if (href === newer) return json({ games: games(['a3', 'a4'], 30) });
+      return json({ games: games(['b3'], 10) });
+    });
+    const firstIds = useProgressStore.getState().ownDrills.map((drill) => drill.id);
+    for (const id of pastedIds) expect(firstIds).toContain(id);
+    expect(useProgressStore.getState().scan.cursor?.backfillDone).toBe(true);
+
+    const calls: string[] = [];
+    await runOwnScan('chesscom', 'Me', async (url) => {
+      const href = String(url);
+      calls.push(href);
+      if (href.endsWith('/archives')) return json({ archives: [older, newer] });
+      if (href === newer) {
+        return json({
+          games: [
+            ...games(['a3', 'a4'], 30),
+            {
+              pgn: queenHang('g3'),
+              time_class: 'rapid',
+              end_time: 80,
+              white: { username: 'Me' },
+              black: { username: 'them' },
+            },
+          ],
+        });
+      }
+      throw new Error(`refetched ${href}`);
+    });
+    expect(calls.filter((href) => href === older)).toHaveLength(0);
+    expect(calls).toContain(newer);
+    const after = useProgressStore.getState().ownDrills;
+    const ids = after.map((drill) => drill.id);
+    for (const id of firstIds) expect(ids).toContain(id);
+    expect(after.some((drill) => drill.source?.gameId.includes(':80:'))).toBe(true);
+    expect(useProgressStore.getState().scan.phase).toBe('done');
+  });
+
+  it('waits out a 429 and tells the player instead of failing', async () => {
+    const waits: number[] = [];
+    const messages: string[] = [];
+    const unsub = useProgressStore.subscribe((state, prev) => {
+      if (state.scan.message !== prev.scan.message) messages.push(state.scan.message);
+    });
+    let tries = 0;
+    try {
+      await runOwnScan(
+        'chesscom',
+        'Me',
+        async (url) => {
+          const href = String(url);
+          if (href.endsWith('/archives')) {
+            tries += 1;
+            if (tries === 1) {
+              return {
+                ok: false,
+                status: 429,
+                headers: { get: (name: string) => (name.toLowerCase() === 'retry-after' ? '3' : null) },
+                json: async () => ({}),
+                text: async () => '',
+              };
+            }
+            return json({ archives: [older] });
+          }
+          return json({ games: games(['a3'], 20) });
+        },
+        {
+          sleep: async (ms) => {
+            waits.push(ms);
+          },
+        },
+      );
+    } finally {
+      unsub();
+    }
+    expect(waits).toEqual([3000]);
+    expect(messages).toContain('Chess.com is busy. Trying again.');
+    expect(useProgressStore.getState().scan.phase).toBe('done');
+    expect(useProgressStore.getState().ownDrills.length).toBeGreaterThan(0);
+  });
 });
 
 function savedProgress(): {
@@ -248,8 +492,8 @@ function savedProgress(): {
       scan?: { phase?: string; incoming?: boolean };
     };
   };
-  if (parsed.version !== 1 || !parsed.state.library) {
-    throw new Error('progress blob was not the sliced v1 document');
+  if (parsed.version !== PROGRESS_VERSION || !parsed.state.library) {
+    throw new Error('progress blob was not the sliced document');
   }
   return {
     ownDrills: parsed.state.library.ownDrills ?? [],

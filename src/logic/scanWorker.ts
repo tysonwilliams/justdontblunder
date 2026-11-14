@@ -1,4 +1,4 @@
-import { blundersInGame } from '@/src/logic/gameBlunders';
+import { blundersInGame, readPastedGame } from '@/src/logic/gameBlunders';
 import type { ScanWorkerRequest, ScanWorkerResponse } from '@/src/logic/scanProtocol';
 
 /** One game in, the same blunders `blundersInGame` would return on the UI thread. */
@@ -12,6 +12,10 @@ export function handleScanMessage(data: ScanWorkerRequest): ScanWorkerResponse {
     return { id: typeof data?.id === 'number' ? data.id : 0, drills: [], error: 'bad request' };
   }
   try {
+    if (data.paste === true) {
+      const read = readPastedGame(data.pgn, data.userColor);
+      return { id: data.id, drills: read.drills, readable: read.readable };
+    }
     return { id: data.id, drills: blundersInGame(data.pgn, data.userColor) };
   } catch (error) {
     return {

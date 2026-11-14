@@ -183,6 +183,8 @@ describe('early play', () => {
     expect(scanNote('scanning', 4)).toBe('4 found');
     expect(scanNote('scanning', 0)).toBeNull();
     expect(scanNote('error', 4)).toBe('scan stopped');
+    expect(scanNote('paused', 4)).toBe('paused');
+    expect(scanNote('paused', 0)).toBeNull();
     expect(scanNote('done', 4)).toBeNull();
     expect(scanNote('idle', 4)).toBeNull();
   });

@@ -6,10 +6,13 @@ export type ScanWorkerRequest = {
   id: number;
   pgn: string;
   userColor: ScanSide;
+  /** Read a pasted game and say whether the PGN parsed. */
+  paste?: boolean;
 };
 
 export type ScanWorkerResponse = {
   id: number;
   drills: DrillPosition[];
+  readable?: boolean;
   error?: string;
 };

@@ -40,6 +40,14 @@ export type DrillPosition = {
   traps: DrillTrap[];
   note: string;
   expectedDropCp: number;
+  /** Game the personal puzzle was taken from, when a scan or paste recorded it. */
+  source?: DrillSource;
+};
+
+export type DrillSource = {
+  gameId: string;
+  /** SAN of the move that blundered. */
+  move?: string;
 };
 
 export type DrillSession = {

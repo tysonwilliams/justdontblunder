@@ -1,9 +1,33 @@
-import { Chess, type Color } from 'chess.js';
+import { type Color } from 'chess.js';
 
-import { blundersInGame, yieldToMain } from '@/src/logic/gameBlunders';
+import { blundersInGame, readPastedGame, yieldToMain } from '@/src/logic/gameBlunders';
 import { analyzeGame } from '@/src/logic/scanWorkerClient';
 import type { DrillPosition } from '@/src/logic/drills';
 import { fenKey } from '@/src/logic/reviewPile';
+import { throwIfAborted } from '@/src/logic/scanAbort';
+import {
+  cleanUsername,
+  emptyCursor,
+  markArchiveDone,
+  monthsToRead,
+  rememberGame,
+  snapshotCursor,
+  type GameSite,
+  type ScanCursor,
+} from '@/src/logic/scanCursor';
+import {
+  ImportError,
+  politeFetch,
+  sleepWithSignal,
+  type GameFetch,
+  type GameResponse,
+  type Sleep,
+} from '@/src/logic/politeFetch';
+
+export { cleanUsername };
+export type { GameSite };
+export { ImportError };
+export type { GameFetch, GameResponse };
 
 /** Games scanned before the search stops, even if fewer blunders were found. */
 export const IMPORT_GAME_LIMIT = 250;
@@ -17,9 +41,8 @@ const LICHESS_SPEEDS = new Set(['blitz', 'rapid', 'classical']);
 
 export const CHESS_COM_USER_AGENT = 'JustDontBlunder/1.0 (habit trainer; public games only)';
 
-export type GameSite = 'chesscom' | 'lichess';
-
 export type GameRecord = {
+  id?: string;
   pgn: string;
   playedAt: number;
   speed: string;
@@ -27,6 +50,8 @@ export type GameRecord = {
 };
 
 export type ChessComGame = {
+  url?: string;
+  uuid?: string;
   pgn?: string;
   time_class?: string;
   end_time?: number;
@@ -40,11 +65,13 @@ export type ScanUpdate = {
   drills: readonly DrillPosition[];
   /** False once this source will not yield more blunders. */
   incoming: boolean;
+  cursor: ScanCursor;
 };
 
 export type PublicScan = {
   drills: DrillPosition[];
   games: number;
+  cursor: ScanCursor;
 };
 
 export type LichessGame = {
@@ -58,27 +85,21 @@ export type LichessGame = {
   };
 };
 
-export class ImportError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ImportError';
-  }
-}
-
-type GameResponse = {
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-  text: () => Promise<string>;
+export type CollectOptions = {
+  fetchImpl?: GameFetch;
+  onProgress?: (update: ScanUpdate) => void;
+  onStatus?: (message: string) => void;
+  /** Called only for a game that is actually replayed. */
+  onAnalyze?: (gameId: string) => void;
+  drillLimit?: number;
+  gameLimit?: number;
+  signal?: AbortSignal;
+  cursor?: ScanCursor | null;
+  /** Blunders already saved for this username. A resume keeps them in front of older finds. */
+  kept?: readonly DrillPosition[];
+  sleep?: Sleep;
+  now?: () => number;
 };
-
-export type GameFetch = (url: string, init?: RequestInit) => Promise<GameResponse>;
-
-export function cleanUsername(value: string): string | null {
-  const name = value.trim();
-  if (!/^[A-Za-z0-9_-]{2,25}$/.test(name)) return null;
-  return name;
-}
 
 /** Public blitz, rapid, classical, and Chess.com daily games. Bullet is skipped. The archive is not stored. */
 export async function loadPublicGames(
@@ -88,11 +109,12 @@ export async function loadPublicGames(
 ): Promise<GameRecord[]> {
   const name = cleanUsername(username);
   if (!name) throw new ImportError('Use the public username, with no spaces.');
+  const ctx = makeContext({ fetchImpl });
   switch (site) {
     case 'chesscom':
-      return loadChessCom(name, fetchImpl);
+      return loadChessCom(name, ctx);
     case 'lichess':
-      return loadLichess(name, fetchImpl);
+      return loadLichess(name, ctx);
     default: {
       const _exhaustive: never = site;
       return _exhaustive;
@@ -102,42 +124,57 @@ export async function loadPublicGames(
 
 /**
  * Fetch and scan until 100 unique blunders, about 250 games, or the public history runs out.
- * Replay runs off the UI thread in a worker, or yields between moves when that is unavailable.
+ * A cursor skips games and months that were already read. Replay runs off the UI thread.
  * The PGN archive is not stored.
  */
 export async function collectPublicDrills(
   site: GameSite,
   username: string,
-  options?: {
-    fetchImpl?: GameFetch;
-    onProgress?: (update: ScanUpdate) => void;
-    drillLimit?: number;
-    gameLimit?: number;
-  },
+  options?: CollectOptions,
 ): Promise<PublicScan> {
   const name = cleanUsername(username);
   if (!name) throw new ImportError('Use the public username, with no spaces.');
-  const fetchImpl = options?.fetchImpl ?? fetch;
-  const budget = emptyBudget(options?.drillLimit ?? IMPORT_DRILL_LIMIT, options?.gameLimit ?? IMPORT_GAME_LIMIT);
+  const ctx = makeContext(options);
+  throwIfAborted(ctx.signal);
+  const budget = createBudget(startCursor(site, name, options?.cursor), options, ctx.signal);
   switch (site) {
     case 'chesscom':
-      await scanChessCom(name, fetchImpl, budget, options?.onProgress);
+      await scanChessCom(name, budget, ctx);
       break;
     case 'lichess':
-      await scanLichess(name, fetchImpl, budget, options?.onProgress);
+      await scanLichess(name, budget, ctx);
       break;
     default: {
       const _exhaustive: never = site;
       return _exhaustive;
     }
   }
+  budget.cursor = { ...budget.cursor, backfillDone: true, resume: false };
+  const drills = listed(budget);
+  const cursor = snapshotCursor(budget.cursor);
   options?.onProgress?.({
-    found: budget.drills.length,
-    games: budget.games,
-    drills: budget.drills.slice(),
+    found: drills.length,
+    games: cursor.games,
+    drills,
     incoming: false,
+    cursor,
   });
-  return { drills: budget.drills, games: budget.games };
+  return { drills, games: cursor.games, cursor };
+}
+
+export function chessComGameId(game: ChessComGame): string {
+  if (typeof game.uuid === 'string' && game.uuid.trim().length > 0) return `c:${game.uuid.trim()}`;
+  if (typeof game.url === 'string' && game.url.startsWith('https://www.chess.com/')) return `c:${game.url}`;
+  const end = game.end_time ?? 0;
+  const white = (game.white?.username ?? '').toLowerCase();
+  const black = (game.black?.username ?? '').toLowerCase();
+  const pgn = game.pgn ?? '';
+  return `c:${end}:${white}:${black}:${pgn.length}:${pgn.slice(0, 32)}`;
+}
+
+export function lichessGameId(game: LichessGame): string {
+  if (typeof game.id === 'string' && game.id.trim().length > 0) return `l:${game.id.trim()}`;
+  return `l:${game.createdAt ?? 0}:${(game.pgn ?? '').slice(0, 32)}`;
 }
 
 export function recordsFromChessCom(username: string, games: readonly ChessComGame[]): GameRecord[] {
@@ -149,6 +186,7 @@ export function recordsFromChessCom(username: string, games: readonly ChessComGa
     const userColor = colorFor(username, game.white?.username, game.black?.username);
     if (!userColor) continue;
     records.push({
+      id: chessComGameId(game),
       pgn: game.pgn,
       playedAt: (game.end_time ?? 0) * 1000,
       speed,
@@ -167,6 +205,7 @@ export function recordsFromLichess(username: string, games: readonly LichessGame
     const userColor = colorFor(username, lichessName(game.players?.white), lichessName(game.players?.black));
     if (!userColor) continue;
     records.push({
+      id: lichessGameId(game),
       pgn: game.pgn,
       playedAt: game.createdAt ?? 0,
       speed,
@@ -229,41 +268,116 @@ export function pastedGameDrills(
   pgn: string,
   userColor: Color,
 ): { readable: boolean; drills: DrillPosition[] } {
-  const trimmed = pgn.trim();
-  if (!trimmed) return { readable: false, drills: [] };
-  try {
-    const parsed = new Chess();
-    parsed.loadPgn(trimmed);
-    if (parsed.history().length === 0) return { readable: false, drills: [] };
-  } catch {
-    return { readable: false, drills: [] };
-  }
+  return readPastedGame(pgn, userColor);
+}
+
+type FetchContext = {
+  fetchImpl: GameFetch;
+  signal: AbortSignal;
+  sleep: Sleep;
+  now: () => number;
+  onStatus?: (message: string) => void;
+};
+
+function makeContext(options?: CollectOptions): FetchContext {
   return {
-    readable: true,
-    drills: drillsFromGames(
-      [{ pgn: trimmed, playedAt: Date.now(), speed: 'rapid', userColor }],
-      IMPORT_DRILL_LIMIT,
-    ),
+    fetchImpl: options?.fetchImpl ?? fetch,
+    signal: options?.signal ?? new AbortController().signal,
+    sleep: options?.sleep ?? sleepWithSignal,
+    now: options?.now ?? Date.now,
+    onStatus: options?.onStatus,
   };
 }
 
-async function loadChessCom(username: string, fetchImpl: GameFetch): Promise<GameRecord[]> {
-  const archives = await chessComArchives(username, fetchImpl);
+function startCursor(site: GameSite, username: string, cursor: ScanCursor | null | undefined): ScanCursor {
+  if (!cursor || cursor.site !== site || cursor.username.toLowerCase() !== username.toLowerCase()) {
+    return emptyCursor(site, username);
+  }
+  return snapshotCursor({ ...cursor, resume: false });
+}
+
+type Budget = {
+  fresh: DrillPosition[];
+  kept: DrillPosition[];
+  seen: Set<string>;
+  cursor: ScanCursor;
+  examined: number;
+  drillLimit: number;
+  gameLimit: number;
+  watermark: number;
+  signal: AbortSignal;
+  onProgress?: (update: ScanUpdate) => void;
+  onAnalyze?: (gameId: string) => void;
+};
+
+function createBudget(cursor: ScanCursor, options: CollectOptions | undefined, signal: AbortSignal): Budget {
+  return {
+    fresh: [],
+    kept: (options?.kept ?? []).slice(),
+    seen: new Set(cursor.seen),
+    cursor,
+    examined: 0,
+    drillLimit: options?.drillLimit ?? IMPORT_DRILL_LIMIT,
+    gameLimit: options?.gameLimit ?? IMPORT_GAME_LIMIT,
+    watermark: cursor.newestMs,
+    signal,
+    onProgress: options?.onProgress,
+    onAnalyze: options?.onAnalyze,
+  };
+}
+
+function listed(budget: Budget): DrillPosition[] {
+  const out: DrillPosition[] = [];
+  const fens = new Set<string>();
+  const ids = new Set<string>();
+  for (const drill of [...budget.fresh, ...budget.kept]) {
+    const key = fenKey(drill.fen);
+    if (fens.has(key) || ids.has(drill.id)) continue;
+    fens.add(key);
+    ids.add(drill.id);
+    out.push(drill);
+    if (out.length >= budget.drillLimit) break;
+  }
+  return out;
+}
+
+/** The pool is full and this game is not newer than the last scan. */
+function blocksOlder(budget: Budget, playedAt: number): boolean {
+  if (budget.examined >= budget.gameLimit) return true;
+  if (listed(budget).length < budget.drillLimit) return false;
+  if (budget.watermark > 0 && playedAt > budget.watermark) return false;
+  return true;
+}
+
+function emit(budget: Budget, incoming: boolean): void {
+  const drills = listed(budget);
+  const cursor = snapshotCursor(budget.cursor);
+  budget.onProgress?.({
+    found: drills.length,
+    games: cursor.games,
+    drills,
+    incoming,
+    cursor,
+  });
+}
+
+async function loadChessCom(username: string, ctx: FetchContext): Promise<GameRecord[]> {
+  const archives = await chessComArchives(username, ctx);
   const collected: GameRecord[] = [];
   for (const url of archives.slice(0, MAX_ARCHIVE_MONTHS)) {
     if (collected.length >= IMPORT_GAME_LIMIT) break;
-    collected.push(...(await chessComMonth(url, username, fetchImpl)));
+    collected.push(...(await chessComMonth(url, username, ctx)));
   }
   return capGames(collected);
 }
 
-async function loadLichess(username: string, fetchImpl: GameFetch): Promise<GameRecord[]> {
+async function loadLichess(username: string, ctx: FetchContext): Promise<GameRecord[]> {
   const collected: GameRecord[] = [];
   const seen = new Set<string>();
   let until: number | undefined;
   let examined = 0;
   while (examined < IMPORT_GAME_LIMIT && collected.length < IMPORT_GAME_LIMIT) {
-    const page = await lichessPage(username, until, fetchImpl);
+    const page = await lichessPage(username, until, ctx);
     if (page.length === 0) break;
     const fresh = unseenGames(page, seen);
     if (fresh.length === 0) break;
@@ -277,98 +391,144 @@ async function loadLichess(username: string, fetchImpl: GameFetch): Promise<Game
   return capGames(collected);
 }
 
-type ScanBudget = {
-  drills: DrillPosition[];
-  seen: Set<string>;
-  games: number;
-  drillLimit: number;
-  gameLimit: number;
-};
-
-function emptyBudget(drillLimit: number, gameLimit: number): ScanBudget {
-  return { drills: [], seen: new Set<string>(), games: 0, drillLimit, gameLimit };
-}
-
-function budgetFull(budget: ScanBudget): boolean {
-  return budget.games >= budget.gameLimit || budget.drills.length >= budget.drillLimit;
-}
-
-async function scanChessCom(
-  username: string,
-  fetchImpl: GameFetch,
-  budget: ScanBudget,
-  onProgress?: (update: ScanUpdate) => void,
-): Promise<void> {
-  const archives = await chessComArchives(username, fetchImpl);
-  let months = 0;
-  for (const url of archives) {
-    if (budgetFull(budget) || months >= MAX_ARCHIVE_MONTHS) break;
-    months += 1;
-    const records = (await chessComMonth(url, username, fetchImpl)).sort((a, b) => b.playedAt - a.playedAt);
-    const room = budget.gameLimit - budget.games;
-    const stop = await absorb(records.slice(0, Math.max(room, 0)), budget, onProgress);
-    if (stop) break;
+async function scanChessCom(username: string, budget: Budget, ctx: FetchContext): Promise<void> {
+  const archives = await chessComArchives(username, ctx);
+  const newest = archives[0];
+  const todo = monthsToRead(archives.slice(0, MAX_ARCHIVE_MONTHS), budget.cursor);
+  if (!newest || todo.length === 0) return;
+  for (const url of todo) {
+    throwIfAborted(budget.signal);
+    if (budget.examined >= budget.gameLimit) return;
+    if (url !== newest && listed(budget).length >= budget.drillLimit) return;
+    const records = (await chessComMonth(url, username, ctx)).sort((a, b) => b.playedAt - a.playedAt);
+    const walk = await absorb(records, budget);
+    if (walk === 'done') {
+      budget.cursor = markArchiveDone(budget.cursor, url);
+      emit(budget, true);
+    }
+    if (walk === 'stop') return;
   }
 }
 
-async function scanLichess(
+async function scanLichess(username: string, budget: Budget, ctx: FetchContext): Promise<void> {
+  const resumeUntil = budget.cursor.backfillDone ? null : budget.cursor.lichessUntil;
+  await walkLichessForward(username, budget, ctx, budget.cursor.backfillDone, resumeUntil);
+}
+
+async function walkLichessForward(
   username: string,
-  fetchImpl: GameFetch,
-  budget: ScanBudget,
-  onProgress?: (update: ScanUpdate) => void,
+  budget: Budget,
+  ctx: FetchContext,
+  stopOnOverlap: boolean,
+  resumeUntil: number | null,
 ): Promise<void> {
-  const seen = new Set<string>();
+  const local = new Set<string>();
   let until: number | undefined;
-  let examined = 0;
-  while (examined < budget.gameLimit && !budgetFull(budget)) {
-    const page = await lichessPage(username, until, fetchImpl);
-    if (page.length === 0) break;
-    const fresh = unseenGames(page, seen);
-    if (fresh.length === 0) break;
-    examined += fresh.length;
-    const stop = await absorb(recordsFromLichess(username, fresh), budget, onProgress);
-    const next = nextUntil(fresh);
-    if (next === null || (until !== undefined && next >= until)) break;
+  let jumpTo = resumeUntil;
+  while (budget.examined < budget.gameLimit) {
+    throwIfAborted(budget.signal);
+    const page = await lichessPage(username, until, ctx);
+    if (page.length === 0) {
+      budget.cursor = { ...budget.cursor, lichessUntil: null };
+      return;
+    }
+    const fresh = unseenGames(page, local);
+    if (fresh.length === 0) return;
+    const records = recordsFromLichess(username, fresh);
+    const unseen = records.filter((game) => {
+      const id = game.id ?? '';
+      return id.length === 0 || !budget.seen.has(id);
+    });
+    if (records.length === 0) {
+      const next = advanceLichess(budget, fresh, until, page.length);
+      if (next === null) return;
+      until = next;
+      if (jumpTo != null && until <= jumpTo) jumpTo = null;
+      continue;
+    }
+    const overlapped = unseen.length < records.length;
+    const walk = await absorb(stopOnOverlap ? unseen : records, budget);
+    if (walk === 'stop' || (stopOnOverlap && overlapped)) return;
+    const natural = nextUntil(fresh);
+    if (
+      jumpTo != null &&
+      overlapped &&
+      page.length >= LICHESS_PAGE_SIZE &&
+      natural != null &&
+      natural > jumpTo &&
+      (until === undefined || jumpTo < until)
+    ) {
+      budget.cursor = { ...budget.cursor, lichessUntil: jumpTo };
+      emit(budget, true);
+      until = jumpTo;
+      jumpTo = null;
+      continue;
+    }
+    const next = advanceLichess(budget, fresh, until, page.length);
+    if (next === null) return;
     until = next;
-    if (page.length < LICHESS_PAGE_SIZE || stop) break;
+    if (jumpTo != null && until <= jumpTo) jumpTo = null;
   }
 }
 
-async function absorb(
-  records: readonly GameRecord[],
-  budget: ScanBudget,
-  onProgress?: (update: ScanUpdate) => void,
-): Promise<boolean> {
+/** The next older page, or null when this page was the end of the history. */
+function advanceLichess(
+  budget: Budget,
+  fresh: readonly LichessGame[],
+  until: number | undefined,
+  pageLength: number,
+): number | null {
+  const next = nextUntil(fresh);
+  if (next === null || (until !== undefined && next >= until) || pageLength < LICHESS_PAGE_SIZE) {
+    budget.cursor = { ...budget.cursor, lichessUntil: null };
+    return null;
+  }
+  budget.cursor = { ...budget.cursor, lichessUntil: next };
+  emit(budget, true);
+  return next;
+}
+
+type Walk = 'done' | 'stop';
+
+async function absorb(records: readonly GameRecord[], budget: Budget): Promise<Walk> {
   const sorted = [...records].sort((a, b) => b.playedAt - a.playedAt);
   for (const game of sorted) {
-    if (budgetFull(budget)) return true;
+    throwIfAborted(budget.signal);
+    const id = recordId(game);
+    if (budget.seen.has(id)) continue;
     if (isBullet(game.speed)) continue;
-    budget.games += 1;
-    const found = await analyzeGame(game.pgn, game.userColor);
+    if (blocksOlder(budget, game.playedAt)) return 'stop';
+    budget.onAnalyze?.(id);
+    const found = await analyzeGame(game.pgn, game.userColor, budget.signal);
+    throwIfAborted(budget.signal);
     for (let index = found.length - 1; index >= 0; index -= 1) {
       const drill = found[index];
       if (!drill) continue;
-      const key = fenKey(drill.fen);
-      if (budget.seen.has(key)) continue;
-      budget.seen.add(key);
-      budget.drills.push(drill);
-      if (budget.drills.length >= budget.drillLimit) break;
+      budget.fresh.push(withSource(drill, id));
     }
-    onProgress?.({
-      found: budget.drills.length,
-      games: budget.games,
-      drills: budget.drills.slice(),
-      incoming: !budgetFull(budget),
-    });
+    budget.seen.add(id);
+    budget.cursor = rememberGame(budget.cursor, id, game.playedAt);
+    budget.examined += 1;
+    emit(budget, true);
     await yieldToMain();
-    if (budgetFull(budget)) return true;
+    throwIfAborted(budget.signal);
   }
-  return budgetFull(budget);
+  return 'done';
 }
 
-async function chessComArchives(username: string, fetchImpl: GameFetch): Promise<string[]> {
+function withSource(drill: DrillPosition, gameId: string): DrillPosition {
+  const move = /^You played ([^.]+)\./.exec(drill.note)?.[1];
+  return { ...drill, source: move ? { gameId, move } : { gameId } };
+}
+
+function recordId(game: GameRecord): string {
+  if (game.id) return game.id;
+  return `p:${game.playedAt}:${game.userColor}:${game.pgn.length}:${game.pgn.slice(0, 24)}`;
+}
+
+async function chessComArchives(username: string, ctx: FetchContext): Promise<string[]> {
   const archiveUrl = `https://api.chess.com/pub/player/${encodeURIComponent(username)}/games/archives`;
-  const archiveRes = await chessFetch(archiveUrl, fetchImpl);
+  const archiveRes = await fetchPublic(archiveUrl, 'application/json', 'chesscom', ctx);
   if (archiveRes.status === 404) throw new ImportError('No Chess.com player by that name.');
   if (!archiveRes.ok) throw new ImportError('Chess.com did not return games. Paste a PGN from one game.');
   let body: { archives?: unknown };
@@ -385,9 +545,10 @@ async function chessComArchives(username: string, fetchImpl: GameFetch): Promise
   return archives.reverse();
 }
 
-async function chessComMonth(url: string, username: string, fetchImpl: GameFetch): Promise<GameRecord[]> {
-  const res = await chessFetch(url, fetchImpl);
-  if (!res.ok) return [];
+async function chessComMonth(url: string, username: string, ctx: FetchContext): Promise<GameRecord[]> {
+  const res = await fetchPublic(url, 'application/json', 'chesscom', ctx);
+  if (res.status === 404) return [];
+  if (!res.ok) throw new ImportError('Chess.com did not return games. Paste a PGN from one game.');
   let month: { games?: ChessComGame[] };
   try {
     month = (await res.json()) as { games?: ChessComGame[] };
@@ -411,13 +572,12 @@ function lichessGamesUrl(username: string, until?: number): string {
   return `https://lichess.org/api/games/user/${encodeURIComponent(username)}?${params.toString()}`;
 }
 
-async function lichessPage(username: string, until: number | undefined, fetchImpl: GameFetch): Promise<LichessGame[]> {
-  const res = await publicFetch(
-    lichessGamesUrl(username, until),
-    'application/x-ndjson',
-    fetchImpl,
-    'Could not reach Lichess. Paste a PGN from one game.',
-  );
+async function lichessPage(
+  username: string,
+  until: number | undefined,
+  ctx: FetchContext,
+): Promise<LichessGame[]> {
+  const res = await fetchPublic(lichessGamesUrl(username, until), 'application/x-ndjson', 'lichess', ctx);
   if (res.status === 404) throw new ImportError('No Lichess player by that name.');
   if (!res.ok) throw new ImportError('Lichess did not return games. Paste a PGN from one game.');
   const text = await res.text();
@@ -434,10 +594,24 @@ async function lichessPage(username: string, until: number | undefined, fetchImp
   return games;
 }
 
+function fetchPublic(url: string, accept: string, site: GameSite, ctx: FetchContext): Promise<GameResponse> {
+  return politeFetch({
+    url,
+    accept,
+    site,
+    userAgent: CHESS_COM_USER_AGENT,
+    fetchImpl: ctx.fetchImpl,
+    signal: ctx.signal,
+    sleep: ctx.sleep,
+    now: ctx.now,
+    onStatus: ctx.onStatus,
+  });
+}
+
 function unseenGames(games: readonly LichessGame[], seen: Set<string>): LichessGame[] {
   const fresh: LichessGame[] = [];
   for (const game of games) {
-    const id = game.id ?? `${game.createdAt ?? 0}:${game.pgn?.slice(0, 24) ?? ''}`;
+    const id = lichessGameId(game);
     if (seen.has(id)) continue;
     seen.add(id);
     fresh.push(game);
@@ -452,30 +626,6 @@ function nextUntil(games: readonly LichessGame[]): number | null {
   }
   if (!Number.isFinite(oldest)) return null;
   return oldest - 1;
-}
-
-async function chessFetch(url: string, fetchImpl: GameFetch): Promise<GameResponse> {
-  return publicFetch(url, 'application/json', fetchImpl, 'Could not reach Chess.com. Paste a PGN from one game.');
-}
-
-/** Both sites reject anonymous clients. Browsers forbid setting this header, so retry without it. */
-async function publicFetch(
-  url: string,
-  accept: string,
-  fetchImpl: GameFetch,
-  unreachable: string,
-): Promise<GameResponse> {
-  try {
-    return await fetchImpl(url, {
-      headers: { Accept: accept, 'User-Agent': CHESS_COM_USER_AGENT },
-    });
-  } catch {
-    try {
-      return await fetchImpl(url, { headers: { Accept: accept } });
-    } catch {
-      throw new ImportError(unreachable);
-    }
-  }
 }
 
 function capGames(games: readonly GameRecord[]): GameRecord[] {

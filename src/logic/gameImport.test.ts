@@ -11,6 +11,9 @@ import {
   pastedGameDrills,
   type GameRecord,
 } from '@/src/logic/gameImport';
+import { FETCH_ATTEMPTS, RETRY_BACKOFF_MS } from '@/src/logic/politeFetch';
+import { abortError } from '@/src/logic/scanAbort';
+import type { ScanCursor } from '@/src/logic/scanCursor';
 import { fenKey } from '@/src/logic/reviewPile';
 
 function queenHang(second: string): string {
@@ -144,6 +147,33 @@ describe('game import', () => {
     expect(IMPORT_DRILL_LIMIT).toBe(100);
   });
 
+  it('sends no custom headers from a browser, so the public API allows the request', async () => {
+    vi.stubGlobal('window', {});
+    const calls: (RequestInit | undefined)[] = [];
+    try {
+      await loadPublicGames('chesscom', 'Me', async (url, init) => {
+        calls.push(init);
+        if (String(url).endsWith('/archives')) return json({ archives: [] });
+        return json({ games: [] });
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(calls.length).toBeGreaterThan(0);
+    for (const init of calls) expect(init?.headers).toBeUndefined();
+  });
+
+  it('calls fetch with a receiver so a browser fetch does not throw', async () => {
+    const receivers: unknown[] = [];
+    function boundFetch(this: unknown, url: string): Promise<Response> {
+      receivers.push(this);
+      if (String(url).endsWith('/archives')) return Promise.resolve(json({ archives: [] }));
+      return Promise.resolve(json({ games: [] }));
+    }
+    await loadPublicGames('chesscom', 'Me', boundFetch);
+    expect(receivers[0]).toBe(globalThis);
+  });
+
   it('pages Lichess with until, and stops Chess.com once the blunder cap is full', async () => {
     const bulletGames = Array.from({ length: LICHESS_PAGE_SIZE }, (_, index) =>
       JSON.stringify({
@@ -204,7 +234,199 @@ describe('game import', () => {
     expect(incoming.slice(0, -1).every(Boolean)).toBe(true);
     expect(incoming[incoming.length - 1]).toBe(false);
   });
+
+  it('retries a busy response with backoff, then stops if it stays busy', async () => {
+    const waits: number[] = [];
+    let tries = 0;
+    const month = 'https://api.chess.com/pub/player/me/games/2026/10';
+    const scan = await collectPublicDrills('chesscom', 'Me', {
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+      fetchImpl: async (url) => {
+        if (!String(url).endsWith('/archives')) {
+          return json({
+            games: [
+              {
+                pgn: queenHang('a3'),
+                time_class: 'rapid',
+                end_time: 20,
+                white: { username: 'Me' },
+                black: { username: 'them' },
+              },
+            ],
+          });
+        }
+        tries += 1;
+        if (tries < 3) {
+          return { ok: false, status: 503, headers: { get: () => null }, json: async () => ({}), text: async () => '' };
+        }
+        return json({ archives: [month] });
+      },
+    });
+    expect(waits).toEqual([RETRY_BACKOFF_MS[0], RETRY_BACKOFF_MS[1]]);
+    expect(scan.drills.length).toBeGreaterThan(0);
+
+    let limited = 0;
+    await expect(
+      collectPublicDrills('chesscom', 'Me', {
+        sleep: async () => {},
+        fetchImpl: async () => {
+          limited += 1;
+          return {
+            ok: false,
+            status: 429,
+            headers: { get: () => '1' },
+            json: async () => ({}),
+            text: async () => '',
+          };
+        },
+      }),
+    ).rejects.toThrow(/busy/);
+    expect(limited).toBe(FETCH_ATTEMPTS);
+  });
+
+  it('stops waiting when the scan is aborted', async () => {
+    const controller = new AbortController();
+    let opened!: () => void;
+    const openedWait = new Promise<void>((resolve) => {
+      opened = resolve;
+    });
+    const pending = collectPublicDrills('chesscom', 'Me', {
+      signal: controller.signal,
+      sleep: (_ms, signal) =>
+        new Promise((resolve, reject) => {
+          const onAbort = () => reject(abortError());
+          if (signal.aborted) {
+            onAbort();
+            opened();
+            return;
+          }
+          signal.addEventListener('abort', onAbort, { once: true });
+          opened();
+          void resolve;
+        }),
+      fetchImpl: async () => ({
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+        json: async () => ({}),
+        text: async () => '',
+      }),
+    });
+    await openedWait;
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('does not page Lichess games that were already scanned', async () => {
+    const cursor: ScanCursor = {
+      site: 'lichess',
+      username: 'Me',
+      seen: ['l:old'],
+      newestMs: 4000,
+      doneArchives: [],
+      lichessUntil: 1000,
+      backfillDone: true,
+      games: 4,
+      resume: false,
+    };
+    const analyzed: string[] = [];
+    const calls: string[] = [];
+    const head = [
+      lichessGame('new', 5000, queenHang('g3')),
+      lichessGame('old', 4000, queenHang('a3')),
+    ].join('\n');
+    await collectPublicDrills('lichess', 'Me', {
+      cursor,
+      onAnalyze: (id) => analyzed.push(id),
+      fetchImpl: async (url) => {
+        calls.push(String(url));
+        expect(String(url)).not.toContain('until=');
+        return ndjson(head);
+      },
+    });
+    expect(calls).toHaveLength(1);
+    expect(analyzed).toEqual(['l:new']);
+  });
+
+  it('continues an interrupted Lichess scan from the saved page', async () => {
+    const seen = Array.from({ length: LICHESS_PAGE_SIZE }, (_, index) => `l:old${index}`);
+    const cursor: ScanCursor = {
+      site: 'lichess',
+      username: 'Me',
+      seen,
+      newestMs: 5000,
+      doneArchives: [],
+      lichessUntil: 3999,
+      backfillDone: false,
+      games: seen.length,
+      resume: false,
+    };
+    const head = seen
+      .map((id, index) => lichessGame(id.slice(2), 5000 - index, '1. e4 e5'))
+      .join('\n');
+    const analyzed: string[] = [];
+    const calls: string[] = [];
+    await collectPublicDrills('lichess', 'Me', {
+      cursor,
+      onAnalyze: (id) => analyzed.push(id),
+      fetchImpl: async (url) => {
+        const href = String(url);
+        calls.push(href);
+        if (!href.includes('until=')) return ndjson(head);
+        expect(href).toContain('until=3999');
+        return ndjson(lichessGame('older', 3000, queenHang('a4')));
+      },
+    });
+    expect(calls).toHaveLength(2);
+    expect(analyzed).toEqual(['l:older']);
+  });
+
+  it('does not skip new Lichess games that arrived after the saved page', async () => {
+    const cursor: ScanCursor = {
+      site: 'lichess',
+      username: 'Me',
+      seen: ['l:old'],
+      newestMs: 1000,
+      doneArchives: [],
+      lichessUntil: 1000,
+      backfillDone: false,
+      games: 1,
+      resume: false,
+    };
+    const head = Array.from({ length: LICHESS_PAGE_SIZE }, (_, index) =>
+      lichessGame(`new${index}`, 9000 - index, '1. e4 e5'),
+    ).join('\n');
+    const calls: string[] = [];
+    await collectPublicDrills('lichess', 'Me', {
+      cursor,
+      fetchImpl: async (url) => {
+        const href = String(url);
+        calls.push(href);
+        if (!href.includes('until=')) return ndjson(head);
+        expect(href).not.toContain('until=1000');
+        return ndjson(lichessGame('old', 1000, '1. e4 e5'));
+      },
+    });
+    expect(calls.length).toBeGreaterThan(1);
+    expect(calls[1]).toContain('until=8970');
+  });
 });
+
+function lichessGame(id: string, createdAt: number, pgn: string): string {
+  return JSON.stringify({
+    id,
+    speed: 'rapid',
+    createdAt,
+    pgn,
+    players: { white: { user: { name: 'Me' } }, black: { user: { name: 'them' } } },
+  });
+}
+
+function ndjson(body: string) {
+  return { ok: true, status: 200, json: async () => ({}), text: async () => body };
+}
 
 function json(body: unknown): Response {
   return {

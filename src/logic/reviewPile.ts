@@ -116,6 +116,7 @@ function cleanDrill(value: unknown): DrillPosition | null {
     ? drill.acceptable.filter((move): move is string => typeof move === 'string')
     : drill.solution;
   const traps = Array.isArray(drill.traps) ? drill.traps.filter(isTrap) : [];
+  const source = readSource(drill.source);
   return {
     id: drill.id,
     fen: drill.fen,
@@ -128,7 +129,20 @@ function cleanDrill(value: unknown): DrillPosition | null {
     traps,
     note: drill.note,
     expectedDropCp: drill.expectedDropCp,
+    ...(source ? { source } : {}),
   };
+}
+
+function readSource(value: unknown): DrillPosition['source'] | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const source = value as { gameId?: unknown; move?: unknown };
+  if (typeof source.gameId !== 'string') return undefined;
+  const gameId = source.gameId.trim();
+  if (gameId.length === 0 || gameId.length > 180) return undefined;
+  if (typeof source.move !== 'string') return { gameId };
+  const move = source.move.trim();
+  if (move.length === 0 || move.length > 32) return { gameId };
+  return { gameId, move };
 }
 
 function isTheme(value: unknown): value is DrillTheme {
