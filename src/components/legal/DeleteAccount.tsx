@@ -6,57 +6,67 @@ import { Button } from '@/src/components/ui/Button';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { liveA11y } from '@/src/components/ui/a11y';
 import { text } from '@/src/components/ui/text';
-import { useRequestAccountDeletion } from '@/src/legal/requestAccountDeletion';
+import { signOutBeforeDeviceErase } from '@/src/auth/deviceSession';
+import { authFrom } from '@/src/auth/supabaseAuth';
+import { getSupabase } from '@/src/data/supabase';
+import { useRequestAccountDeletion, type AccountDeletionResult } from '@/src/legal/requestAccountDeletion';
 import { eraseDeviceData } from '@/src/store/eraseDeviceData';
+import { useAccountStore } from '@/src/auth/session';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, letterSpacing, lineHeights, spacing } from '@/src/theme';
 
 const ERASED = 'Erased. Progress and the scan cursor on this device are gone. You can keep playing as a guest.';
 const ERASE_FAILED = 'Could not erase this device. Try again.';
-const ACCOUNT_UNAVAILABLE =
-  'Account deletion is not available yet. When you can sign in, this page will delete the account and all synced data.';
+const ACCOUNT_DELETED =
+  'Your account and the synced progress are deleted. Progress on this device is erased. You can keep playing as a guest.';
+const ACCOUNT_LOCAL_FAILED =
+  'The account was deleted, but this device could not be erased. Use Erase my data on this device.';
+const ACCOUNT_FAILED = 'The account could not be deleted. You are still signed in. Try again.';
+const ACCOUNT_GUEST = 'There is no account on this device to delete.';
+
+type Confirm = 'device' | 'account' | null;
 
 export function DeleteAccount() {
   useTheme();
   const requestDeletion = useRequestAccountDeletion();
-  const [confirming, setConfirming] = useState(false);
+  const phase = useAccountStore((state) => state.phase);
+  const [confirm, setConfirm] = useState<Confirm>(null);
   const [working, setWorking] = useState(false);
   const [deviceStatus, setDeviceStatus] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
-  const [accountBusy, setAccountBusy] = useState(false);
 
   const erase = async () => {
     if (working) return;
     setWorking(true);
     try {
+      const client = getSupabase();
+      const ready = await signOutBeforeDeviceErase(client ? authFrom(client) : null);
+      if (ready === 'failed') {
+        setDeviceStatus(ERASE_FAILED);
+        setConfirm(null);
+        return;
+      }
       await eraseDeviceData();
       setDeviceStatus(ERASED);
-      setConfirming(false);
+      setConfirm(null);
     } catch {
       setDeviceStatus(ERASE_FAILED);
-      setConfirming(false);
+      setConfirm(null);
     } finally {
       setWorking(false);
     }
   };
 
-  const askForAccountDeletion = async () => {
-    if (accountBusy) return;
-    setAccountBusy(true);
+  const deleteAccount = async () => {
+    if (working) return;
+    setWorking(true);
     try {
       const result = await requestDeletion();
-      switch (result.status) {
-        case 'unavailable':
-          setAccountStatus(ACCOUNT_UNAVAILABLE);
-          break;
-        default: {
-          const _exhaustive: never = result.status;
-          setAccountStatus(_exhaustive);
-        }
-      }
+      setAccountStatus(accountMessage(result));
+      setConfirm(null);
     } finally {
-      setAccountBusy(false);
+      setWorking(false);
     }
   };
 
@@ -65,10 +75,10 @@ export function DeleteAccount() {
       <View style={styles.section}>
         <Text style={text.section}>On this device</Text>
         <Text style={text.body}>
-          Guest progress is stored in this browser or on this device. Erasing it removes streaks, XP, lessons, drill
-          results, review history, imported positions, a linked Chess.com or Lichess username, and the scan cursor.
-          Appearance and sound stay. You can keep playing immediately, with no account. Home will ask where to start
-          the next time it opens.
+          Erasing removes streaks, XP, lessons, drill results, review history, imported positions, a linked Chess.com
+          or Lichess username, and the scan cursor on this device. Appearance and sound stay. You can keep playing
+          immediately. If an account is signed in, this also signs out. The synced copy stays until you delete the
+          account.
         </Text>
         <Button
           label="Erase my data on this device"
@@ -76,7 +86,7 @@ export function DeleteAccount() {
           testID="erase-device"
           onPress={() => {
             setDeviceStatus(null);
-            setConfirming(true);
+            setConfirm('device');
           }}
         />
         {deviceStatus ? (
@@ -87,20 +97,31 @@ export function DeleteAccount() {
       </View>
 
       <View style={styles.section}>
-        <Text style={text.section}>Accounts, coming soon</Text>
-        <Text style={text.body}>
-          There is no account to delete yet. Signed-in users will be able to delete their account and all synced data
-          from this page. That synced data is the profile (display name and timezone), linked Chess.com and Lichess
-          usernames, scanned game ids, drills, review history, attempts, and streak days.
-        </Text>
-        <Button
-          label="Delete my account"
-          variant="secondary"
-          testID="account-delete"
-          onPress={() => {
-            void askForAccountDeletion();
-          }}
-        />
+        <Text style={text.section}>Account</Text>
+        {phase === 'loading' ? <Text style={text.body}>Checking for an account on this device.</Text> : null}
+        {phase === 'guest' ? (
+          <Text style={text.body}>
+            You're playing as a guest, so there is no account to delete. Erasing this device is above.
+          </Text>
+        ) : null}
+        {phase === 'signed-in' ? (
+          <>
+            <Text style={text.body}>
+              Deleting the account removes the profile, linked Chess.com and Lichess usernames, scanned game ids,
+              drills, review history, attempts, and streak days. The copy on this device is erased too. Play stays
+              open as a guest afterwards.
+            </Text>
+            <Button
+              label="Delete my account"
+              variant="danger"
+              testID="account-delete"
+              onPress={() => {
+                setAccountStatus(null);
+                setConfirm('account');
+              }}
+            />
+          </>
+        ) : null}
         {accountStatus ? (
           <Text style={text.body} testID="account-status" {...liveA11y()}>
             {accountStatus}
@@ -108,31 +129,78 @@ export function DeleteAccount() {
         ) : null}
       </View>
 
-      <Dialog visible={confirming}>
-        <Text style={styles.dialogTitle}>Erase data on this device?</Text>
-        <Text style={styles.dialogBody}>
-          Progress and the scan cursor stored here will be removed. This cannot be undone. Appearance and sound stay.
-        </Text>
-        <Button
-          label={working ? 'Erasing' : 'Erase'}
-          variant="danger"
-          testID="erase-confirm"
-          onPress={() => {
-            void erase();
-          }}
-        />
-        <Button
-          label="Cancel"
-          variant="ghost"
-          testID="erase-cancel"
-          onPress={() => {
-            if (working) return;
-            setConfirming(false);
-          }}
-        />
+      <Dialog visible={confirm !== null}>
+        {confirm === 'account' ? (
+          <>
+            <Text style={styles.dialogTitle}>Delete your account?</Text>
+            <Text style={styles.dialogBody}>
+              This deletes the account and the synced progress, then erases the copy on this device. You can keep
+              playing as a guest. This cannot be undone.
+            </Text>
+            <Button
+              label={working ? 'Deleting' : 'Delete account'}
+              variant="danger"
+              testID="account-delete-confirm"
+              onPress={() => {
+                void deleteAccount();
+              }}
+            />
+            <Button
+              label="Cancel"
+              variant="ghost"
+              testID="account-delete-cancel"
+              onPress={() => {
+                if (working) return;
+                setConfirm(null);
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <Text style={styles.dialogTitle}>Erase data on this device?</Text>
+            <Text style={styles.dialogBody}>
+              Progress and the scan cursor stored here will be removed. This cannot be undone. Appearance and sound
+              stay.
+            </Text>
+            <Button
+              label={working ? 'Erasing' : 'Erase'}
+              variant="danger"
+              testID="erase-confirm"
+              onPress={() => {
+                void erase();
+              }}
+            />
+            <Button
+              label="Cancel"
+              variant="ghost"
+              testID="erase-cancel"
+              onPress={() => {
+                if (working) return;
+                setConfirm(null);
+              }}
+            />
+          </>
+        )}
       </Dialog>
     </LegalPage>
   );
+}
+
+function accountMessage(result: AccountDeletionResult): string {
+  switch (result.status) {
+    case 'deleted':
+      return ACCOUNT_DELETED;
+    case 'deleted-local-failed':
+      return ACCOUNT_LOCAL_FAILED;
+    case 'guest':
+      return ACCOUNT_GUEST;
+    case 'failed':
+      return ACCOUNT_FAILED;
+    default: {
+      const _exhaustive: never = result;
+      return _exhaustive;
+    }
+  }
 }
 
 const styles = themedStyleSheet((colors) => ({

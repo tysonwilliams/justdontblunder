@@ -1,13 +1,12 @@
 /**
- * Owner review: replace the contact placeholder and confirm this copy
- * before optional accounts launch. Do not add a certification claim.
+ * Owner review: replace the contact placeholder. Do not add a certification claim.
  */
 
 export const PRIVACY_EFFECTIVE_DATE = 'November 14, 2026';
 
 export const OWNER_CONTACT_LABEL = 'Owner contact email';
 
-export const OWNER_CONTACT_NOTE = 'Placeholder. The owner still needs to add this before accounts launch.';
+export const OWNER_CONTACT_NOTE = 'Placeholder. The owner still needs to add a contact email.';
 
 export const OWNER_CONTACT_PLACEHOLDER = "[add the owner's contact email here]";
 
@@ -24,7 +23,7 @@ export type PrivacySection = {
 };
 
 export const privacyIntro =
-  'Just Don\'t Blunder is a chess trainer. You can play without an account. This page says what stays on your device, what an optional account will sync when that ships, and what we do not do.';
+  'Just Don\'t Blunder is a chess trainer. You can play without an account. This page says what stays on your device, what an optional account syncs, and what we do not do.';
 
 export const privacySections: readonly PrivacySection[] = [
   {
@@ -32,7 +31,7 @@ export const privacySections: readonly PrivacySection[] = [
     blocks: [
       {
         kind: 'paragraph',
-        text: 'You can play, learn, and drill with no account and no sign-in. Progress stays in this browser or on this device. That includes streaks, XP, lessons, drill results, review history, and positions built from a public username or a pasted game.',
+        text: 'You can play, learn, and drill with no account. Progress stays in this browser or on this device. That includes streaks, XP, lessons, drill results, review history, and positions built from a public username or a pasted game.',
       },
       {
         kind: 'paragraph',
@@ -41,24 +40,20 @@ export const privacySections: readonly PrivacySection[] = [
     ],
   },
   {
-    heading: 'Optional accounts, coming soon',
+    heading: 'Optional account',
     blocks: [
       {
         kind: 'paragraph',
-        text: 'Optional accounts are coming soon. They are not available yet, and play will stay open without one.',
-      },
-      {
-        kind: 'paragraph',
-        text: 'When an account is offered, sign-in will be an email magic link or Google sign-in, through Supabase. Supabase is hosted in the United States (region us-west-2). The account is there to sync progress. You can keep playing as a guest if you do not want one.',
+        text: 'An account is optional, and play stays open without one. Sign-in can be an email magic link, email and password, Google, or Apple, through Supabase. Supabase is hosted in the United States (region us-west-2). The account syncs progress.',
       },
     ],
   },
   {
-    heading: 'What an account will sync',
+    heading: 'What an account syncs',
     blocks: [
       {
         kind: 'paragraph',
-        text: 'Synced data will be limited to:',
+        text: 'Synced data is limited to:',
       },
       {
         kind: 'list',
@@ -106,7 +101,7 @@ export const privacySections: readonly PrivacySection[] = [
     blocks: [
       {
         kind: 'paragraph',
-        text: 'You can erase the progress and the scan cursor stored on this device. When accounts exist, a signed-in player will be able to delete the account and all synced data from that same page.',
+        text: 'You can erase the progress and the scan cursor stored on this device. A signed-in player can delete the account and all synced data from that same page.',
       },
       { kind: 'link', href: DELETE_DATA_HREF, label: 'Delete data' },
     ],

@@ -2,6 +2,8 @@ import { useRouter, type Href } from 'expo-router';
 import { Children, type ReactNode, useState } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
 
+import { AccountEntry } from '@/src/components/auth/AccountEntry';
+import { AccountPrompt } from '@/src/components/auth/AccountPrompt';
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
 import { GameImport } from '@/src/components/progress/GameImport';
 import { StreakBadge } from '@/src/components/StreakBadge';
@@ -85,8 +87,10 @@ export default function ProgressScreen() {
         <View style={styles.header}>
           <Text style={text.eyebrow}>This device</Text>
           <Text style={text.display}>Progress</Text>
-          <Text style={text.muted}>Stored locally. No account.</Text>
+          <AccountEntry />
         </View>
+
+        <AccountPrompt />
 
         <View style={styles.group}>
           <Text style={text.section}>Appearance</Text>
@@ -242,7 +246,8 @@ export default function ProgressScreen() {
         <View style={styles.group}>
           <Text style={text.section}>Privacy and data</Text>
           <Text style={text.muted}>
-            Progress on this device stays here until you erase it. Optional accounts are coming soon.
+            Progress on this device stays here until you erase it. An account is optional, and play stays open without
+            one.
           </Text>
           <View style={[styles.toggles, styles.togglesWrap]}>
             <Button

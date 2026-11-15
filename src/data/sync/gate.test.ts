@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const getSupabase = vi.hoisted(() => vi.fn());
+const createSupabaseProgressRepo = vi.hoisted(() => vi.fn());
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
@@ -12,29 +13,80 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 
 vi.mock('@/src/data/supabase', () => ({
   getSupabase,
-  isSyncEnabled: () => process.env.EXPO_PUBLIC_SYNC_ENABLED === 'true',
-  syncClientFrom: vi.fn(),
+  isSyncEnabled: () => process.env.EXPO_PUBLIC_SYNC_ENABLED !== 'false',
+  syncClientFrom: (client: unknown) => client,
+}));
+
+vi.mock('@/src/data/sync/supabaseRepo', () => ({
+  createSupabaseProgressRepo,
 }));
 
 import { shouldSyncNow, startProgressSync } from '@/src/data/sync/gate';
+import { useProgressStore } from '@/src/store/progress';
+
+function authClient(session: { user: { id: string } } | null) {
+  return {
+    auth: {
+      onAuthStateChange(callback: (event: string, next: { user: { id: string } } | null) => void) {
+        callback(session ? 'SIGNED_IN' : 'INITIAL_SESSION', session);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      },
+    },
+  };
+}
 
 describe('progress sync gate', () => {
   afterEach(() => {
+    vi.useRealTimers();
     delete process.env.EXPO_PUBLIC_SYNC_ENABLED;
     getSupabase.mockReset();
+    createSupabaseProgressRepo.mockReset();
+    useProgressStore.getState().resetProgress();
   });
 
-  it('does not create a client when the flag is off', () => {
+  it('does not create a client when the kill switch is false', () => {
+    process.env.EXPO_PUBLIC_SYNC_ENABLED = 'false';
     const stop = startProgressSync();
     expect(getSupabase).not.toHaveBeenCalled();
     stop();
   });
 
-  it('stops before opening a socket when the flag is on and no client exists', () => {
-    process.env.EXPO_PUBLIC_SYNC_ENABLED = 'true';
+  it('stops before opening a socket when no client exists', () => {
     getSupabase.mockReturnValue(null);
     const stop = startProgressSync();
     expect(getSupabase).toHaveBeenCalledOnce();
+    expect(createSupabaseProgressRepo).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('does not sync a guest when the flag is unset', async () => {
+    await useProgressStore.persist.rehydrate();
+    getSupabase.mockReturnValue(authClient(null));
+    vi.useFakeTimers();
+    const stop = startProgressSync();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(getSupabase).toHaveBeenCalledOnce();
+    expect(createSupabaseProgressRepo).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('merges local progress when a session exists and the flag is unset', async () => {
+    await useProgressStore.persist.rehydrate();
+    const mergeOnSignIn = vi.fn(async () => ({}));
+    createSupabaseProgressRepo.mockReturnValue({ mergeOnSignIn });
+    getSupabase.mockReturnValue(authClient({ user: { id: 'user-1' } }));
+    vi.useFakeTimers();
+    const stop = startProgressSync();
+    await vi.advanceTimersByTimeAsync(1600);
+    expect(createSupabaseProgressRepo).toHaveBeenCalledWith(expect.anything(), 'user-1', expect.anything());
+    expect(mergeOnSignIn).toHaveBeenCalledOnce();
+    expect(mergeOnSignIn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        progress: expect.objectContaining({
+          training: expect.objectContaining({ xp: useProgressStore.getState().xp }),
+        }),
+      }),
+    );
     stop();
   });
 

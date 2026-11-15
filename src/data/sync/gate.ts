@@ -21,9 +21,9 @@ export function shouldSyncNow(input: {
 }
 
 /**
- * Push local changes and pull on sign-in. Returns immediately unless
- * EXPO_PUBLIC_SYNC_ENABLED is the string "true" and a publishable client exists.
- * With the flag off, this does not read storage or open a socket.
+ * Push local changes and pull on sign-in.
+ * Returns immediately when EXPO_PUBLIC_SYNC_ENABLED is the string "false", or when no
+ * publishable client exists. A guest session never calls the progress repo.
  */
 export function startProgressSync(): () => void {
   if (!isSyncEnabled()) return () => undefined;
@@ -52,6 +52,8 @@ function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSu
   const local = createLocalProgressRepo({
     read: () => partializeProgress(useProgressStore.getState()),
     write: (progress) => {
+      // Sign-out and account deletion clear userId. A merge already in flight must not restore the old document.
+      if (!userId) return;
       writing = true;
       try {
         useProgressStore.setState(progressFields(progress));

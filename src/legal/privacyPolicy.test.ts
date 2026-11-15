@@ -9,8 +9,11 @@ describe('privacy policy', () => {
     expect(policy).toContain('Effective November 14, 2026.');
     expect(policy).toContain('no account');
     expect(policy).toContain('this browser or on this device');
-    expect(policy).toContain('Optional accounts are coming soon');
-    expect(policy).toContain('email magic link or Google sign-in');
+    expect(policy).toContain('An account is optional, and play stays open without one.');
+    expect(policy).toContain('email magic link');
+    expect(policy).toContain('email and password');
+    expect(policy).toContain('Google');
+    expect(policy).toContain('Apple');
     expect(policy).toContain('Supabase');
     expect(policy).toContain('United States (region us-west-2)');
     expect(policy).toContain('display name and timezone');
@@ -28,7 +31,7 @@ describe('privacy policy', () => {
   });
 
   it('leaves a marked contact placeholder and does not claim a certification', () => {
-    expect(policy).toContain('Placeholder. The owner still needs to add this before accounts launch.');
+    expect(policy).toContain('Placeholder. The owner still needs to add a contact email.');
     expect(policy).toContain(OWNER_CONTACT_PLACEHOLDER);
     expect(policy).not.toMatch(/\S+@\S+/);
     expect(policy).not.toMatch(/GDPR|CCPA|COPPA|HIPAA|SOC\s*2|certified|certification|compliant/i);

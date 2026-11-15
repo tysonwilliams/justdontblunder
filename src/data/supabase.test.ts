@@ -8,7 +8,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-import { getSupabase, isSyncEnabled, resetSupabaseForTests } from '@/src/data/supabase';
+import { getSupabase, getSupabasePublicConfig, isSyncEnabled, resetSupabaseForTests } from '@/src/data/supabase';
 
 function token(payload: Record<string, unknown>): string {
   const part = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -51,11 +51,25 @@ describe('getSupabase', () => {
     expect(getSupabase()).not.toBeNull();
   });
 
-  it('turns sync on only for the string true', () => {
-    expect(isSyncEnabled()).toBe(false);
-    process.env.EXPO_PUBLIC_SYNC_ENABLED = 'TRUE';
-    expect(isSyncEnabled()).toBe(false);
+  it('allows sync unless the flag is exactly false', () => {
+    expect(isSyncEnabled()).toBe(true);
     process.env.EXPO_PUBLIC_SYNC_ENABLED = 'true';
     expect(isSyncEnabled()).toBe(true);
+    process.env.EXPO_PUBLIC_SYNC_ENABLED = 'TRUE';
+    expect(isSyncEnabled()).toBe(true);
+    process.env.EXPO_PUBLIC_SYNC_ENABLED = 'false';
+    expect(isSyncEnabled()).toBe(false);
+  });
+
+  it('returns the publishable config and refuses a service-role key', () => {
+    expect(getSupabasePublicConfig()).toBeNull();
+    process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = token({ role: 'service_role' });
+    expect(getSupabasePublicConfig()).toBeNull();
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = token({ role: 'anon' });
+    expect(getSupabasePublicConfig()).toEqual({
+      url: 'https://example.supabase.co',
+      anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    });
   });
 });
