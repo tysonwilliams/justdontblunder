@@ -637,6 +637,7 @@ create trigger review_entries_set_updated_at
   for each row execute function private.set_updated_at();
 
 -- Copies a display name only. raw_user_meta_data is not used for authorization.
+-- pg_catalog.coalesce is not a function. 20261115024156_fix_handle_new_user_coalesce.sql replaces this.
 create or replace function private.handle_new_user()
 returns trigger
 language plpgsql

@@ -4,7 +4,7 @@ Play never waits on an account. Guest progress stays in AsyncStorage (`jdb-progr
 
 `EXPO_PUBLIC_SYNC_ENABLED=false` is the kill switch. Leave it unset, or set it to `true`, and sync runs for a signed-in session. Any other value except the exact string `false` also allows sync.
 
-The hosted project `nhnozbrwyiiynargawmc` already has `supabase/migrations/20261114220421_init_data_layer.sql` and the puzzle seed. Do not run `supabase db push` or `supabase config push`. `config push` would overwrite the hosted site URL and redirect list.
+The hosted project `nhnozbrwyiiynargawmc` already has `supabase/migrations/20261114220421_init_data_layer.sql`, `supabase/migrations/20261115024156_fix_handle_new_user_coalesce.sql`, and the puzzle seed. Do not run `supabase db push` or `supabase config push`. `config push` would overwrite the hosted site URL and redirect list. The fix migration is already applied: `pg_catalog.coalesce` is not a function, and that call made every sign-up return 500.
 
 Never put the service role key, the Google client secret, or the Apple secret in the app, in git, or in a `EXPO_PUBLIC_*` variable. The client refuses a JWT whose `role` is `service_role`.
 
@@ -35,7 +35,13 @@ All of these are optional. The drills, the home trainer, and the phone board do 
 
 Chess.com and Lichess stay a public username. The app never asks for a chess-site password. Lichess OAuth is not part of this.
 
-The client uses PKCE (`flowType: 'pkce'`) and does not detect the session in the URL. `/auth/callback` exchanges a `code`, or verifies a `token_hash`. A recovery link opens `/auth/update-password`. The code verifier lives in AsyncStorage, so a PKCE link has to be opened in the browser that asked for it. The email templates below avoid that limit.
+Google and Apple use the main client. It is PKCE (`flowType: 'pkce'`) and does not detect the session in the URL. `/auth/callback` exchanges that `code`. The code verifier stays in AsyncStorage on the browser that started the redirect, which is the same browser the provider sends back to.
+
+Email links use a second client with `flowType: 'implicit'`. Magic link (`signInWithOtp`), signup confirmation (`signUp`), password recovery (`resetPasswordForEmail`), and `resend` go through it. That client does not persist a session and uses the storage key `jdb-implicit-email`, so it does not store a code verifier and does not warn about a second GoTrue client on the PKCE storage key. Supabase then redirects with the session in the URL hash (`#access_token` and `#refresh_token`). `/auth/callback` and `/auth/update-password` read that hash, including `error` and `error_description`, call `setSession` on the main client, and clear the hash. A `code` or a `token_hash` on those pages still works. A recovery link opens `/auth/update-password`.
+
+The hash can be read in any browser. Mail on an iPhone can open Safari, and a home-screen web app can open a link that was requested somewhere else. When email confirmation is off, `signUp` may return a session immediately. That session is copied onto the main client with `setSession`.
+
+If a PKCE `code` exchange still fails and the link's `type` is `signup` or `email`, the callback says "Your email is confirmed. Sign in on this device to continue." and shows the account button. Any other failed code keeps the expired-link message.
 
 Google and Apple buttons read `GET /auth/v1/settings` with the anon key. A provider marked off is hidden. If that request fails, the button stays, and a provider that is not enabled shows "isn't turned on yet" instead of a broken redirect.
 
@@ -64,9 +70,9 @@ Supabase → Authentication → Providers → Email: enabled.
 
 Turn on Confirm email so a password sign-up waits for the link. Magic links send mail either way. If confirmations are off, sign-up returns a session and the app signs the player in.
 
-The built-in mailer is rate-limited. For real use, add custom SMTP under Authentication → Emails. The SMTP password stays in Supabase.
+The built-in mailer is rate-limited. For real use, add custom SMTP under Authentication → Emails. The SMTP password stays in Supabase. The free tier has no custom SMTP, so these templates cannot be changed. Leave the defaults. The implicit email client makes those default links work across browsers.
 
-Same-browser links work with the default templates, because Supabase redirects back with a `code` and this app exchanges it. To let the link work when it is opened on another device, replace these three templates under Authentication → Emails.
+The templates below are optional once custom SMTP is available. They put a `token_hash` on `/auth/callback`, and this app still verifies that.
 
 Confirm signup:
 
@@ -170,7 +176,7 @@ Re-running the file updates the teaching columns and does not reset `created_at`
 
 RLS is enabled on every table. User-owned policies use `(select auth.uid())`. RLS is not forced: the table owner still bypasses it, which the signup trigger and the delete cascade need when `postgres` is not a superuser. API roles do not own the tables.
 
-`private` is not in the exposed API schemas. Security-definer functions live there with `search_path = ''`. `public.delete_my_account()` is the RPC a signed-in user calls to delete their `auth.users` row. Everything owned by that id cascades. Sessions are deleted before the user row. The app does not use `user_metadata` for authorization.
+`private` is not in the exposed API schemas. Security-definer functions live there with `search_path = ''`. `private.handle_new_user` inserts the profile and copies a display name with plain `coalesce`. `public.delete_my_account()` is the RPC a signed-in user calls to delete their `auth.users` row. Everything owned by that id cascades. Sessions are deleted before the user row. The app does not use `user_metadata` for authorization.
 
 Username scans still run in the browser. Sync uploads the cursor and the public game ids. Fallback ids that embed PGN text stay in AsyncStorage and are not uploaded.
 

@@ -14,7 +14,7 @@ export function browserOrigin(): string | null {
   return origin;
 }
 
-/** Query plus hash, so a `code` or `token_hash` is visible either way. */
+/** Query plus hash, so a code, token hash, or implicit session is visible either way. */
 export function browserAuthSearch(): string {
   if (typeof window === 'undefined') return '';
   const search = window.location.search.startsWith('?') ? window.location.search.slice(1) : window.location.search;
@@ -23,7 +23,7 @@ export function browserAuthSearch(): string {
   return search || hash;
 }
 
-/** Drop a one-time code from the address bar after it has been exchanged. */
+/** Drop a one-time code or hash session from the address bar after it has been read. */
 export function clearAuthSearch(): void {
   if (typeof window === 'undefined') return;
   const path = window.location.pathname || '/';

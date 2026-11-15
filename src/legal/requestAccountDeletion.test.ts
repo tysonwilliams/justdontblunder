@@ -4,6 +4,7 @@ import { deleteSignedInAccount, requestAccountDeletion } from '@/src/legal/reque
 
 vi.mock('@/src/data/supabase', () => ({
   getSupabase: () => null,
+  getEmailLinkClient: () => null,
 }));
 
 vi.mock('@/src/store/eraseDeviceData', () => ({

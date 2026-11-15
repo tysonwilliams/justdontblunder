@@ -8,7 +8,13 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-import { getSupabase, getSupabasePublicConfig, isSyncEnabled, resetSupabaseForTests } from '@/src/data/supabase';
+import {
+  getEmailLinkClient,
+  getSupabase,
+  getSupabasePublicConfig,
+  isSyncEnabled,
+  resetSupabaseForTests,
+} from '@/src/data/supabase';
 
 function token(payload: Record<string, unknown>): string {
   const part = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -41,6 +47,7 @@ describe('getSupabase', () => {
     process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = token({ role: 'service_role' });
     expect(getSupabase()).toBeNull();
+    expect(getEmailLinkClient()).toBeNull();
 
     resetSupabaseForTests();
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'sb_publishable_test';

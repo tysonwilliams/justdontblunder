@@ -3,10 +3,8 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const sql = fs.readFileSync(
-  path.join(process.cwd(), 'supabase/migrations/20261114220421_init_data_layer.sql'),
-  'utf8',
-);
+const migrationsDir = path.join(process.cwd(), 'supabase/migrations');
+const sql = fs.readFileSync(path.join(migrationsDir, '20261114220421_init_data_layer.sql'), 'utf8');
 
 const tables = [
   'profiles',
@@ -59,5 +57,22 @@ describe('data layer migration', () => {
     expect(sql).not.toContain('attempts_delete');
     expect(sql).not.toMatch(/on public\.attempts\s+for update/);
     expect(sql).not.toMatch(/on public\.attempts\s+for delete/);
+  });
+
+  it('replaces handle_new_user with plain coalesce', () => {
+    const files = fs
+      .readdirSync(migrationsDir)
+      .filter((name) => name.endsWith('.sql'))
+      .sort();
+    expect(files).toContain('20261115024156_fix_handle_new_user_coalesce.sql');
+    const combined = files.map((name) => fs.readFileSync(path.join(migrationsDir, name), 'utf8')).join('\n');
+    const definitions = [
+      ...combined.matchAll(/create or replace function private\.handle_new_user\(\)[\s\S]*?\$\$;/gi),
+    ];
+    const latest = definitions.at(-1)?.[0] ?? '';
+    expect(latest.toLowerCase()).toContain('security definer');
+    expect(latest.toLowerCase()).toContain("set search_path = ''");
+    expect(latest).toContain("coalesce(new.raw_user_meta_data ->> 'display_name', '')");
+    expect(latest).not.toContain('pg_catalog.coalesce');
   });
 });

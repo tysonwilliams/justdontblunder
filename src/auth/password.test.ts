@@ -29,6 +29,8 @@ function api(partial: Partial<AuthApi>): AuthApi {
     signInWithOAuth: fail,
     signInWithIdToken: fail,
     exchangeCodeForSession: fail,
+    setSession: fail,
+    resend: fail,
     verifyOtp: fail,
     getSession: async () => ({ userId: null }),
     signOut: async () => ({ error: null }),
