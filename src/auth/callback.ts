@@ -9,6 +9,8 @@ export type AuthQuery = {
   next: string | null;
   error: string | null;
   flowId: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
 };
 
 export type AuthCallbackResult =
@@ -16,6 +18,11 @@ export type AuthCallbackResult =
   | { status: 'error'; message: string };
 
 export const AUTH_LINK_ERROR = 'This sign-in link is incomplete or has expired. Request a new one from the account page.';
+
+/** PKCE confirmation opened somewhere else: verify already confirmed the email, and this device has no verifier. */
+export const EMAIL_CONFIRMED_MESSAGE = 'Your email is confirmed. Sign in on this device to continue.';
+
+const EMAIL_CONFIRMATION_TYPES = ['signup', 'email'] as const;
 
 const attempts = new Map<string, Promise<unknown>>();
 
@@ -36,7 +43,8 @@ export function resetAuthAttemptsForTests(): void {
 }
 
 export function parseAuthQuery(search: string): AuthQuery {
-  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const raw = search.startsWith('?') || search.startsWith('#') ? search.slice(1) : search;
+  const params = new URLSearchParams(raw);
   return {
     code: blankToNull(params.get('code')),
     tokenHash: blankToNull(params.get('token_hash')),
@@ -44,6 +52,8 @@ export function parseAuthQuery(search: string): AuthQuery {
     next: blankToNull(params.get('next')),
     error: blankToNull(params.get('error_description')) ?? blankToNull(params.get('error')),
     flowId: blankToNull(params.get('sb_flow_id')),
+    accessToken: blankToNull(params.get('access_token')),
+    refreshToken: blankToNull(params.get('refresh_token')),
   };
 }
 
@@ -61,7 +71,7 @@ export type PasswordLinkResult = { status: 'ready' } | { status: 'missing' } | {
 
 /** Exchanges a recovery link when one is present, then checks for a session that can set a password. */
 export async function openPasswordUpdate(api: AuthApi, query: AuthQuery): Promise<PasswordLinkResult> {
-  if (query.code || query.tokenHash || query.error) {
+  if (query.code || query.tokenHash || query.error || query.accessToken || query.refreshToken) {
     const result = await finishAuthCallback(api, query);
     if (result.status === 'error') return result;
   }
@@ -71,9 +81,22 @@ export async function openPasswordUpdate(api: AuthApi, query: AuthQuery): Promis
 
 export async function finishAuthCallback(api: AuthApi, query: AuthQuery): Promise<AuthCallbackResult> {
   if (query.error) return { status: 'error', message: linkError(query.error) };
+  if (query.accessToken && query.refreshToken) {
+    const { error } = await api.setSession({
+      accessToken: query.accessToken,
+      refreshToken: query.refreshToken,
+    });
+    if (error) return { status: 'error', message: AUTH_LINK_ERROR };
+    return { status: 'ready', next: routeAfterAuth(query.type, query.next) };
+  }
   if (query.code) {
     const { error } = await api.exchangeCodeForSession(query.code, query.flowId);
-    if (error) return { status: 'error', message: AUTH_LINK_ERROR };
+    if (error) {
+      return {
+        status: 'error',
+        message: isEmailConfirmation(query.type) ? EMAIL_CONFIRMED_MESSAGE : AUTH_LINK_ERROR,
+      };
+    }
     return { status: 'ready', next: routeAfterAuth(query.type, query.next) };
   }
   if (query.tokenHash) {
@@ -84,6 +107,10 @@ export async function finishAuthCallback(api: AuthApi, query: AuthQuery): Promis
     return { status: 'ready', next: routeAfterAuth(type, query.next) };
   }
   return { status: 'error', message: AUTH_LINK_ERROR };
+}
+
+function isEmailConfirmation(type: string | null): boolean {
+  return type !== null && (EMAIL_CONFIRMATION_TYPES as readonly string[]).includes(type);
 }
 
 function linkError(error: string): string {

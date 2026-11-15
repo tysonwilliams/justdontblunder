@@ -22,6 +22,11 @@ export type AuthApi = {
   signInWithPassword(input: { email: string; password: string }): Promise<AuthCall<{ sessionUserId: string | null }>>;
   signInWithOtp(input: { email: string; emailRedirectTo: string }): Promise<AuthCall<null>>;
   resetPasswordForEmail(input: { email: string; redirectTo: string }): Promise<AuthCall<null>>;
+  resend(input: {
+    email: string;
+    type: 'signup' | 'email_change';
+    emailRedirectTo: string;
+  }): Promise<AuthCall<null>>;
   updatePassword(input: { password: string }): Promise<AuthCall<null>>;
   updateUserData(input: { data: Record<string, string> }): Promise<AuthCall<null>>;
   signInWithOAuth(input: {
@@ -30,6 +35,7 @@ export type AuthApi = {
   }): Promise<AuthCall<{ url: string | null }>>;
   signInWithIdToken(input: { token: string; nonce?: string }): Promise<AuthCall<{ userId: string | null }>>;
   exchangeCodeForSession(code: string, flowId: string | null): Promise<AuthCall<null>>;
+  setSession(input: { accessToken: string; refreshToken: string }): Promise<AuthCall<null>>;
   verifyOtp(input: { tokenHash: string; type: OtpType }): Promise<AuthCall<null>>;
   getSession(): Promise<{ userId: string | null }>;
   signOut(): Promise<{ error: AuthFailure | null }>;

@@ -4,12 +4,12 @@ import type { AuthApi } from '@/src/auth/types';
 export const MIN_PASSWORD_LENGTH = 6;
 
 export const CONFIRM_EMAIL_MESSAGE =
-  'Check your email to confirm the account. Open the link on this device. If you already have an account, sign in instead.';
+  'Check your email to confirm the account. The link opens in any browser. If you already have an account, sign in instead.';
 
-export const MAGIC_LINK_MESSAGE = 'Check your email for a sign-in link. Open it on this device.';
+export const MAGIC_LINK_MESSAGE = 'Check your email for a sign-in link. It opens in any browser.';
 
 export const PASSWORD_RESET_MESSAGE =
-  'If that email can receive mail, a reset link is on its way. Open it on this device.';
+  'If that email can receive mail, a reset link is on its way. It opens in any browser.';
 
 export const PASSWORD_UPDATED_MESSAGE = 'Password saved.';
 

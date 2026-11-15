@@ -42,8 +42,8 @@ export function UpdatePasswordScreen() {
     let live = true;
     void shareAuthAttempt(`password:${search}`, () => openPasswordUpdate(api, parseAuthQuery(search)))
       .then((result) => {
-        if (!live) return;
         if (search) clearAuthSearch();
+        if (!live) return;
         switch (result.status) {
           case 'ready':
             setPhase('ready');
@@ -63,6 +63,7 @@ export function UpdatePasswordScreen() {
         }
       })
       .catch(() => {
+        if (search) clearAuthSearch();
         if (!live) return;
         setPhase('error');
         setNotice(EXPIRED);

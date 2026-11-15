@@ -6,7 +6,12 @@ import { AccountNotice } from '@/src/components/auth/AccountNotice';
 import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
-import { finishAuthCallback, parseAuthQuery, shareAuthAttempt } from '@/src/auth/callback';
+import {
+  EMAIL_CONFIRMED_MESSAGE,
+  finishAuthCallback,
+  parseAuthQuery,
+  shareAuthAttempt,
+} from '@/src/auth/callback';
 import { browserAuthSearch, clearAuthSearch } from '@/src/auth/redirect';
 import { authFrom } from '@/src/auth/supabaseAuth';
 import { getSupabase } from '@/src/data/supabase';
@@ -29,8 +34,8 @@ export function AuthCallbackScreen() {
     let live = true;
     void shareAuthAttempt(`callback:${search}`, () => finishAuthCallback(authFrom(client), parseAuthQuery(search)))
       .then((result) => {
-        if (!live) return;
         clearAuthSearch();
+        if (!live) return;
         if (result.status === 'ready') {
           router.replace(result.next as Href);
           return;
@@ -38,6 +43,7 @@ export function AuthCallbackScreen() {
         setMessage(result.message);
       })
       .catch(() => {
+        clearAuthSearch();
         if (!live) return;
         setMessage('This sign-in link is incomplete or has expired. Request a new one from the account page.');
       });
@@ -49,7 +55,7 @@ export function AuthCallbackScreen() {
   return (
     <Screen maxWidth={720}>
       <View style={styles.page}>
-        <Text style={text.display}>Signing in</Text>
+        <Text style={text.display}>{message === EMAIL_CONFIRMED_MESSAGE ? 'Email confirmed' : 'Signing in'}</Text>
         <AccountNotice message={message} />
         <Button
           label="Back to account"
