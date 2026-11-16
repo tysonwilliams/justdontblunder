@@ -10,15 +10,16 @@ Never put the service role key, the Google client secret, or the Apple secret in
 
 ## Vercel
 
-These are already set. Expo inlines `EXPO_PUBLIC_*` at build time, so a later env change needs a new deploy.
+The URL and the anon key are already set. Leave the other two unset. Expo inlines `EXPO_PUBLIC_*` at build time, so a later env change needs a new deploy.
 
 | Name | Value |
 | --- | --- |
 | `EXPO_PUBLIC_SUPABASE_URL` | `https://nhnozbrwyiiynargawmc.supabase.co` |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | the publishable (anon) key, the legacy anon JWT |
 | `EXPO_PUBLIC_SYNC_ENABLED` | leave unset. Set the string `false` only to turn sync off |
+| `EXPO_PUBLIC_OAUTH_PROVIDERS` | leave unset. Google and Apple buttons stay hidden. After those providers are enabled, set `google`, `apple`, or `google,apple`, then redeploy |
 
-Redeploy after this app change so the sign-in screens ship. No new env var is required for sync.
+Redeploy after an app change so the sign-in screens ship. No new env var is required for sync. OAuth buttons need `EXPO_PUBLIC_OAUTH_PROVIDERS`, and only after Google or Apple is enabled below.
 
 ## Sign-in
 
@@ -43,7 +44,15 @@ The hash can be read in any browser. Mail on an iPhone can open Safari, and a ho
 
 If a PKCE `code` exchange still fails and the link's `type` is `signup` or `email`, the callback says "Your email is confirmed. Sign in on this device to continue." and shows the account button. Any other failed code keeps the expired-link message.
 
-Google and Apple buttons read `GET /auth/v1/settings` with the anon key. A provider marked off is hidden. If that request fails, the button stays, and a provider that is not enabled shows "isn't turned on yet" instead of a broken redirect.
+Google and Apple buttons stay hidden until `EXPO_PUBLIC_OAUTH_PROVIDERS` lists them. The value is a comma-separated list of `google` and `apple`. Blank, unknown names, and an unset variable show no button. Expo inlines `EXPO_PUBLIC_*` at build time, so a Vercel change needs a new deploy. With the list unset, sign-in, create-account, and password reset stay on the email magic link and email plus password. Those screens do not show an OAuth button or the "aren't turned on yet" line.
+
+When the list includes a provider, that button still reads `GET /auth/v1/settings` with the anon key. A provider marked off is hidden. If that request fails, the listed button stays, and a provider that is not enabled shows "isn't turned on yet" instead of a broken redirect. `signInWithOAuth` and the native Apple identity-token path stay in the app either way.
+
+To show the buttons again:
+
+1. Enable the provider in Supabase. The provider redirect is `https://nhnozbrwyiiynargawmc.supabase.co/auth/v1/callback`. The Google and Apple sections below are the rest of that setup.
+2. In Vercel, set `EXPO_PUBLIC_OAUTH_PROVIDERS` to the providers you enabled. Use `google,apple` for both.
+3. Redeploy so the web build picks up the variable.
 
 Apple on a future iOS build can pass the identity token from AuthenticationServices into `startOAuthSignIn` with `transport: 'native-id-token'`, which calls `signInWithIdToken({ provider: 'apple' })`. The web button does not use that path. There is no native Apple button in this repo, and `expo-apple-authentication` is not installed.
 
@@ -117,7 +126,7 @@ Supabase → Authentication → Providers → Google:
 - Paste the Client ID and Client secret.
 - Save.
 
-The secret stays in that form. If this is skipped, the Google button hides or says Google sign-in isn't turned on yet.
+The secret stays in that form. The button stays hidden until `EXPO_PUBLIC_OAUTH_PROVIDERS` includes `google` and you redeploy. If `google` is listed but this provider is still off, the button hides or says Google sign-in isn't turned on yet.
 
 ### Apple
 
@@ -139,7 +148,7 @@ Then in that same Apple provider form:
 - Secret: the generated secret, not the `.p8`.
 - Save.
 
-The secret and the `.p8` stay out of Vercel and out of the app. If this is skipped, the Apple button hides or says Apple sign-in isn't turned on yet.
+The secret and the `.p8` stay out of Vercel and out of the app. The button stays hidden until `EXPO_PUBLIC_OAUTH_PROVIDERS` includes `apple` and you redeploy. If `apple` is listed but this provider is still off, the button hides or says Apple sign-in isn't turned on yet.
 
 ### Account deletion
 

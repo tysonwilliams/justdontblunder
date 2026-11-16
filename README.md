@@ -4,7 +4,7 @@ A chess trainer for new and intermediate players. Build the habit of checking be
 
 ## Play
 
-- Guest-first. Play stays open with no account. Optional sign-in is an email magic link, email and password, Google, or Apple. Progress stays on this device either way.
+- Guest-first. Play stays open with no account. Optional sign-in is an email magic link or email and password. Google and Apple buttons stay hidden unless `EXPO_PUBLIC_OAUTH_PROVIDERS` lists them. Progress stays on this device either way.
 - Home, Learn, Drills, Practice, and Progress.
 - Drills pass any safe move. A blunder is red. A save is green.
 - Drill modes are Play (the default), Pick, and Review. Streak is a sudden-death toggle on Play only.

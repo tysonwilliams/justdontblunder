@@ -17,7 +17,7 @@ import {
   signUpWithPassword,
   type PasswordResult,
 } from '@/src/auth/password';
-import { loadOAuthAvailability, visibleOAuthProviders } from '@/src/auth/providers';
+import { enabledOAuthProviders, loadOAuthAvailability, shownOAuthProviders } from '@/src/auth/providers';
 import { authCallbackUrl, browserOrigin, passwordUpdateUrl } from '@/src/auth/redirect';
 import { signOutCurrentAccount, useAccountStore } from '@/src/auth/session';
 import { authFrom } from '@/src/auth/supabaseAuth';
@@ -98,10 +98,15 @@ function GuestAccount() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
-  const [providers, setProviders] = useState<OAuthProviderId[] | null>(null);
+  const [providers, setProviders] = useState<OAuthProviderId[] | null>(() =>
+    enabledOAuthProviders().length === 0 ? [] : null,
+  );
   const { busy, run } = useBusyAction();
+  const showProviderOffNote = enabledOAuthProviders().length > 0 && providers?.length === 0;
 
   useEffect(() => {
+    const enabled = enabledOAuthProviders();
+    if (enabled.length === 0) return;
     const config = getSupabasePublicConfig();
     if (!config) {
       setProviders([]);
@@ -109,7 +114,7 @@ function GuestAccount() {
     }
     let live = true;
     void loadOAuthAvailability(config).then((availability) => {
-      if (live) setProviders(visibleOAuthProviders(availability));
+      if (live) setProviders(shownOAuthProviders(availability, enabled));
     });
     return () => {
       live = false;
@@ -324,7 +329,7 @@ function GuestAccount() {
       <Text style={text.muted}>
         Chess.com and Lichess stay a public username. This password is only for Just Don't Blunder.
       </Text>
-      {providers?.length === 0 ? (
+      {showProviderOffNote ? (
         <Text style={text.muted} testID="account-providers-off">
           Google and Apple aren't turned on yet. Use email instead.
         </Text>
