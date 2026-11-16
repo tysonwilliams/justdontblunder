@@ -1,8 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { oauthUnavailableMessage } from '@/src/auth/messages';
 import { nativeAppleRequest, startOAuthSignIn, webProviderRequest } from '@/src/auth/oauth';
-import { loadOAuthAvailability, parseOAuthAvailability, visibleOAuthProviders } from '@/src/auth/providers';
+import {
+  enabledOAuthProviders,
+  loadOAuthAvailability,
+  parseOAuthAvailability,
+  shownOAuthProviders,
+  visibleOAuthProviders,
+} from '@/src/auth/providers';
 import type { AuthApi } from '@/src/auth/types';
 
 function api(partial: Partial<AuthApi>): AuthApi {
@@ -84,10 +90,46 @@ describe('web and native sign-in', () => {
 });
 
 describe('provider availability', () => {
+  const previousFlag = process.env.EXPO_PUBLIC_OAUTH_PROVIDERS;
+
+  afterEach(() => {
+    if (previousFlag === undefined) delete process.env.EXPO_PUBLIC_OAUTH_PROVIDERS;
+    else process.env.EXPO_PUBLIC_OAUTH_PROVIDERS = previousFlag;
+  });
+
   it('hides a provider Auth marks off and keeps one it cannot check', () => {
     expect(visibleOAuthProviders({ google: 'off', apple: 'on' })).toEqual(['apple']);
     expect(visibleOAuthProviders({ google: 'unknown', apple: 'off' })).toEqual(['google']);
     expect(visibleOAuthProviders({ google: 'off', apple: 'off' })).toEqual([]);
+  });
+
+  it('shows no buttons when EXPO_PUBLIC_OAUTH_PROVIDERS is unset', () => {
+    delete process.env.EXPO_PUBLIC_OAUTH_PROVIDERS;
+    expect(enabledOAuthProviders()).toEqual([]);
+    expect(enabledOAuthProviders('')).toEqual([]);
+    expect(enabledOAuthProviders('   ')).toEqual([]);
+    expect(shownOAuthProviders({ google: 'on', apple: 'unknown' })).toEqual([]);
+  });
+
+  it('parses a comma list and ignores unknown names', () => {
+    expect(enabledOAuthProviders('google,apple')).toEqual(['google', 'apple']);
+    expect(enabledOAuthProviders(' apple , google ')).toEqual(['apple', 'google']);
+    expect(enabledOAuthProviders('Google,APPLE,google')).toEqual(['google', 'apple']);
+    expect(enabledOAuthProviders('facebook,, google')).toEqual(['google']);
+    expect(enabledOAuthProviders('google;apple')).toEqual([]);
+  });
+
+  it('shows only listed providers, and still hides one Auth marks off', () => {
+    const both = ['google', 'apple'] as const;
+    expect(shownOAuthProviders({ google: 'off', apple: 'on' }, both)).toEqual(['apple']);
+    expect(shownOAuthProviders({ google: 'unknown', apple: 'off' }, both)).toEqual(['google']);
+    expect(shownOAuthProviders({ google: 'on', apple: 'on' }, ['apple'])).toEqual(['apple']);
+    expect(shownOAuthProviders({ google: 'on', apple: 'unknown' }, [])).toEqual([]);
+  });
+
+  it('reads the build flag when the screen does not pass a list', () => {
+    process.env.EXPO_PUBLIC_OAUTH_PROVIDERS = 'apple';
+    expect(shownOAuthProviders({ google: 'on', apple: 'on' })).toEqual(['apple']);
   });
 
   it('reads the public settings payload', () => {
