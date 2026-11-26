@@ -33,7 +33,11 @@ export type AuthApi = {
     provider: OAuthProviderId;
     redirectTo: string;
   }): Promise<AuthCall<{ url: string | null }>>;
-  signInWithIdToken(input: { token: string; nonce?: string }): Promise<AuthCall<{ userId: string | null }>>;
+  signInWithIdToken(input: {
+    provider: OAuthProviderId;
+    token: string;
+    nonce?: string;
+  }): Promise<AuthCall<{ userId: string | null }>>;
   exchangeCodeForSession(code: string, flowId: string | null): Promise<AuthCall<null>>;
   setSession(input: { accessToken: string; refreshToken: string }): Promise<AuthCall<null>>;
   verifyOtp(input: { tokenHash: string; type: OtpType }): Promise<AuthCall<null>>;

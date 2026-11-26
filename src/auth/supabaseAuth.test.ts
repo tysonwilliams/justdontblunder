@@ -50,7 +50,8 @@ describe('authFrom', () => {
     await api.updatePassword({ password: 'newer' });
     await api.signInWithOAuth({ provider: 'google', redirectTo: 'https://justdontblunder.com/auth/callback' });
     await api.signInWithOAuth({ provider: 'apple', redirectTo: 'https://justdontblunder.com/auth/callback' });
-    await api.signInWithIdToken({ token: 'apple-token', nonce: 'n' });
+    await api.signInWithIdToken({ provider: 'apple', token: 'apple-token', nonce: 'n' });
+    await api.signInWithIdToken({ provider: 'google', token: 'google-token', nonce: 'raw-nonce' });
     await api.exchangeCodeForSession('code-1', 'flow-1');
     await api.verifyOtp({ tokenHash: 'hash-1', type: 'recovery' });
 
@@ -62,6 +63,7 @@ describe('authFrom', () => {
       'updateUser',
       'signInWithOAuth',
       'signInWithOAuth',
+      'signInWithIdToken',
       'signInWithIdToken',
       'exchangeCodeForSession',
       'verifyOtp',
@@ -78,8 +80,9 @@ describe('authFrom', () => {
     expect(calls[5]?.args[0]).toMatchObject({ provider: 'google', options: { skipBrowserRedirect: false } });
     expect(calls[6]?.args[0]).toMatchObject({ provider: 'apple' });
     expect(calls[7]?.args[0]).toEqual({ provider: 'apple', token: 'apple-token', nonce: 'n' });
-    expect(calls[8]?.args).toEqual(['code-1', { flowId: 'flow-1' }]);
-    expect(calls[9]?.args[0]).toEqual({ token_hash: 'hash-1', type: 'recovery' });
+    expect(calls[8]?.args[0]).toEqual({ provider: 'google', token: 'google-token', nonce: 'raw-nonce' });
+    expect(calls[9]?.args).toEqual(['code-1', { flowId: 'flow-1' }]);
+    expect(calls[10]?.args[0]).toEqual({ token_hash: 'hash-1', type: 'recovery' });
   });
 
   it('sends email through the implicit client and copies an immediate session onto the main client', async () => {

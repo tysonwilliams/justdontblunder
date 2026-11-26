@@ -9,6 +9,17 @@ export type WebOAuthRequest = {
 };
 
 /**
+ * Web Google with a public client id: GIS returns an ID token.
+ * The hashed nonce went to Google. This request carries the raw nonce.
+ */
+export type WebGoogleIdTokenRequest = {
+  transport: 'web-google-id-token';
+  provider: 'google';
+  credential: string;
+  nonce: string;
+};
+
+/**
  * Native iOS later: AuthenticationServices (or expo-apple-authentication) returns
  * an identity token, and this transport passes it to signInWithIdToken.
  * The web button never builds this request. Android keeps using the web redirect.
@@ -27,7 +38,7 @@ export type AppleName = {
   familyName?: string | null;
 };
 
-export type OAuthRequest = WebOAuthRequest | NativeAppleRequest;
+export type OAuthRequest = WebOAuthRequest | WebGoogleIdTokenRequest | NativeAppleRequest;
 
 export type OAuthResult =
   | { status: 'redirecting' }
@@ -37,6 +48,10 @@ export type OAuthResult =
 
 export function webProviderRequest(provider: OAuthProviderId, origin: string): WebOAuthRequest {
   return { transport: 'web-redirect', provider, redirectTo: authCallbackUrl(origin) };
+}
+
+export function webGoogleIdTokenRequest(credential: string, nonce: string): WebGoogleIdTokenRequest {
+  return { transport: 'web-google-id-token', provider: 'google', credential, nonce };
 }
 
 export function nativeAppleRequest(credential: {
@@ -66,6 +81,8 @@ export async function startOAuthSignIn(api: AuthApi, request: OAuthRequest): Pro
   switch (request.transport) {
     case 'web-redirect':
       return startWebRedirect(api, request);
+    case 'web-google-id-token':
+      return startWebGoogleIdToken(api, request);
     case 'native-id-token':
       return startNativeApple(api, request);
     default: {
@@ -87,9 +104,24 @@ async function startWebRedirect(api: AuthApi, request: WebOAuthRequest): Promise
   return { status: 'error', message: oauthFailedMessage() };
 }
 
+async function startWebGoogleIdToken(api: AuthApi, request: WebGoogleIdTokenRequest): Promise<OAuthResult> {
+  if (!request.credential || !request.nonce) return { status: 'error', message: oauthFailedMessage() };
+  const { error } = await api.signInWithIdToken({
+    provider: 'google',
+    token: request.credential,
+    nonce: request.nonce,
+  });
+  if (!error) return { status: 'signed-in' };
+  if (providerUnavailable(error.message)) {
+    return { status: 'unavailable', message: oauthUnavailableMessage('google') };
+  }
+  return { status: 'error', message: oauthFailedMessage() };
+}
+
 async function startNativeApple(api: AuthApi, request: NativeAppleRequest): Promise<OAuthResult> {
   if (!request.identityToken) return { status: 'error', message: oauthFailedMessage() };
   const { error } = await api.signInWithIdToken({
+    provider: 'apple',
     token: request.identityToken,
     nonce: request.nonce,
   });

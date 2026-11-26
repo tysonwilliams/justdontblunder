@@ -1,15 +1,18 @@
-import { Link, type Href } from 'expo-router';
+import { Link, useRouter, type Href } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 
 import { AccountNotice } from '@/src/components/auth/AccountNotice';
 import { AuthField } from '@/src/components/auth/AuthField';
+import { GoogleSignInButton } from '@/src/components/auth/GoogleSignInButton';
 import { useBusyAction } from '@/src/components/auth/useBusyAction';
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
 import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
-import { startOAuthSignIn, webProviderRequest, type OAuthResult } from '@/src/auth/oauth';
+import { routeAfterAuth } from '@/src/auth/callback';
+import { googleButtonKind, googleClientId } from '@/src/auth/googleSignIn';
+import { startOAuthSignIn, webGoogleIdTokenRequest, webProviderRequest, type OAuthResult } from '@/src/auth/oauth';
 import {
   sendMagicLink,
   sendPasswordReset,
@@ -93,14 +96,18 @@ function SignedIn({ label }: { label: string }) {
 }
 
 function GuestAccount() {
+  const router = useRouter();
+  const { scheme } = useTheme();
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [googleFallback, setGoogleFallback] = useState(false);
   const [providers, setProviders] = useState<OAuthProviderId[] | null>(() =>
     enabledOAuthProviders().length === 0 ? [] : null,
   );
+  const googleId = googleClientId();
   const { busy, run } = useBusyAction();
   const showProviderOffNote = enabledOAuthProviders().length > 0 && providers?.length === 0;
 
@@ -150,7 +157,10 @@ function GuestAccount() {
   const applyOAuth = (result: OAuthResult) => {
     switch (result.status) {
       case 'redirecting':
+        return;
       case 'signed-in':
+        // Same destination as /auth/callback after a Google redirect. The root session listener merges guest progress.
+        router.replace(routeAfterAuth(null, null) as Href);
         return;
       case 'unavailable':
       case 'error':
@@ -184,21 +194,48 @@ function GuestAccount() {
       </Text>
       {mode === 'sign-in' ? (
         <View style={styles.form}>
-          {providers?.map((provider) => (
-            <Button
-              key={provider}
-              label={providerLabel(provider)}
-              variant="secondary"
-              testID={provider === 'google' ? 'account-google' : 'account-apple'}
-              onPress={() => {
-                void run(async () => {
-                  await withApi(async (api, origin) => {
-                    applyOAuth(await startOAuthSignIn(api, webProviderRequest(provider, origin)));
+          {providers?.map((provider) => {
+            if (
+              provider === 'google' &&
+              googleId &&
+              googleButtonKind({
+                shown: providers,
+                platform: Platform.OS,
+                clientId: googleFallback ? null : googleId,
+              }) === 'gis'
+            ) {
+              return (
+                <GoogleSignInButton
+                  key="google"
+                  clientId={googleId}
+                  scheme={scheme}
+                  onScriptError={() => setGoogleFallback(true)}
+                  onCredential={(credential, rawNonce) => {
+                    void run(async () => {
+                      await withApi(async (api) => {
+                        applyOAuth(await startOAuthSignIn(api, webGoogleIdTokenRequest(credential, rawNonce)));
+                      });
+                    });
+                  }}
+                />
+              );
+            }
+            return (
+              <Button
+                key={provider}
+                label={providerLabel(provider)}
+                variant="secondary"
+                testID={provider === 'google' ? 'account-google' : 'account-apple'}
+                onPress={() => {
+                  void run(async () => {
+                    await withApi(async (api, origin) => {
+                      applyOAuth(await startOAuthSignIn(api, webProviderRequest(provider, origin)));
+                    });
                   });
-                });
-              }}
-            />
-          ))}
+                }}
+              />
+            );
+          })}
           <AuthField
             label="Email"
             value={email}
