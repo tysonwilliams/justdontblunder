@@ -15,7 +15,12 @@ export type StageMetrics = {
   phone: boolean;
   /** Portrait phone with little room beside a full-width board. */
   tight: boolean;
+  /** Inset for text, lists, controls, and footers. */
   padX: number;
+  /** Inset of the board frame. On a phone this is smaller than `padX`. */
+  boardInset: number;
+  /** Extra inset inside the board frame so lead and foot copy meet `padX`. */
+  chromePad: number;
   padTop: number;
   padBottom: number;
   contentW: number;
@@ -34,12 +39,14 @@ export function stageMetrics(
 ): StageMetrics {
   const topNav = width >= layout.nav;
   const narrow = width < layout.split;
-  const padX = narrow ? layout.padPhone : width >= 1280 ? layout.padDesktop : layout.padTablet;
+  const padX = narrow ? layout.gutter : width >= 1280 ? layout.padDesktop : layout.padTablet;
+  const boardInset = narrow ? layout.boardInset : padX;
+  const chromePad = padX - boardInset;
   // Phone content starts below the notch. A window with no inset still gets a small top pad.
   const padTop = topNav ? spacing[10] : Math.max(spacing.sm, insetTop);
   const padBottom = topNav ? spacing[12] : spacing.xxs;
   const tabBar = topNav ? layout.tabBar + insetTop : layout.tabBarPhone + insetBottom;
-  const rawW = Math.max(280, width - padX * 2);
+  const rawW = Math.max(280, width - boardInset * 2);
   const contentHeight = Math.max(240, height - tabBar - padTop - padBottom);
   const turnRow = narrow ? TURN_ROW_PHONE : TURN_ROW_DESKTOP;
   const heightBoard = Math.floor(contentHeight - turnRow - spacing.xs);
@@ -52,8 +59,9 @@ export function stageMetrics(
 
   if (!split) {
     const contentW = Math.min(rawW, layout.stageMax);
-    // Portrait keeps the square edge to edge. A short landscape window is
-    // shorter than it is wide, so the square yields to the height instead.
+    // A narrow window keeps the square near the glass. Copy uses padX.
+    // A short landscape window is shorter than it is wide, so the square
+    // yields to the height instead.
     const heightCap = Math.max(220, contentHeight - turnRow - 96);
     const boardWidth = Math.round(Math.min(contentW, heightCap));
     const chromeBudget = contentHeight - boardWidth - turnRow;
@@ -63,6 +71,8 @@ export function stageMetrics(
       phone: !topNav,
       tight: !topNav && chromeBudget < 260,
       padX,
+      boardInset,
+      chromePad,
       padTop,
       padBottom,
       contentW,
@@ -97,6 +107,8 @@ export function stageMetrics(
     phone: false,
     tight: false,
     padX,
+    boardInset,
+    chromePad,
     padTop,
     padBottom,
     contentW,

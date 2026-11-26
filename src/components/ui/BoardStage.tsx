@@ -47,13 +47,15 @@ export function BoardStage({ board, aside, intro, footer }: Props) {
     const slots = phoneSlots(metrics.contentHeight, boardWidth, metrics.turnRow);
     return (
       <View style={styles.fill} onLayout={onBox}>
-        <View style={[styles.slot, styles.lead, { height: slots.lead }]} testID="board-lead">
+        <View
+          style={[styles.slot, styles.lead, { height: slots.lead, paddingHorizontal: metrics.chromePad }]}
+          testID="board-lead">
           {intro}
         </View>
         <View testID="board-stage" style={[styles.board, { width: boardWidth }]}>
           {withBoardSize(board, boardWidth)}
         </View>
-        <View style={[styles.slot, { height: slots.foot }]} testID="board-foot">
+        <View style={[styles.slot, { height: slots.foot, paddingHorizontal: metrics.chromePad }]} testID="board-foot">
           <View style={styles.foot}>
             {aside}
             {footer}

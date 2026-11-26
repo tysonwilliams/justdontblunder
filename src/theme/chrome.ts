@@ -25,13 +25,13 @@ export function applyDocumentTheme(scheme: ColorScheme, colors: Palette): void {
 }
 
 /**
- * Runs from the web shell before paint. Reads the same persisted preference
- * the Zustand store writes, then the system scheme.
+ * Runs from the web shell before paint. Nothing stored paints dark.
+ * A saved light, dark, or system preference still wins. System follows the OS.
  */
 export function themeBootScript(): string {
   const light = palettes.light;
   const dark = palettes.dark;
-  return `(function(){try{var key=${JSON.stringify(THEME_STORAGE_KEY)};var pref='system';var raw=localStorage.getItem(key);if(raw){var parsed=JSON.parse(raw);var stored=parsed&&parsed.state&&parsed.state.preference;if(stored==='light'||stored==='dark'||stored==='system')pref=stored;}var darkMq=window.matchMedia('(prefers-color-scheme: dark)').matches;var scheme=pref==='light'||pref==='dark'?pref:(darkMq?'dark':'light');var bg=scheme==='light'?${JSON.stringify(light.background)}:${JSON.stringify(dark.background)};var fg=scheme==='light'?${JSON.stringify(light.text)}:${JSON.stringify(dark.text)};var root=document.documentElement;root.dataset.colorScheme=scheme;root.style.colorScheme=scheme;root.style.setProperty('--jdb-bg',bg);root.style.setProperty('--jdb-fg',fg);root.style.backgroundColor=bg;root.style.color=fg;var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',bg);}catch(e){}})();`;
+  return `(function(){try{var key=${JSON.stringify(THEME_STORAGE_KEY)};var pref='dark';var raw=localStorage.getItem(key);if(raw){var parsed=JSON.parse(raw);var stored=parsed&&parsed.state&&parsed.state.preference;if(stored==='light'||stored==='dark'||stored==='system')pref=stored;}var darkMq=window.matchMedia('(prefers-color-scheme: dark)').matches;var scheme=pref==='light'||pref==='dark'?pref:(darkMq?'dark':'light');var bg=scheme==='light'?${JSON.stringify(light.background)}:${JSON.stringify(dark.background)};var fg=scheme==='light'?${JSON.stringify(light.text)}:${JSON.stringify(dark.text)};var root=document.documentElement;root.dataset.colorScheme=scheme;root.style.colorScheme=scheme;root.style.setProperty('--jdb-bg',bg);root.style.setProperty('--jdb-fg',fg);root.style.backgroundColor=bg;root.style.color=fg;var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',bg);}catch(e){}})();`;
 }
 
 export function themeShellCss(): string {
@@ -48,12 +48,6 @@ body > div:first-child {
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
-}
-@media (prefers-color-scheme: light) {
-  html, body {
-    background-color: var(--jdb-bg, ${light.background});
-    color: var(--jdb-fg, ${light.text});
-  }
 }
 #boot {
   position: fixed;

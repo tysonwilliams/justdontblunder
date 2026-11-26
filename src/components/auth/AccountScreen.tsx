@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Platform, Text, View } from 'react-native';
 
 import { AccountNotice } from '@/src/components/auth/AccountNotice';
+import { AppleSignInButton } from '@/src/components/auth/AppleSignInButton';
 import { AuthField } from '@/src/components/auth/AuthField';
 import { GoogleSignInButton } from '@/src/components/auth/GoogleSignInButton';
 import { useBusyAction } from '@/src/components/auth/useBusyAction';
@@ -12,6 +13,7 @@ import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
 import { routeAfterAuth } from '@/src/auth/callback';
 import { googleButtonKind, googleClientId } from '@/src/auth/googleSignIn';
+import { SIGN_IN_BUTTON_MAX_WIDTH } from '@/src/auth/signInButtonMetrics';
 import { startOAuthSignIn, webGoogleIdTokenRequest, webProviderRequest, type OAuthResult } from '@/src/auth/oauth';
 import {
   sendMagicLink,
@@ -196,6 +198,21 @@ function GuestAccount() {
       {mode === 'sign-in' ? (
         <View style={styles.form}>
           {providers?.map((provider) => {
+            if (provider === 'apple') {
+              return (
+                <AppleSignInButton
+                  key="apple"
+                  scheme={scheme}
+                  onPress={() => {
+                    void run(async () => {
+                      await withApi(async (api, origin) => {
+                        applyOAuth(await startOAuthSignIn(api, webProviderRequest('apple', origin)));
+                      });
+                    });
+                  }}
+                />
+              );
+            }
             if (
               provider === 'google' &&
               googleId &&
@@ -409,7 +426,7 @@ function TextButton({ label, testID, onPress }: { label: string; testID: string;
 
 function Frame({ children }: { children: ReactNode }) {
   return (
-    <Screen maxWidth={720}>
+    <Screen maxWidth={SIGN_IN_BUTTON_MAX_WIDTH}>
       <View style={styles.page}>
         <View style={styles.header}>
           <Text style={text.eyebrow}>Just Don't Blunder</Text>
@@ -431,6 +448,8 @@ const styles = themedStyleSheet((colors) => ({
     gap: spacing[6],
   },
   form: {
+    width: '100%',
+    maxWidth: SIGN_IN_BUTTON_MAX_WIDTH,
     gap: spacing.sm,
   },
   links: {

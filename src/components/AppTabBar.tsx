@@ -71,8 +71,9 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
       <View
         style={[
           styles.inner,
+          { paddingHorizontal: padX },
           wide && styles.innerWide,
-          wide && { paddingHorizontal: padX, maxWidth: contentW + padX * 2 },
+          wide && { maxWidth: contentW + padX * 2 },
         ]}>
         {wide ? (
           <View style={styles.brand}>
@@ -160,7 +161,6 @@ const styles = themedStyleSheet((colors) => ({
   },
   inner: {
     minHeight: 48,
-    paddingHorizontal: spacing.xs,
     justifyContent: 'center',
   },
   innerWide: {

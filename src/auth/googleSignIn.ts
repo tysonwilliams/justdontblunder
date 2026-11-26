@@ -1,3 +1,4 @@
+import { SIGN_IN_BUTTON_MAX_WIDTH } from '@/src/auth/signInButtonMetrics';
 import type { OAuthProviderId } from '@/src/auth/types';
 
 /** Public web client id. Missing means the Supabase redirect stays in place. */
@@ -27,19 +28,23 @@ export function googleButtonKind(input: {
   return 'redirect';
 }
 
-export const GOOGLE_BUTTON_MAX_WIDTH = 400;
+export const GOOGLE_BUTTON_MAX_WIDTH = SIGN_IN_BUTTON_MAX_WIDTH;
 
 export function googleButtonWidth(containerWidth: number): number | null {
   if (!Number.isFinite(containerWidth) || containerWidth < 1) return null;
   return Math.min(GOOGLE_BUTTON_MAX_WIDTH, Math.floor(containerWidth));
 }
 
-export function googleButtonTheme(scheme: 'dark' | 'light'): 'outline' | 'outline_dark' {
+/**
+ * Match Continue with Apple: a white button on dark, a black button on light.
+ * `outline` is Google's white button. `filled_black` is the black button.
+ */
+export function googleButtonTheme(scheme: 'dark' | 'light'): 'outline' | 'filled_black' {
   switch (scheme) {
     case 'dark':
-      return 'outline_dark';
-    case 'light':
       return 'outline';
+    case 'light':
+      return 'filled_black';
     default: {
       const _exhaustive: never = scheme;
       return _exhaustive;
@@ -49,7 +54,7 @@ export function googleButtonTheme(scheme: 'dark' | 'light'): 'outline' | 'outlin
 
 export type GoogleButtonOptions = {
   type: 'standard';
-  theme: 'outline' | 'outline_dark';
+  theme: 'outline' | 'filled_black';
   size: 'large';
   text: 'continue_with';
   shape: 'rectangular';

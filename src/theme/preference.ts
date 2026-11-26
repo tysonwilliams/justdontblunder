@@ -34,6 +34,15 @@ export function resolveColorScheme(
   }
 }
 
+/** First visit, with nothing saved, is dark even if the OS is set to light. */
+export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'dark';
+
+export function initialThemePreference(
+  stored: ThemePreference | null = readStoredThemePreference(),
+): ThemePreference {
+  return stored ?? DEFAULT_THEME_PREFERENCE;
+}
+
 /** Synchronous read for the first web paint. Native storage is async. */
 export function readStoredThemePreference(): ThemePreference | null {
   try {

@@ -14,7 +14,7 @@ import {
   paintGoogleButton,
   type GoogleIdentityClient,
 } from '@/src/auth/googleSignIn';
-import { useLayout } from '@/src/components/ui/useLayout';
+import { SIGN_IN_BUTTON_HEIGHT } from '@/src/auth/signInButtonMetrics';
 
 type Props = {
   clientId: string;
@@ -28,7 +28,6 @@ type Props = {
  * A missing script tells the account screen to use the redirect button.
  */
 export function GoogleSignInButton({ clientId, scheme, onCredential, onScriptError }: Props) {
-  const { phone } = useLayout();
   const hostRef = useRef<HTMLElement | null>(null);
   const nonceRef = useRef<GoogleNonce | null>(null);
   const googleRef = useRef<GoogleIdentityClient | null>(null);
@@ -106,7 +105,7 @@ export function GoogleSignInButton({ clientId, scheme, onCredential, onScriptErr
         const next = Math.floor(event.nativeEvent.layout.width);
         setWidth((current) => (current === next ? current : next));
       }}
-      style={[styles.host, phone ? styles.hostPhone : null]}
+      style={styles.host}
     />
   );
 }
@@ -133,10 +132,8 @@ function hostElement(node: HTMLElement | null): HTMLElement | null {
 const styles = StyleSheet.create({
   host: {
     alignSelf: 'stretch',
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  hostPhone: {
-    minHeight: 44,
+    width: '100%',
+    height: SIGN_IN_BUTTON_HEIGHT,
+    overflow: 'hidden',
   },
 });

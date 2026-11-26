@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  DEFAULT_THEME_PREFERENCE,
+  initialThemePreference,
   preferenceFromUnknown,
   readStoredThemePreference,
   resolveColorScheme,
@@ -20,6 +22,16 @@ describe('resolveColorScheme', () => {
   it('stays on the original dark palette when the system scheme is unknown', () => {
     expect(resolveColorScheme('system', null)).toBe('dark');
     expect(resolveColorScheme('system', undefined)).toBe('dark');
+  });
+});
+
+describe('initial theme preference', () => {
+  it('stays dark when nothing is saved, and keeps a saved choice', () => {
+    expect(DEFAULT_THEME_PREFERENCE).toBe('dark');
+    expect(initialThemePreference(null)).toBe('dark');
+    expect(initialThemePreference('light')).toBe('light');
+    expect(initialThemePreference('system')).toBe('system');
+    expect(initialThemePreference('dark')).toBe('dark');
   });
 });
 

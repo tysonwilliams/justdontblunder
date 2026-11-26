@@ -4,8 +4,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import {
   THEME_STORAGE_KEY,
+  initialThemePreference,
   preferenceFromUnknown,
-  readStoredThemePreference,
   type ThemePreference,
 } from '@/src/theme/preference';
 
@@ -17,7 +17,7 @@ type ThemePreferenceState = {
 export const useThemePreference = create<ThemePreferenceState>()(
   persist(
     (set) => ({
-      preference: readStoredThemePreference() ?? 'system',
+      preference: initialThemePreference(),
       setPreference: (preference) => set({ preference }),
     }),
     {

@@ -102,7 +102,7 @@ describe('google button', () => {
     expect(googleButtonWidth(720.8)).toBe(400);
     expect(googleButtonConfig('dark', 720)).toEqual({
       type: 'standard',
-      theme: 'outline_dark',
+      theme: 'outline',
       size: 'large',
       text: 'continue_with',
       shape: 'rectangular',
@@ -110,7 +110,7 @@ describe('google button', () => {
       width: 400,
       locale: 'en',
     });
-    expect(googleButtonConfig('light', 280)?.theme).toBe('outline');
+    expect(googleButtonConfig('light', 280)?.theme).toBe('filled_black');
     expect(googleButtonConfig('light', 280)?.width).toBe(280);
     expect(googleButtonConfig('dark', 0)).toBeNull();
   });
