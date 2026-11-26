@@ -10,7 +10,7 @@ Never put the service role key, the Google client secret, or the Apple secret in
 
 ## Vercel
 
-The URL and the anon key are already set. Leave the other two unset. Expo inlines `EXPO_PUBLIC_*` at build time, so a later env change needs a new deploy.
+The URL and the anon key are already set. Expo inlines `EXPO_PUBLIC_*` at build time, so a later env change needs a new deploy.
 
 | Name | Value |
 | --- | --- |
@@ -18,8 +18,9 @@ The URL and the anon key are already set. Leave the other two unset. Expo inline
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | the publishable (anon) key, the legacy anon JWT |
 | `EXPO_PUBLIC_SYNC_ENABLED` | leave unset. Set the string `false` only to turn sync off |
 | `EXPO_PUBLIC_OAUTH_PROVIDERS` | leave unset. Google and Apple buttons stay hidden. After those providers are enabled, set `google`, `apple`, or `google,apple`, then redeploy |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | public web client id `129452132407-vqeapd2vu4md3qn81t439kpdbocksghq.apps.googleusercontent.com`. Set this in Vercel so Google's consent screen shows this site. Leave it unset to keep the Supabase redirect |
 
-Redeploy after an app change so the sign-in screens ship. No new env var is required for sync. OAuth buttons need `EXPO_PUBLIC_OAUTH_PROVIDERS`, and only after Google or Apple is enabled below.
+Redeploy after an app change so the sign-in screens ship. No new env var is required for sync. OAuth buttons need `EXPO_PUBLIC_OAUTH_PROVIDERS`, and only after Google or Apple is enabled below. Google on the web also needs `EXPO_PUBLIC_GOOGLE_CLIENT_ID`. Without that client id, Google keeps the Supabase redirect.
 
 ## Sign-in
 
@@ -31,12 +32,15 @@ All of these are optional. The drills, the home trainer, and the phone board do 
 | Email and password sign-up | `signUp`, with a confirmation email | `/auth/callback` |
 | Email and password sign-in | `signInWithPassword` | stays in the app |
 | Forgot password | `resetPasswordForEmail`, then `updateUser({ password })` | `/auth/update-password` |
-| Google | `signInWithOAuth({ provider: 'google' })` | `/auth/callback` |
+| Google on the web, with `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | Google Identity Services, then `signInWithIdToken({ provider: 'google', token, nonce })` | stays in the app, then Progress |
+| Google without that client id, and Google on iOS or Android | `signInWithOAuth({ provider: 'google' })` | `/auth/callback` |
 | Apple on the web | `signInWithOAuth({ provider: 'apple' })` | `/auth/callback` |
 
 Chess.com and Lichess stay a public username. The app never asks for a chess-site password. Lichess OAuth is not part of this.
 
-Google and Apple use the main client. It is PKCE (`flowType: 'pkce'`) and does not detect the session in the URL. `/auth/callback` exchanges that `code`. The code verifier stays in AsyncStorage on the browser that started the redirect, which is the same browser the provider sends back to.
+Apple on the web, and Google when it still uses the redirect, go through the main client. It is PKCE (`flowType: 'pkce'`) and does not detect the session in the URL. `/auth/callback` exchanges that `code`. The code verifier stays in AsyncStorage on the browser that started the redirect, which is the same browser the provider sends back to.
+
+Google on the web uses Google Identity Services (`https://accounts.google.com/gsi/client`) when `EXPO_PUBLIC_GOOGLE_CLIENT_ID` is set. The script loads only in the browser, and only when the Google button is on screen. Google's button returns an ID token on this origin. `signInWithIdToken` runs here, so the consent screen shows justdontblunder.com instead of `nhnozbrwyiiynargawmc.supabase.co`. The root session listener merges guest progress on that sign-in, the same way it does after `/auth/callback`. The account screen then opens Progress, which is where that callback sends a finished Google redirect. iOS and Android do not load the script. They keep `signInWithOAuth`. If the client id is missing, or the script does not load, the web button uses that redirect too.
 
 Email links use a second client with `flowType: 'implicit'`. Magic link (`signInWithOtp`), signup confirmation (`signUp`), password recovery (`resetPasswordForEmail`), and `resend` go through it. That client does not persist a session and uses the storage key `jdb-implicit-email`, so it does not store a code verifier and does not warn about a second GoTrue client on the PKCE storage key. Supabase then redirects with the session in the URL hash (`#access_token` and `#refresh_token`). `/auth/callback` and `/auth/update-password` read that hash, including `error` and `error_description`, call `setSession` on the main client, and clear the hash. A `code` or a `token_hash` on those pages still works. A recovery link opens `/auth/update-password`.
 
@@ -46,13 +50,13 @@ If a PKCE `code` exchange still fails and the link's `type` is `signup` or `emai
 
 Google and Apple buttons stay hidden until `EXPO_PUBLIC_OAUTH_PROVIDERS` lists them. The value is a comma-separated list of `google` and `apple`. Blank, unknown names, and an unset variable show no button. Expo inlines `EXPO_PUBLIC_*` at build time, so a Vercel change needs a new deploy. With the list unset, sign-in, create-account, and password reset stay on the email magic link and email plus password. Those screens do not show an OAuth button or the "aren't turned on yet" line.
 
-When the list includes a provider, that button still reads `GET /auth/v1/settings` with the anon key. A provider marked off is hidden. If that request fails, the listed button stays, and a provider that is not enabled shows "isn't turned on yet" instead of a broken redirect. `signInWithOAuth` and the native Apple identity-token path stay in the app either way.
+When the list includes a provider, that button still reads `GET /auth/v1/settings` with the anon key. A provider marked off is hidden. If that request fails, the listed button stays, and a provider that is not enabled shows "isn't turned on yet" instead of a broken redirect. `signInWithOAuth`, the Google id-token path, and the native Apple identity-token path stay in the app either way.
 
 To show the buttons again:
 
 1. Enable the provider in Supabase. The provider redirect is `https://nhnozbrwyiiynargawmc.supabase.co/auth/v1/callback`. The Google and Apple sections below are the rest of that setup.
-2. In Vercel, set `EXPO_PUBLIC_OAUTH_PROVIDERS` to the providers you enabled. Use `google,apple` for both.
-3. Redeploy so the web build picks up the variable.
+2. In Vercel, set `EXPO_PUBLIC_OAUTH_PROVIDERS` to the providers you enabled. Use `google,apple` for both. For Google on the web, also set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the web client id in the Google section.
+3. Redeploy so the web build picks up the variables.
 
 Apple on a future iOS build can pass the identity token from AuthenticationServices into `startOAuthSignIn` with `transport: 'native-id-token'`, which calls `signInWithIdToken({ provider: 'apple' })`. The web button does not use that path. There is no native Apple button in this repo, and `expo-apple-authentication` is not installed.
 
@@ -109,24 +113,36 @@ Reset password:
 
 ### Google
 
-In the Google Auth Platform, create an OAuth client.
+Web sign-in uses Google's button when `EXPO_PUBLIC_GOOGLE_CLIENT_ID` is set. The page origin is this site, so the consent screen shows justdontblunder.com. The ID token is sent to `signInWithIdToken({ provider: 'google', token, nonce })` on the main client.
 
-1. Application type: Web application.
-2. Authorized JavaScript origins:
+Generate a new random nonce for each sign-in. Pass its SHA-256 hex to Google Identity Services, and pass the raw nonce to `signInWithIdToken`. Supabase hashes that raw nonce the same way and compares it with the token. Leave Skip nonce check off.
+
+In the Google Auth Platform, use a Web application client.
+
+1. Authorized JavaScript origins. GIS checks these. They are the origins Google is allowed to show:
    - `https://justdontblunder.com`
-   - `http://localhost:43127`
-3. Authorized redirect URI. This is Supabase, not the app:
+   - `http://localhost:43127` for dev
+2. Authorized redirect URI. The fallback `signInWithOAuth` path, and Supabase's Google provider, still use this. It is Supabase, not the app:
    - `https://nhnozbrwyiiynargawmc.supabase.co/auth/v1/callback`
-4. Data Access scopes: `openid`, `.../auth/userinfo.email`, and `.../auth/userinfo.profile`.
-5. Copy the Client ID and Client secret.
+3. Data Access scopes: `openid`, `.../auth/userinfo.email`, and `.../auth/userinfo.profile`.
+4. Copy the Client ID and Client secret.
 
 Supabase → Authentication → Providers → Google:
 
 - Enable Google.
-- Paste the Client ID and Client secret.
+- Paste the Client ID and Client secret. The Client ID is the same value as `EXPO_PUBLIC_GOOGLE_CLIENT_ID`.
+- Leave Skip nonce check off.
 - Save.
 
-The secret stays in that form. The button stays hidden until `EXPO_PUBLIC_OAUTH_PROVIDERS` includes `google` and you redeploy. If `google` is listed but this provider is still off, the button hides or says Google sign-in isn't turned on yet.
+The secret stays in that form. Do not put it in the app, in git, or in Vercel.
+
+In Vercel, set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to:
+
+`129452132407-vqeapd2vu4md3qn81t439kpdbocksghq.apps.googleusercontent.com`
+
+This is a public web client id, not a secret. Redeploy after setting it. The button stays hidden until `EXPO_PUBLIC_OAUTH_PROVIDERS` includes `google`. If `google` is listed but this provider is still off, the button hides or says Google sign-in isn't turned on yet.
+
+If `EXPO_PUBLIC_GOOGLE_CLIENT_ID` is unset, the web button keeps `signInWithOAuth({ provider: 'google' })` and returns through `/auth/callback`. iOS and Android always use that redirect. They do not load the GIS script.
 
 ### Apple
 

@@ -72,9 +72,9 @@ export function authFrom(client: SupabaseClient, emailClient?: SupabaseClient | 
       });
       return call({ url: data.url }, error);
     },
-    async signInWithIdToken({ token, nonce }) {
+    async signInWithIdToken({ provider, token, nonce }) {
       const { data, error } = await client.auth.signInWithIdToken({
-        provider: 'apple',
+        provider,
         token,
         ...(nonce ? { nonce } : {}),
       });

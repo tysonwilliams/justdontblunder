@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { oauthUnavailableMessage } from '@/src/auth/messages';
-import { nativeAppleRequest, startOAuthSignIn, webProviderRequest } from '@/src/auth/oauth';
+import { oauthFailedMessage, oauthUnavailableMessage } from '@/src/auth/messages';
+import { nativeAppleRequest, startOAuthSignIn, webGoogleIdTokenRequest, webProviderRequest } from '@/src/auth/oauth';
 import {
   enabledOAuthProviders,
   loadOAuthAvailability,
@@ -71,10 +71,37 @@ describe('web and native sign-in', () => {
     });
     const result = await startOAuthSignIn(api({ signInWithIdToken, updateUserData }), request);
     expect(result).toEqual({ status: 'signed-in' });
-    expect(signInWithIdToken).toHaveBeenCalledWith({ token: 'apple-token', nonce: 'nonce-1' });
+    expect(signInWithIdToken).toHaveBeenCalledWith({ provider: 'apple', token: 'apple-token', nonce: 'nonce-1' });
     expect(updateUserData).toHaveBeenCalledWith({
       data: { full_name: 'Ada Lovelace', given_name: 'Ada', family_name: 'Lovelace' },
     });
+  });
+
+  it('signs in with a Google ID token and the raw nonce', async () => {
+    const signInWithIdToken = vi.fn(async () => ({ data: { userId: 'user-1' }, error: null }));
+    const result = await startOAuthSignIn(api({ signInWithIdToken }), webGoogleIdTokenRequest('google-jwt', 'raw-nonce'));
+    expect(result).toEqual({ status: 'signed-in' });
+    expect(signInWithIdToken).toHaveBeenCalledWith({
+      provider: 'google',
+      token: 'google-jwt',
+      nonce: 'raw-nonce',
+    });
+  });
+
+  it('explains a Google provider that is not configured', async () => {
+    const signInWithIdToken = vi.fn(async () => ({
+      data: { userId: null },
+      error: { message: 'Provider (issuer "https://accounts.google.com") is not enabled' },
+    }));
+    const result = await startOAuthSignIn(api({ signInWithIdToken }), webGoogleIdTokenRequest('google-jwt', 'raw-nonce'));
+    expect(result).toEqual({ status: 'unavailable', message: oauthUnavailableMessage('google') });
+  });
+
+  it('rejects a Google credential that never arrived', async () => {
+    const signInWithIdToken = vi.fn();
+    const result = await startOAuthSignIn(api({ signInWithIdToken }), webGoogleIdTokenRequest('', 'raw-nonce'));
+    expect(result).toEqual({ status: 'error', message: oauthFailedMessage() });
+    expect(signInWithIdToken).not.toHaveBeenCalled();
   });
 
   it('skips the name update when Apple does not send one', async () => {
