@@ -460,7 +460,13 @@ export const layout = {
   tabBar: 64,
   /** Bottom tab bar without a home-indicator inset: padding + row + minimum inset. */
   tabBarPhone: 54,
-  padPhone: spacing.xs,
+  /**
+   * Side inset for headers, body copy, lists, buttons, inputs, and footers.
+   * Phone, tablet, and desktop all use at least this much.
+   */
+  gutter: spacing[20],
+  /** Phone board frame. The square stays near the glass; copy uses `gutter`. */
+  boardInset: spacing.xs,
   padTablet: spacing[20],
   padDesktop: spacing[28],
 } as const;

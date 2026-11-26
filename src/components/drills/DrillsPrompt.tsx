@@ -11,7 +11,7 @@ import { useProgressStore, type ScanProgress } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, radii, spacing } from '@/src/theme';
+import { fonts, fontSizes, layout, radii, spacing } from '@/src/theme';
 
 const SITES: readonly { id: GameSite; label: string; testID: string }[] = [
   { id: 'chesscom', label: 'Chess.com', testID: 'drills-chesscom' },
@@ -181,7 +181,7 @@ const styles = themedStyleSheet((colors) => ({
     zIndex: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.md,
+    padding: layout.gutter,
   },
   card: {
     width: '100%',

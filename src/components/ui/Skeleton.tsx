@@ -174,7 +174,7 @@ export function BootSkeleton() {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
-        paddingHorizontal: spacing.md,
+        paddingHorizontal: layout.gutter,
       }}>
       {['home', 'learn', 'drills', 'practice', 'progress'].map((id) => (
         <Bone key={id} width={topNav ? 72 : 40} height={topNav ? 16 : 28} radius={radii.md} />

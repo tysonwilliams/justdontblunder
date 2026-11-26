@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { stageMetrics } from '@/src/components/ui/stageMetrics';
+import { layout } from '@/src/theme/tokens';
 
 describe('stageMetrics', () => {
   it('keeps a phone in a single column with a full-width board', () => {
@@ -15,6 +16,11 @@ describe('stageMetrics', () => {
       expect(metrics.boardWidth).toBe(metrics.contentW);
       expect(metrics.contentW).toBeGreaterThanOrEqual(width - 12);
       expect(metrics.boardWidth).toBeLessThanOrEqual(width);
+      expect(metrics.padX).toBe(layout.gutter);
+      expect(metrics.padX).toBeGreaterThanOrEqual(16);
+      expect(metrics.padX).toBeLessThanOrEqual(20);
+      expect(metrics.boardInset).toBe(layout.boardInset);
+      expect(metrics.chromePad).toBe(layout.gutter - layout.boardInset);
     }
   });
 
@@ -47,6 +53,9 @@ describe('stageMetrics', () => {
     for (const metrics of [laptop, desktop, wide]) {
       expect(metrics.split).toBe(true);
       expect(metrics.topNav).toBe(true);
+      expect(metrics.padX).toBeGreaterThanOrEqual(layout.gutter);
+      expect(metrics.chromePad).toBe(0);
+      expect(metrics.boardInset).toBe(metrics.padX);
       expect(metrics.boardWidth + metrics.turnRow).toBeLessThanOrEqual(metrics.contentHeight);
       expect(metrics.boardWidth + metrics.turnRow).toBeGreaterThan(metrics.contentHeight * 0.9);
       expect(metrics.asideWidth).toBeGreaterThanOrEqual(300);

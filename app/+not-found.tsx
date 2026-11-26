@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, spacing } from '@/src/theme';
+import { fonts, fontSizes, layout, spacing } from '@/src/theme';
 
 export default function NotFoundScreen() {
   useTheme();
@@ -25,7 +25,7 @@ const styles = themedStyleSheet((colors) => ({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing[20],
+    padding: layout.gutter,
     backgroundColor: colors.background,
   },
   title: {

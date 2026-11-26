@@ -15,8 +15,9 @@ type Props = {
 
 export function Screen({ children, variant = 'page', maxWidth }: Props) {
   useTheme();
-  const { padX, padTop, padBottom, contentW } = useLayout();
-  const cap = maxWidth ?? (variant === 'board' ? contentW + padX * 2 : layout.pageMax);
+  const { padX, padTop, padBottom, contentW, boardInset } = useLayout();
+  const horizontal = variant === 'board' ? boardInset : padX;
+  const cap = maxWidth ?? (variant === 'board' ? contentW + boardInset * 2 : layout.pageMax);
 
   if (variant === 'board') {
     return (
@@ -27,7 +28,7 @@ export function Screen({ children, variant = 'page', maxWidth }: Props) {
             {
               paddingTop: padTop,
               paddingBottom: padBottom,
-              paddingHorizontal: padX,
+              paddingHorizontal: horizontal,
               maxWidth: cap,
             },
           ]}>
@@ -45,7 +46,7 @@ export function Screen({ children, variant = 'page', maxWidth }: Props) {
         {
           paddingTop: padTop,
           paddingBottom: padBottom,
-          paddingHorizontal: padX,
+          paddingHorizontal: horizontal,
         },
       ]}>
       <View style={[styles.column, { maxWidth: cap }]}>{children}</View>

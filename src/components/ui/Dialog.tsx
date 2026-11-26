@@ -3,7 +3,7 @@ import { Modal, View } from 'react-native';
 
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { radii, shadows, spacing } from '@/src/theme';
+import { layout, radii, shadows, spacing } from '@/src/theme';
 
 type Props = {
   visible: boolean;
@@ -27,7 +27,7 @@ const styles = themedStyleSheet((colors) => ({
     backgroundColor: colors.overlay,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing[20],
+    padding: layout.gutter,
   },
   card: {
     width: '100%',

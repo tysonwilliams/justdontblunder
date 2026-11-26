@@ -8,7 +8,7 @@ import { useProgressStore, type Experience } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme/tokens';
+import { fonts, fontSizes, layout, lineHeights, radii, spacing } from '@/src/theme/tokens';
 
 const CHOICES: readonly { id: Experience; label: string; href: Href }[] = [
   { id: 'new', label: "I'm brand new", href: '/learn' },
@@ -66,7 +66,7 @@ const styles = themedStyleSheet((colors) => ({
     zIndex: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.md,
+    padding: layout.gutter,
   },
   card: {
     width: '100%',

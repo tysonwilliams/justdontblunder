@@ -98,7 +98,7 @@ function ChessBoardView({
   onPositionChange,
 }: ChessBoardProps) {
   const { colors, scheme } = useTheme();
-  const { phone, turnRow } = useLayout();
+  const { phone, turnRow, chromePad } = useLayout();
   const reduced = useReducedMotion();
   const [measured, setMeasured] = useState(0);
   const [gameFen, setGameFen] = useState(() => fen ?? createGame().fen());
@@ -677,7 +677,7 @@ function ChessBoardView({
   return (
     <View style={styles.wrap} onPointerDown={unlockFeedback}>
       {reserveTurn ? (
-        <View style={[styles.meta, { height: turnRow }]}>
+        <View style={[styles.meta, { height: turnRow, paddingHorizontal: chromePad }]}>
           <Text style={[styles.turn, phone && styles.turnPhone]} numberOfLines={1}>
             {turnLine}
           </Text>
