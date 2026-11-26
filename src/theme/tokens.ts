@@ -1,9 +1,9 @@
 /**
  * Shared design tokens.
  *
- * Colors live on a palette keyed by scheme. `dark` is the original UI.
- * `light` uses the same keys. `useTheme()` picks one from the saved preference
- * and the system scheme.
+ * Colors live on a palette keyed by scheme. `dark` is the original UI and the
+ * default when nothing is saved. `light` uses the same keys. `useTheme()`
+ * follows a saved light, dark, or system choice.
  *
  * Numeric values match the UI this module was extracted from, so swapping a
  * literal for a token does not move pixels.
