@@ -30,6 +30,7 @@ import { fonts, fontSizes, lineHeights, spacing } from '@/src/theme';
 type Mode = 'sign-in' | 'create' | 'forgot';
 
 const PRIVACY_HREF = '/privacy' as Href;
+const TERMS_HREF = '/terms' as Href;
 const DELETE_HREF = '/delete-account' as Href;
 
 export function AccountScreen() {
@@ -83,7 +84,7 @@ function SignedIn({ label }: { label: string }) {
         }}
       />
       <AccountNotice message={notice} />
-      <PrivacyLink />
+      <LegalLinks />
       <Link href={DELETE_HREF} testID="account-delete-link" style={styles.link}>
         <Text style={styles.linkText}>Delete account</Text>
       </Link>
@@ -325,7 +326,7 @@ function GuestAccount() {
         </View>
       ) : null}
       <AccountNotice message={notice} />
-      <PrivacyLink />
+      <LegalLinks />
       <Text style={text.muted}>
         Chess.com and Lichess stay a public username. This password is only for Just Don't Blunder.
       </Text>
@@ -352,11 +353,16 @@ function providerLabel(provider: OAuthProviderId): string {
   }
 }
 
-function PrivacyLink() {
+function LegalLinks() {
   return (
-    <Link href={PRIVACY_HREF} testID="account-privacy" style={styles.link}>
-      <Text style={styles.linkText}>Privacy</Text>
-    </Link>
+    <View style={styles.links}>
+      <Link href={PRIVACY_HREF} testID="account-privacy" style={styles.link}>
+        <Text style={styles.linkText}>Privacy</Text>
+      </Link>
+      <Link href={TERMS_HREF} testID="account-terms" style={styles.link}>
+        <Text style={styles.linkText}>Terms</Text>
+      </Link>
+    </View>
   );
 }
 
