@@ -8,6 +8,7 @@ import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, lineHeights, spacing } from '@/src/theme';
 
 const PRIVACY_HREF = '/privacy' as Href;
+const TERMS_HREF = '/terms' as Href;
 const DELETE_HREF = '/delete-account' as Href;
 const PROGRESS_HREF = '/progress' as Href;
 
@@ -28,6 +29,8 @@ export function AboutFooter({ showProgressLink = false }: Props) {
       <Text style={text.muted}>Just Don't Blunder. Play is open with no account.</Text>
       <View style={styles.links}>
         <TextLink href={PRIVACY_HREF} label="Privacy" testID="about-privacy" />
+        <Text style={text.muted}>·</Text>
+        <TextLink href={TERMS_HREF} label="Terms" testID="about-terms" />
         <Text style={text.muted}>·</Text>
         <TextLink href={DELETE_HREF} label="Delete data" testID="about-delete" />
         {showProgressLink ? (
