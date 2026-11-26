@@ -6,6 +6,8 @@ import {
   type DrillSession,
   type DrillTheme,
 } from '@/src/logic/drills';
+import { localDateKey } from '@/src/logic/localDate';
+import { orderForReview } from '@/src/logic/reviewSchedule';
 
 export type DrillMode = 'play' | 'pick' | 'review';
 
@@ -134,14 +136,16 @@ export function reviewForTheme(
   return createReviewSession(ids, theme === 'all' ? undefined : theme, personal);
 }
 
-/** Review loads bank ids from the starter set and personal misses from the stored position. */
+/** Review loads bank ids from the starter set and personal misses from the stored position. Due cards come first. */
 export function reviewForEntries(
-  entries: readonly { id: string; drill?: DrillPosition }[],
+  entries: readonly { id: string; dueOn?: string; intervalDays?: number; drill?: DrillPosition }[],
   theme: ThemeFilter,
+  today = localDateKey(),
 ): DrillSession {
+  const ordered = orderForReview(entries, today);
   return reviewForTheme(
-    entries.map((entry) => entry.id),
+    ordered.map((entry) => entry.id),
     theme,
-    entries.flatMap((entry) => (entry.drill ? [entry.drill] : [])),
+    ordered.flatMap((entry) => (entry.drill ? [entry.drill] : [])),
   );
 }

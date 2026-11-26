@@ -1,8 +1,15 @@
-import { addCalendarDays, cleanTimeZone, isCalendarDate, laterDate, whole } from '@/src/data/sync/dates';
+import { cleanTimeZone, isCalendarDate, laterDate, whole } from '@/src/data/sync/dates';
 import type { ReviewMeta, SyncAttempt, SyncSnapshot } from '@/src/data/sync/types';
 import type { DrillPosition } from '@/src/logic/drills';
+import { isDateKey } from '@/src/logic/localDate';
 import { PUZZLE_POOL_SIZE } from '@/src/logic/puzzlePool';
 import { fenKey, type ReviewEntry } from '@/src/logic/reviewPile';
+import {
+  dueNow,
+  moreConservative,
+  scheduleFromSaved,
+  type ReviewSchedule,
+} from '@/src/logic/reviewSchedule';
 import { SEEN_CAP, snapshotCursor, type ScanCursor } from '@/src/logic/scanCursor';
 import type { ScanProgress, ThemeTally } from '@/src/store/progressTypes';
 import type { PersistedPreferences, PersistedTraining } from '@/src/store/progressMigrate';
@@ -13,16 +20,23 @@ const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
 /**
  * Union the guest snapshot with the account.
  * Lists and counters keep both sides. Guest choices win when the two disagree.
+ * A shared review card keeps the earlier due date, then the shorter interval.
  * A guest drill, review id, attempt, lesson, or seen game is not dropped to make room
  * for an account row, except the puzzle pool cap, which keeps guest drills first.
  */
 export function mergeSnapshots(guest: SyncSnapshot, remote: SyncSnapshot, now = new Date().toISOString()): SyncSnapshot {
+  const today = calendarDay(now, cleanTimeZone(guest.timezone) ?? cleanTimeZone(remote.timezone) ?? 'UTC');
   const ownDrills = mergeDrills(guest.progress.library.ownDrills, remote.progress.library.ownDrills);
   const live = new Set(ownDrills.map((drill) => drill.id));
-  const review = mergeReview(guest.progress.review.review, remote.progress.review.review);
+  const review = mergeReview(
+    guest.progress.review.review,
+    remote.progress.review.review,
+    guest.reviewMeta,
+    remote.reviewMeta,
+    today,
+  );
   const training = mergeTraining(guest.progress.training, remote.progress.training);
   const missedDate = laterDate(guest.progress.review.missedDate, remote.progress.review.missedDate);
-  const anchor = missedDate ?? training.lastDrillDate;
   const progress = {
     training,
     review: {
@@ -52,7 +66,7 @@ export function mergeSnapshots(guest: SyncSnapshot, remote: SyncSnapshot, now = 
       .filter(isCalendarDate)
       .sort(),
     lastScannedAt: mergeScannedAt(guest, remote, now),
-    reviewMeta: mergeMeta(review, guest, remote, anchor),
+    reviewMeta: mergeMeta(review, guest, remote),
   };
 }
 
@@ -69,8 +83,23 @@ function mergeDrills(guest: readonly DrillPosition[], remote: readonly DrillPosi
   return out;
 }
 
-function mergeReview(guest: readonly ReviewEntry[], remote: readonly ReviewEntry[]): ReviewEntry[] {
+function mergeReview(
+  guest: readonly ReviewEntry[],
+  remote: readonly ReviewEntry[],
+  guestMeta: readonly ReviewMeta[],
+  remoteMeta: readonly ReviewMeta[],
+  today: string,
+): ReviewEntry[] {
   const remoteById = new Map(remote.map((entry) => [entry.id, entry]));
+  const remoteByFen = new Map<string, ReviewEntry>();
+  for (const entry of remote) {
+    if (!entry.drill) continue;
+    const key = fenKey(entry.drill.fen);
+    if (!remoteByFen.has(key)) remoteByFen.set(key, entry);
+  }
+  const guestMetaById = new Map(guestMeta.map((meta) => [meta.id, meta]));
+  const remoteMetaById = new Map(remoteMeta.map((meta) => [meta.id, meta]));
+  const used = new Set<ReviewEntry>();
   const out: ReviewEntry[] = [];
   const seen = new Set<string>();
   const fens = new Set<string>();
@@ -82,11 +111,41 @@ function mergeReview(guest: readonly ReviewEntry[], remote: readonly ReviewEntry
     out.push(entry);
   };
   for (const entry of guest) {
-    const other = remoteById.get(entry.id);
-    take(other?.drill && !entry.drill ? { ...entry, drill: other.drill } : entry);
+    const other =
+      remoteById.get(entry.id) ?? (entry.drill ? remoteByFen.get(fenKey(entry.drill.fen)) : undefined);
+    if (other) used.add(other);
+    take(combineReview(entry, other, guestMetaById, remoteMetaById, today));
   }
-  for (const entry of remote) take(entry);
+  for (const entry of remote) {
+    if (used.has(entry)) continue;
+    take(combineReview(entry, undefined, remoteMetaById, guestMetaById, today));
+  }
   return out;
+}
+
+function combineReview(
+  entry: ReviewEntry,
+  other: ReviewEntry | undefined,
+  entryMeta: Map<string, ReviewMeta>,
+  otherMeta: Map<string, ReviewMeta>,
+  today: string,
+): ReviewEntry {
+  const schedule = other
+    ? moreConservative(
+        resolveSchedule(entry, entryMeta.get(entry.id), today),
+        resolveSchedule(other, otherMeta.get(other.id), today),
+      )
+    : resolveSchedule(entry, entryMeta.get(entry.id), today);
+  const drill = entry.drill ?? other?.drill;
+  return drill ? { id: entry.id, ...schedule, drill } : { id: entry.id, ...schedule };
+}
+
+function resolveSchedule(entry: ReviewEntry, meta: ReviewMeta | undefined, today: string): ReviewSchedule {
+  if (isDateKey(entry.dueOn) && Number.isFinite(entry.intervalDays)) return scheduleFromSaved(entry, today);
+  if (meta?.dueOn && isCalendarDate(meta.dueOn) && meta.intervalDays >= 3) {
+    return scheduleFromSaved({ saves: 0, dueOn: meta.dueOn, intervalDays: meta.intervalDays }, today);
+  }
+  return dueNow(today);
 }
 
 function mergeTraining(guest: PersistedTraining, remote: PersistedTraining): PersistedTraining {
@@ -190,34 +249,31 @@ function mergeAttempts(guest: readonly SyncAttempt[], remote: readonly SyncAttem
   return out;
 }
 
-function mergeMeta(
-  review: readonly ReviewEntry[],
-  guest: SyncSnapshot,
-  remote: SyncSnapshot,
-  anchor: string | null,
-): ReviewMeta[] {
-  const guestEntries = new Map(guest.progress.review.review.map((entry) => [entry.id, entry]));
-  const remoteEntries = new Map(remote.progress.review.review.map((entry) => [entry.id, entry]));
+function mergeMeta(review: readonly ReviewEntry[], guest: SyncSnapshot, remote: SyncSnapshot): ReviewMeta[] {
   const guestMeta = new Map(guest.reviewMeta.map((meta) => [meta.id, meta]));
   const remoteMeta = new Map(remote.reviewMeta.map((meta) => [meta.id, meta]));
-  return review.map((entry) => {
-    const history = unionIds(guestMeta.get(entry.id)?.missHistory ?? [], remoteMeta.get(entry.id)?.missHistory ?? []);
-    const local = guestEntries.get(entry.id);
-    const account = remoteEntries.get(entry.id);
-    const saved = remoteMeta.get(entry.id);
-    if (local && account && local.saves === account.saves && saved) {
-      return { ...saved, id: entry.id, missHistory: history };
-    }
-    const explicit = local ? guestMeta.get(entry.id) : saved;
-    if (explicit) return { ...explicit, id: entry.id, missHistory: history };
-    const saves = entry.saves === 1 ? 1 : 0;
-    return {
-      id: entry.id,
-      dueOn: anchor ? addCalendarDays(anchor, saves) : null,
-      intervalDays: saves,
-      missHistory: history,
-    };
-  });
+  return review.map((entry) => ({
+    id: entry.id,
+    dueOn: isCalendarDate(entry.dueOn) ? entry.dueOn : null,
+    intervalDays: whole(entry.intervalDays),
+    missHistory: unionIds(guestMeta.get(entry.id)?.missHistory ?? [], remoteMeta.get(entry.id)?.missHistory ?? []),
+  }));
+}
+
+function calendarDay(nowIso: string, timeZone: string): string {
+  const date = new Date(nowIso);
+  if (Number.isNaN(date.getTime())) return nowIso.slice(0, 10);
+  try {
+    const formatted = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+    return isCalendarDate(formatted) ? formatted : nowIso.slice(0, 10);
+  } catch {
+    return nowIso.slice(0, 10);
+  }
 }
 
 function mergeScannedAt(guest: SyncSnapshot, remote: SyncSnapshot, now: string): string | null {

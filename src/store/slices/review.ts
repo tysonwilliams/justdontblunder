@@ -25,7 +25,7 @@ function withReview(review: ReviewEntry[]): Pick<ReviewData, 'review' | 'missedI
   return { review, missedIds: review.map((entry) => entry.id) };
 }
 
-/** Ids still in the review pile. A previous day does not clear them. */
+/** Ids still on the review schedule. A previous day does not drop them; the due date does. */
 export function missesForDate(
   missedDate: string | null,
   missedIds: string[],

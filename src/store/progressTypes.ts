@@ -35,7 +35,7 @@ export type ProgressState = {
   completedLessons: string[];
   missedDate: string | null;
   missedIds: string[];
-  /** Misses and personal positions. They stay until saved twice. */
+  /** Misses and personal positions, each with a due date. */
   review: ReviewEntry[];
   experience: Experience | null;
   welcomeSkipped: boolean;
@@ -55,7 +55,7 @@ export type ProgressState = {
   recordPuzzleRun: (length: number) => void;
   markPracticeMove: (avoidedBlunder: boolean, madeBlunder: boolean) => void;
   recordMiss: (drillId: string, drill?: DrillPosition) => void;
-  /** One correct review. The second one removes the position. */
+  /** One correct review. The next gap follows 1, 3, 7, 16, and 35 days. */
   recordSave: (drillId: string) => void;
   savePersonalDrill: (drill: DrillPosition) => void;
   saveGameProfile: (profile: GameProfile) => void;

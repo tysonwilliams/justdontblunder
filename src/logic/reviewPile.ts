@@ -1,14 +1,17 @@
 import { Chess, type Square } from 'chess.js';
 
 import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
+import { localDateKey } from '@/src/logic/localDate';
+import {
+  advanceSchedule,
+  dueNow,
+  lapseSchedule,
+  scheduleFromSaved,
+  type ReviewSchedule,
+} from '@/src/logic/reviewSchedule';
 
-/** A position leaves the pile after this many correct reviews. */
-export const SAVES_TO_GRADUATE = 2;
-
-export type ReviewEntry = {
+export type ReviewEntry = ReviewSchedule & {
   id: string;
-  /** Correct reviews so far. A miss sets this back to 0. */
-  saves: number;
   /** Set when the position is not in the built-in bank. */
   drill?: DrillPosition;
 };
@@ -19,37 +22,41 @@ export function fenKey(fen: string): string {
   return fen.trim().split(/\s+/).slice(0, 4).join(' ');
 }
 
-/** A miss goes to the front. Saving progress starts over. A personal position stays attached. */
+/** A miss goes to the front and back to the short box, due today. A personal position stays attached. */
 export function rememberBankMiss(
   entries: readonly ReviewEntry[],
   id: string,
   drill?: DrillPosition,
+  today = localDateKey(),
 ): ReviewEntry[] {
   const previous = entries.find((entry) => entry.id === id);
   const rest = entries.filter((entry) => entry.id !== id);
-  const next: ReviewEntry = { id, saves: 0 };
+  const next: ReviewEntry = { id, ...lapseSchedule(today) };
   const attached = drill ?? previous?.drill;
   if (attached) next.drill = attached.id === id ? attached : { ...attached, id };
   return [next, ...rest];
 }
 
-/** Keep a personal position. Saving it again does not wipe a save already earned. */
-export function rememberPosition(entries: readonly ReviewEntry[], drill: DrillPosition): ReviewEntry[] {
+/** Keep a personal position. Storing it again does not reset a schedule already earned. */
+export function rememberPosition(
+  entries: readonly ReviewEntry[],
+  drill: DrillPosition,
+  today = localDateKey(),
+): ReviewEntry[] {
   const key = fenKey(drill.fen);
   const previous = entries.find(
     (entry) => entry.id === drill.id || (entry.drill ? fenKey(entry.drill.fen) === key : false),
   );
   const rest = entries.filter((entry) => entry !== previous);
-  return [{ id: drill.id, saves: previous?.saves ?? 0, drill }, ...rest];
+  const schedule = previous ? scheduleFromSaved(previous, today) : dueNow(today);
+  return [{ id: drill.id, ...schedule, drill }, ...rest];
 }
 
-/** One correct review. The second correct review drops the position. */
-export function noteSave(entries: readonly ReviewEntry[], id: string): ReviewEntry[] {
-  return entries.flatMap((entry) => {
-    if (entry.id !== id) return [entry];
-    const saves = entry.saves + 1;
-    if (saves >= SAVES_TO_GRADUATE) return [];
-    return [{ ...entry, saves }];
+/** One correct review. The card stays, and the next gap is the next step on the ladder. */
+export function noteSave(entries: readonly ReviewEntry[], id: string, today = localDateKey()): ReviewEntry[] {
+  return entries.map((entry) => {
+    if (entry.id !== id) return entry;
+    return { ...entry, ...advanceSchedule(scheduleFromSaved(entry, today), today) };
   });
 }
 
@@ -58,6 +65,7 @@ export function installImported(
   entries: readonly ReviewEntry[],
   drills: readonly DrillPosition[],
   limit = 8,
+  today = localDateKey(),
 ): ReviewEntry[] {
   const incoming: DrillPosition[] = [];
   const keys = new Set<string>();
@@ -69,31 +77,37 @@ export function installImported(
     if (incoming.length >= limit) break;
   }
   const kept = entries.filter((entry) => !entry.drill || !keys.has(fenKey(entry.drill.fen)));
-  const added: ReviewEntry[] = incoming.map((drill) => ({ id: drill.id, saves: 0, drill }));
+  const added: ReviewEntry[] = incoming.map((drill) => ({ id: drill.id, ...dueNow(today), drill }));
   return [...added, ...kept];
 }
 
-export function reviewFromSaved(saved: { review?: unknown; missedIds?: unknown }): ReviewEntry[] {
-  if (Array.isArray(saved.review)) return sanitize(saved.review);
+export function reviewFromSaved(
+  saved: { review?: unknown; missedIds?: unknown },
+  today = localDateKey(),
+): ReviewEntry[] {
+  if (Array.isArray(saved.review)) return sanitize(saved.review, today);
   if (!Array.isArray(saved.missedIds)) return [];
-  return sanitize(saved.missedIds.map((id) => ({ id, saves: 0 })));
+  return sanitize(
+    saved.missedIds.map((id) => ({ id, saves: 0 })),
+    today,
+  );
 }
 
-function sanitize(value: readonly unknown[]): ReviewEntry[] {
+function sanitize(value: readonly unknown[], today: string): ReviewEntry[] {
   const out: ReviewEntry[] = [];
   for (const item of value) {
     if (!item || typeof item !== 'object') continue;
-    const entry = item as { id?: unknown; saves?: unknown; drill?: unknown };
+    const entry = item as { id?: unknown; saves?: unknown; dueOn?: unknown; intervalDays?: unknown; drill?: unknown };
     if (typeof entry.id !== 'string' || entry.id.length === 0) continue;
-    const saves = entry.saves === 1 ? 1 : 0;
+    const schedule = scheduleFromSaved(entry, today);
     if (entry.drill === undefined) {
       if (entry.id.startsWith('own-')) continue;
-      out.push({ id: entry.id, saves });
+      out.push({ id: entry.id, ...schedule });
       continue;
     }
     const drill = cleanDrill(entry.drill);
     if (!drill) continue;
-    out.push({ id: drill.id, saves, drill });
+    out.push({ id: drill.id, ...schedule, drill });
   }
   return out;
 }

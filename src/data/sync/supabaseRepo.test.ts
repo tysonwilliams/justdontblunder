@@ -7,6 +7,7 @@ import { createMemorySyncClient } from '@/src/data/sync/memoryClient';
 import { createSupabaseProgressRepo } from '@/src/data/sync/supabaseRepo';
 import type { SyncSnapshot } from '@/src/data/sync/types';
 import type { DrillPosition } from '@/src/logic/drills';
+import { localDateKey } from '@/src/logic/localDate';
 import { ownDrillId } from '@/src/logic/personalDrill';
 import { emptyCursor } from '@/src/logic/scanCursor';
 import { blankPersisted, type PersistedProgress } from '@/src/store/progressMigrate';
@@ -73,8 +74,8 @@ describe('supabase progress repo', () => {
         review: {
           missedDate: '2026-03-02',
           review: [
-            { id: 'hang-q-01', saves: 1 },
-            { id: drill.id, saves: 0, drill },
+            { id: 'hang-q-01', saves: 2, intervalDays: 3, dueOn: '2026-04-01' },
+            { id: drill.id, saves: 0, intervalDays: 0, dueOn: '2020-01-01', drill },
           ],
         },
         library: {
@@ -124,13 +125,19 @@ describe('supabase progress repo', () => {
     expect(pulled?.progress.library.ownDrills.map((row) => row.id)).toEqual([drill.id]);
     expect(pulled?.progress.library.ownDrills[0]?.source).toEqual({ gameId: 'l:fromdrill', move: 'Qh5' });
     expect(pulled?.progress.library.pastedIds).toEqual([drill.id]);
-    expect(pulled?.progress.review.review.map((entry) => [entry.id, entry.saves])).toEqual([
-      ['hang-q-01', 1],
-      [drill.id, 0],
+    expect(pulled?.progress.review.review.map((entry) => [entry.id, entry.saves, entry.intervalDays, entry.dueOn])).toEqual([
+      ['hang-q-01', 2, 3, '2026-04-01'],
+      [drill.id, 0, 0, '2020-01-01'],
     ]);
     expect(pulled?.reviewMeta.find((meta) => meta.id === 'hang-q-01')).toMatchObject({
       dueOn: '2026-04-01',
       intervalDays: 3,
+      missHistory: ['Nf6'],
+    });
+    expect(memory.rows('review_entries').find((row) => row.puzzle_id === 'hang-q-01')).toMatchObject({
+      saves: 0,
+      interval_days: 203,
+      due_on: '2026-04-01',
     });
     expect(pulled?.progress.scan.cursor?.resume).toBe(false);
     expect(pulled?.progress.scan.cursor?.seen).toEqual(['l:fromseen', 'l:fromdrill']);
@@ -140,6 +147,30 @@ describe('supabase progress repo', () => {
     ]);
     expect(pulled?.streakDates).toEqual(['2026-02-28', '2026-03-01']);
     expect(memory.rows('linked_accounts')[0]?.verified).toBeUndefined();
+  });
+
+  it('reads an old two-save row as due now', async () => {
+    const memory = createMemorySyncClient();
+    memory.rows('puzzles').push({ id: 'hang-q-01' });
+    const repo = repoFor(memory, { current: null });
+    await repo.push(
+      snapshot({
+        review: { review: [{ id: 'hang-q-01', saves: 1, intervalDays: 1, dueOn: '2026-12-01' }] },
+      }),
+    );
+    const row = memory.rows('review_entries')[0];
+    expect(row).toBeTruthy();
+    if (!row) return;
+    row.saves = 1;
+    row.interval_days = 1;
+    row.due_on = '2026-12-01';
+    const pulled = await repo.pull();
+    expect(pulled?.progress.review.review[0]).toMatchObject({
+      id: 'hang-q-01',
+      saves: 0,
+      intervalDays: 0,
+      dueOn: localDateKey(),
+    });
   });
 
   it('does not update or delete an attempt that was already stored', async () => {
@@ -182,9 +213,10 @@ describe('supabase progress repo', () => {
     const memory = createMemorySyncClient();
     memory.rows('puzzles').push({ id: 'hang-q-01' });
     const repo = repoFor(memory, { current: null });
-    await repo.push(snapshot({ review: { review: [{ id: 'hang-q-01', saves: 0 }] } }));
+    const due = { id: 'hang-q-01', saves: 0, intervalDays: 0, dueOn: '2020-01-01' };
+    await repo.push(snapshot({ review: { review: [due] } }));
     memory.rows('puzzles').splice(0, memory.rows('puzzles').length);
-    await repo.push(snapshot({ review: { review: [{ id: 'hang-q-01', saves: 0 }] } }));
+    await repo.push(snapshot({ review: { review: [due] } }));
     expect(memory.rows('review_entries')).toHaveLength(1);
   });
 
