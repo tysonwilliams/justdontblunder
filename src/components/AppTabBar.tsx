@@ -3,6 +3,7 @@ import type { EdgeInsets } from 'react-native-safe-area-context';
 
 import { MenuButton } from '@/src/components/SettingsMenu';
 import { XpChip } from '@/src/components/XpChip';
+import { BrandMark } from '@/src/components/ui/BrandMark';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
 import { useScreenInsets } from '@/src/components/ui/screenInsets';
@@ -77,10 +78,18 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
           wide && { maxWidth: contentW + padX * 2 },
         ]}>
         {wide ? (
-          <View style={styles.brand}>
-            <BrandMark />
+          <Pressable
+            {...controlA11y('button', "Just Don't Blunder home")}
+            onPress={() => {
+              const home = state.routes.find((route) => route.name === 'index');
+              if (home && state.routes[state.index]?.key !== home.key) {
+                navigateToTab(home.key);
+              }
+            }}
+            style={(press) => [styles.brand, press.pressed && styles.pressed]}>
+            <BrandMark size={28} />
             <Text style={styles.brandText}>Just Don't Blunder</Text>
-          </View>
+          </Pressable>
         ) : null}
         <View style={[styles.links, wide && styles.linksWide]}>
           {state.routes.map((route, index) => {
@@ -131,21 +140,6 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
   );
 }
 
-function BrandMark() {
-  return (
-    <View style={styles.mark}>
-      <View style={styles.markRow}>
-        <View style={[styles.sq, styles.sqLight]} />
-        <View style={[styles.sq, styles.sqDark]} />
-      </View>
-      <View style={styles.markRow}>
-        <View style={[styles.sq, styles.sqDark]} />
-        <View style={[styles.sq, styles.sqLight]} />
-      </View>
-    </View>
-  );
-}
-
 const styles = themedStyleSheet((colors) => ({
   top: {
     backgroundColor: colors.surface,
@@ -183,26 +177,7 @@ const styles = themedStyleSheet((colors) => ({
     alignItems: 'center',
     gap: spacing[10],
     flexShrink: 1,
-  },
-  mark: {
-    width: 18,
-    height: 18,
-    borderRadius: radii.dot,
-    overflow: 'hidden',
-    flexDirection: 'column',
-  },
-  markRow: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  sq: {
-    flex: 1,
-  },
-  sqLight: {
-    backgroundColor: colors.boardLight,
-  },
-  sqDark: {
-    backgroundColor: colors.boardDark,
+    cursor: 'pointer',
   },
   brandText: {
     fontFamily: fonts.display,
