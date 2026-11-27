@@ -82,15 +82,15 @@ describe('drill deep links', () => {
     expect(reviewForTheme(['missing-id'], 'all').positions).toHaveLength(0);
   });
 
-  it('serves due reviews before cards that are scheduled later', () => {
-    const session = reviewForEntries(
-      [
-        { id: 'mate-03', dueOn: '2099-01-01', intervalDays: 35 },
-        { id: 'hang-q-01', dueOn: '2020-01-01', intervalDays: 1 },
-      ],
-      'all',
-      '2026-11-26',
-    );
-    expect(session.positions.map((drill) => drill.id)).toEqual(['hang-q-01', 'mate-03']);
+  it('serves due reviews by default and puts due cards first when practicing ahead', () => {
+    const entries = [
+      { id: 'mate-03', dueOn: '2099-01-01', intervalDays: 35 },
+      { id: 'hang-q-01', dueOn: '2020-01-01', intervalDays: 1 },
+    ];
+    const dueOnly = reviewForEntries(entries, 'all', '2026-11-26');
+    expect(dueOnly.positions.map((drill) => drill.id)).toEqual(['hang-q-01']);
+
+    const ahead = reviewForEntries(entries, 'all', '2026-11-26', { includeAhead: true });
+    expect(ahead.positions.map((drill) => drill.id)).toEqual(['hang-q-01', 'mate-03']);
   });
 });

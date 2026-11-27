@@ -221,7 +221,9 @@ describe('streak moves', () => {
       dueOn: today,
     });
     const review = reviewForEntries(stored.review, 'all', today);
-    expect(review.positions.map((item) => item.id)).toEqual([position.id, 'mate-03']);
+    expect(review.positions.map((item) => item.id)).toEqual([position.id]);
+    const ahead = reviewForEntries(stored.review, 'all', today, { includeAhead: true });
+    expect(ahead.positions.map((item) => item.id)).toEqual([position.id, 'mate-03']);
 
     const play = sessionForTheme('all', buildPuzzlePool([]));
     expect(play.positions).toHaveLength(PUZZLE_POOL_SIZE);

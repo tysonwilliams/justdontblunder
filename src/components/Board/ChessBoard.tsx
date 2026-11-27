@@ -143,6 +143,8 @@ function ChessBoardView({
   const dragFrom = useRef<Square | null>(null);
   /** Piece under the pointer when this press began. The pan arms a few pixels later. */
   const pressedPiece = useRef<Square | null>(null);
+  /** Square newly selected on touch-down so the matching press-up does not deselect it. */
+  const freshSelection = useRef<Square | null>(null);
   /** Legal targets for the marked piece. Drag frames read this instead of chess.js. */
   const marks = useRef<ShownMarks | null>(null);
   const suppressPress = useRef(false);
@@ -184,6 +186,7 @@ function ChessBoardView({
     setPendingPromotion(null);
     marks.current = null;
     pressedPiece.current = null;
+    freshSelection.current = null;
     setSelected(null);
     setLegal([]);
     setHoverSquare(null);
@@ -229,6 +232,7 @@ function ChessBoardView({
 
   const clearSelection = useCallback(() => {
     marks.current = null;
+    freshSelection.current = null;
     setSelected(null);
     setLegal([]);
   }, []);
@@ -437,9 +441,14 @@ function ChessBoardView({
       const piece = pieceAt(now.game, square);
       if (now.selected) {
         if (square === now.selected) {
+          if (freshSelection.current === square) {
+            freshSelection.current = null;
+            return;
+          }
           clearSelection();
           return;
         }
+        freshSelection.current = null;
         if (now.legal.includes(square)) {
           commitMove(now.selected, square, 'tap');
           return;
@@ -451,6 +460,7 @@ function ChessBoardView({
         clearSelection();
         return;
       }
+      freshSelection.current = null;
       if (piece && piece.color === now.snap.turn) {
         showMarks(square);
       }
@@ -462,6 +472,7 @@ function ChessBoardView({
     (square: Square, x: number, y: number) => {
       const origin = pressedPiece.current ?? square;
       pressedPiece.current = null;
+      freshSelection.current = null;
       tracking.value = 0;
       const now = latest.current;
       if (phase.current === 'settling' || !now.interactive || now.squareSize <= 0) return;
@@ -486,6 +497,7 @@ function ChessBoardView({
     (square: Square) => {
       const marked = showMarks(square);
       pressedPiece.current = marked === 'ignore' ? null : square;
+      freshSelection.current = marked === 'show' ? square : null;
     },
     [showMarks],
   );
