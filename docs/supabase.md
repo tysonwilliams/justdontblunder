@@ -19,6 +19,7 @@ The URL and the anon key are already set. Expo inlines `EXPO_PUBLIC_*` at build 
 | `EXPO_PUBLIC_SYNC_ENABLED` | leave unset. Set the string `false` only to turn sync off |
 | `EXPO_PUBLIC_OAUTH_PROVIDERS` | leave unset. Google and Apple buttons stay hidden. After those providers are enabled, set `google`, `apple`, or `google,apple`, then redeploy |
 | `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | public web client id `129452132407-vqeapd2vu4md3qn81t439kpdbocksghq.apps.googleusercontent.com`. Set this in Vercel so Google's consent screen shows this site. Leave it unset to keep the Supabase redirect |
+| `EXPO_PUBLIC_ERROR_REPORTING` | leave unset. Crash reports stay off. Set the string `true` only after `supabase/migrations/20261126233000_client_errors.sql` is applied, then redeploy. Any other value, including unset, sends nothing |
 
 Redeploy after an app change so the sign-in screens ship. No new env var is required for sync. OAuth buttons need `EXPO_PUBLIC_OAUTH_PROVIDERS`, and only after Google or Apple is enabled below. Google on the web also needs `EXPO_PUBLIC_GOOGLE_CLIENT_ID`. Without that client id, Google keeps the Supabase redirect.
 
@@ -205,6 +206,7 @@ Re-running the file updates the teaching columns and does not reset `created_at`
 | `leaderboard_names` | that user, own row | that user. `opted_in` defaults to false. The public board does not read this table directly. |
 | `streak_scores` | that user, own rows | that user, insert only. A trigger sets the week from the database clock and rejects an implausible, too-fast, or over-limit score. |
 | `streak_leaderboard_week`, `streak_leaderboard_all_time` | anon and authenticated | nobody. Display name and score only, for names that opted in. The week resets Monday 00:00 UTC. |
+| `client_errors` | nobody from the client | anon and authenticated can insert one row. No select, update, or delete. The row is message, stack, route, app version, and platform. No account id, email, or IP column. Apply `20261126233000_client_errors.sql` by hand. Do not `db push`. |
 
 RLS is enabled on every table. User-owned policies use `(select auth.uid())`. RLS is not forced: the table owner still bypasses it, which the signup trigger and the delete cascade need when `postgres` is not a superuser. API roles do not own the tables.
 
@@ -216,4 +218,6 @@ Username scans still run in the browser. Sync uploads the cursor and the public 
 
 `src/data/sync` maps the `jdb-progress-v1` version-2 slices (`training`, `review`, `library`, `preferences`, `scan`) onto these tables. Extra columns on `profiles`, `user_drills`, and `review_entries` hold the counters, lesson ids, pool order, and review schedule that the local document already stores.
 
-With a client and a session, sign-in pulls, merges, saves the merge locally, then pushes. Local rows win when the two sides disagree. Lists and counters are unions and maximums, so a guest drill, review, attempt, lesson, or seen game is not dropped. A blank guest document does not wipe an account. The puzzle pool cap keeps guest drills first. Push is skipped while a scan is running on this device. The public Streak board is not part of the `jdb-progress-v1` snapshot.
+A review card is due now, or after 1, 3, 7, 16, or 35 days. A miss is due again the same day. `review_entries.interval_days` stores `0` for that short box, and `100 * consecutive saves + interval` after a save, so a 1-day card is not confused with the old two-save mirror. `supabase/migrations/20261126180000_review_spaced_repetition.sql` marks rows still on that mirror as due now. Apply it with the other migrations. Do not run `supabase db push` or `supabase config push`.
+
+With a client and a session, sign-in pulls, merges, saves the merge locally, then pushes. Local rows win when the two sides disagree, except a shared review card, which keeps the earlier due date and, on a tie, the shorter interval. Lists and counters are unions and maximums, so a guest drill, review, attempt, lesson, or seen game is not dropped. A blank guest document does not wipe an account. The puzzle pool cap keeps guest drills first. Push is skipped while a scan is running on this device. The public Streak board is not part of the `jdb-progress-v1` snapshot.

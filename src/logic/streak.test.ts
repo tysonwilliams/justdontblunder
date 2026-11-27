@@ -15,12 +15,16 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+import { reviewForEntries, sessionForTheme } from '@/src/logic/drillLink';
 import { getAllDrills, isCorrectDrillMove, type DrillPosition } from '@/src/logic/drills';
-import { PUZZLE_POOL_SIZE } from '@/src/logic/puzzlePool';
+import { localDateKey } from '@/src/logic/localDate';
+import { claimOnboarding, resetOnboardingSessionForTests, shouldOfferUsernameSheet } from '@/src/logic/onboardingPrompt';
+import { buildPuzzlePool, PUZZLE_POOL_SIZE } from '@/src/logic/puzzlePool';
 import { moveOutcome } from '@/src/logic/safety';
 import { drillStreakExtra, shownBest, STREAK_SCORE_MAX, streakScoreInRange, streakWeekStart } from '@/src/logic/streak';
 import { initialTrainerRound, stepTrainerRound, type TrainerRoundState } from '@/src/logic/trainerRound';
 import { useProgressStore } from '@/src/store/progress';
+import { applyRoundEffects } from '@/src/store/trainerResult';
 
 function drill(id: string): DrillPosition {
   const found = getAllDrills().find((item) => item.id === id);
@@ -44,8 +48,25 @@ function answer(state: TrainerRoundState, position: DrillPosition, uci: string, 
   });
 }
 
+const quietSheet = {
+  hydrated: true,
+  skipped: false,
+  closed: false,
+  scanPromptDismissed: false,
+  hasProfile: false,
+  phase: 'ask' as const,
+  showingResult: false,
+};
+
 afterEach(() => {
-  useProgressStore.setState({ bestPuzzleStreak: 0 });
+  resetOnboardingSessionForTests();
+  useProgressStore.setState({
+    bestPuzzleStreak: 0,
+    review: [],
+    missedIds: [],
+    drillsCompleted: 0,
+    drillsCorrect: 0,
+  });
 });
 
 describe('streak week', () => {
@@ -175,5 +196,39 @@ describe('streak moves', () => {
     expect(second.state.phase).toBe('correct');
     expect(second.state.runOver).toBe(false);
     expect(second.state.score.correct).toBe(2);
+  });
+
+  it('puts a streak blunder on the due-first review queue and leaves the opening move uncovered', () => {
+    const position = drill('hang-p-01');
+    const today = localDateKey();
+    useProgressStore.setState({
+      review: [{ id: 'mate-03', saves: 4, intervalDays: 16, dueOn: '2099-01-01' }],
+      missedIds: ['mate-03'],
+      drillsCompleted: 0,
+    });
+    expect(shouldOfferUsernameSheet({ ...quietSheet, drillsCompleted: 0 })).toBe(false);
+    resetOnboardingSessionForTests();
+    expect(claimOnboarding('welcome')).toBe(true);
+    expect(claimOnboarding('username')).toBe(false);
+
+    const missed = answer(initialTrainerRound(), position, 'd8g5', true);
+    expect(missed.state.phase).toBe('streakEnd');
+    applyRoundEffects(missed.effects, position, false);
+
+    const stored = useProgressStore.getState();
+    expect(stored.review.find((entry) => entry.id === position.id)).toMatchObject({
+      intervalDays: 0,
+      dueOn: today,
+    });
+    const review = reviewForEntries(stored.review, 'all', today);
+    expect(review.positions.map((item) => item.id)).toEqual([position.id, 'mate-03']);
+
+    const play = sessionForTheme('all', buildPuzzlePool([]));
+    expect(play.positions).toHaveLength(PUZZLE_POOL_SIZE);
+    expect(review.positions).not.toHaveLength(play.positions.length);
+
+    expect(stored.drillsCompleted).toBe(1);
+    expect(shouldOfferUsernameSheet({ ...quietSheet, drillsCompleted: stored.drillsCompleted })).toBe(true);
+    expect(claimOnboarding('username')).toBe(false);
   });
 });

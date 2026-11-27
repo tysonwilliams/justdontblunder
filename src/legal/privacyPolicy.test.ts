@@ -19,6 +19,9 @@ describe('privacy policy', () => {
   it('describes guest play and the local storage keys', () => {
     expect(policy).toContain('with no account');
     expect(policy).toContain('on this device, in this browser');
+    expect(policy).toContain(
+      'your streak, your best Streak run, XP, finished lessons, drill counts, the review schedule',
+    );
     expect(policy).toContain('scan cursor');
     expect(policy).toContain('jdb-progress-v1');
     expect(policy).toContain('jdb-theme-v1');
@@ -76,6 +79,12 @@ describe('privacy policy', () => {
     expect(policy).toContain('does not include an analytics product');
     expect(policy).toContain('There are no ads. We do not sell your data.');
     expect(policy).toContain('IP address');
+    expect(policy).toContain('client_errors');
+    expect(policy).toContain('does not include an account id');
+    expect(policy).toContain('EXPO_PUBLIC_ERROR_REPORTING is the string true');
+    expect(policy).toContain('jdb-error-reports-v1');
+    expect(policy).toContain('jdb-onboarding-prompt');
+    expect(policy).toContain('not copied into the client_errors row');
   });
 
   it('covers retention, deletion, children, rights, security, and changes', () => {

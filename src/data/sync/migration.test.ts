@@ -59,6 +59,27 @@ describe('data layer migration', () => {
     expect(sql).not.toMatch(/on public\.attempts\s+for delete/);
   });
 
+  it('marks old two-save review rows due now and leaves a packed schedule alone', () => {
+    const files = fs
+      .readdirSync(migrationsDir)
+      .filter((name) => name.endsWith('.sql'))
+      .sort();
+    expect(files).toContain('20261126180000_review_spaced_repetition.sql');
+    const schedule = fs.readFileSync(
+      path.join(migrationsDir, '20261126180000_review_spaced_repetition.sql'),
+      'utf8',
+    );
+    expect(schedule).toContain('update public.review_entries');
+    expect(schedule).toContain('interval_days = 0');
+    expect(schedule).toContain('saves = 0');
+    expect(schedule).toContain('interval_days > 0 and interval_days < 100');
+    expect(schedule).toContain('interval_days >= 100');
+    expect(schedule).toContain('due_on is null');
+    expect(schedule.toLowerCase()).not.toContain('drop table');
+    expect(schedule.toLowerCase()).not.toContain('service_role');
+    expect(schedule).not.toContain('db push');
+  });
+
   it('replaces handle_new_user with plain coalesce', () => {
     const files = fs
       .readdirSync(migrationsDir)

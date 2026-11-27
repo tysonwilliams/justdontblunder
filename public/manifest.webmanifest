@@ -1,0 +1,31 @@
+{
+  "name": "Just Don't Blunder",
+  "short_name": "Don't Blunder",
+  "description": "A chess trainer that marks a blunder in red and a save in green. Play, learn, and drill with no account.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1C1B19",
+  "theme_color": "#1C1B19",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

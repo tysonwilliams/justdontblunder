@@ -11,6 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
+    "export:web": "expo export -p web && node scripts/finalize-web-export.mjs",
+    "preview:web": "node scripts/preview-web.mjs",
     "grow-bank": "node --experimental-strip-types --import ./scripts/register-alias.mjs scripts/grow-starter-bank.mts",
     "seed:puzzles": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-puzzles.mts"
   },

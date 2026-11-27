@@ -95,8 +95,8 @@ export function DrillDone({
         {emptyReview ? (
           <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={phone ? 3 : undefined}>
             {toolbar.theme === 'all'
-              ? 'You have no misses saved for today.'
-              : `No missed ${themeFilterLabel(toolbar.theme).toLowerCase()} puzzles today.`}
+              ? 'Nothing is due today.'
+              : `No ${themeFilterLabel(toolbar.theme).toLowerCase()} puzzles are due.`}
           </Text>
         ) : (
           <>

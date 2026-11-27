@@ -3,7 +3,7 @@ import { reviewMiss } from '@/src/logic/puzzlePool';
 import type { TrainerEffect } from '@/src/logic/trainerRound';
 import { useProgressStore } from '@/src/store/progress';
 
-/** One saved outcome. A review save graduates the pile. A miss keeps the position. */
+/** One saved outcome. A review save schedules the next gap. A miss is due again today. */
 export function persistTrainerResult(correct: boolean, drill: DrillPosition, reviewing: boolean): void {
   const store = useProgressStore.getState();
   store.markDrillResult(correct, drill.theme);

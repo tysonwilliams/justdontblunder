@@ -1,5 +1,6 @@
 import { sectionText, type LegalSection } from '@/src/legal/blocks';
 import { SITE_HOST, SUPPORT_EMAIL } from '@/src/legal/contact';
+import { ERROR_REPORT_SESSION_KEY, ONBOARDING_SESSION_KEY } from '@/src/storage/sessionKeys';
 
 export const PRIVACY_EFFECTIVE_DATE = 'November 26, 2026';
 
@@ -34,7 +35,7 @@ export const privacySections: readonly LegalSection[] = [
       },
       {
         kind: 'paragraph',
-        text: 'Progress stays on this device, in this browser. It includes your streak, your best Streak run, XP, finished lessons, drill counts, the review pile, positions built from a public username or a pasted game, the Chess.com or Lichess username you typed, and the scan cursor.',
+        text: 'Progress stays on this device, in this browser. It includes your streak, your best Streak run, XP, finished lessons, drill counts, the review schedule, positions built from a public username or a pasted game, the Chess.com or Lichess username you typed, and the scan cursor.',
       },
       {
         kind: 'paragraph',
@@ -225,12 +226,12 @@ export const privacySections: readonly LegalSection[] = [
       { kind: 'subheading', text: 'Reviews' },
       {
         kind: 'paragraph',
-        text: 'The review_entries table is your review pile:',
+        text: 'The review_entries table is your review schedule:',
       },
       {
         kind: 'list',
         items: [
-          'The puzzle or position, and whether you have saved it once.',
+          'The puzzle or position, and how many times in a row you have saved it.',
           'A due date, the interval in days, and its place in the pile.',
           'A list for miss notes. Play does not fill that list.',
           'When the row was created and last updated.',
@@ -279,11 +280,28 @@ export const privacySections: readonly LegalSection[] = [
       },
       {
         kind: 'paragraph',
-        text: 'The app does not include an analytics product. There are no ads. We do not sell your data.',
+        text: 'The app does not include an analytics product. There are no ads. We do not sell your data. A crash report, described below, is not analytics and stays off unless the build turns it on.',
       },
       {
         kind: 'paragraph',
         text: 'Vercel and Supabase receive the technical details of a request, including the IP address and the time, because that is how the page and the sign-in are delivered. Those details are not copied into your drills, and they are not used for ads.',
+      },
+    ],
+  },
+  {
+    heading: 'Error reports',
+    blocks: [
+      {
+        kind: 'paragraph',
+        text: 'When a build sets error reporting on, the app may send a short report after a crash. The report is the error message, the stack, the page path, the app version, and the platform, which is web, iOS, or Android. The page path has no query string. Addresses that look like an email, a bearer token, or an IPv4 address are removed before the report is sent.',
+      },
+      {
+        kind: 'paragraph',
+        text: 'The report does not include an account id, an email address, a Chess.com or Lichess username, or an IP address. Supabase stores the row in the client_errors table. The browser can insert a row. It cannot read, change, or delete rows. We can read those rows in the database to fix a crash. The build leaves this off unless EXPO_PUBLIC_ERROR_REPORTING is the string true.',
+      },
+      {
+        kind: 'paragraph',
+        text: 'One tab sends only a few reports, and it skips a repeat of the same message for a minute. Vercel and Supabase still receive the technical details of that request, including the IP address, the same way they do for any other request to the site. That address is not copied into the client_errors row.',
       },
     ],
   },
@@ -308,6 +326,17 @@ export const privacySections: readonly LegalSection[] = [
           'The Supabase session holds the access token and the refresh token while you are signed in.',
           'A short-lived sign-in verifier is stored while Google or Apple sends you back to the site.',
           'jdb-implicit-email lets an email link open in any browser. That entry does not keep a session.',
+        ],
+      },
+      {
+        kind: 'paragraph',
+        text: 'This tab also keeps two session values. They are not in the local storage keys above, and they are cleared when the tab closes.',
+      },
+      {
+        kind: 'list',
+        items: [
+          `${ONBOARDING_SESSION_KEY} remembers that this tab already showed the welcome card or the username card, so only one of those shows.`,
+          `${ERROR_REPORT_SESSION_KEY} counts error reports sent from this tab when error reporting is on. It stores a count and the time of the last report. It has no account id and no email.`,
         ],
       },
       {

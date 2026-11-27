@@ -12,6 +12,11 @@ import {
   type DrillMode,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
+import { metadataFor } from '@/src/seo/site';
+
+export function generateMetadata() {
+  return metadataFor('/drills');
+}
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;

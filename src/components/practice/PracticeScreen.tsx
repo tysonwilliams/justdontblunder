@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { sentence, usePracticeGame } from '@/src/components/practice/usePracticeGame';
+import { DueTodayLink } from '@/src/components/review/DueTodayLink';
 import { PlaySkeleton } from '@/src/components/ui/Skeleton';
 import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { liveA11y } from '@/src/components/ui/a11y';
@@ -52,9 +53,7 @@ export function PracticeScreen() {
       intro={
         <BoardLead>
           <LineBox height={phone ? 16 : 16}>
-            <Text style={text.eyebrow} numberOfLines={1}>
-              Practice
-            </Text>
+            <DueTodayLink variant="line" />
           </LineBox>
           <LineBox height={phone ? 22 : 32}>
             <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>

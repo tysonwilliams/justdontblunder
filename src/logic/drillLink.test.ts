@@ -10,6 +10,7 @@ import {
   parseDrillMode,
   parseThemeFilter,
   resolveDrillQuery,
+  reviewForEntries,
   reviewForTheme,
   sessionForTheme,
 } from '@/src/logic/drillLink';
@@ -79,5 +80,17 @@ describe('drill deep links', () => {
     expect(forks.positions.length).toBeGreaterThan(0);
     expect(forks.positions.every((drill) => drill.theme === 'fork')).toBe(true);
     expect(reviewForTheme(['missing-id'], 'all').positions).toHaveLength(0);
+  });
+
+  it('serves due reviews before cards that are scheduled later', () => {
+    const session = reviewForEntries(
+      [
+        { id: 'mate-03', dueOn: '2099-01-01', intervalDays: 35 },
+        { id: 'hang-q-01', dueOn: '2020-01-01', intervalDays: 1 },
+      ],
+      'all',
+      '2026-11-26',
+    );
+    expect(session.positions.map((drill) => drill.id)).toEqual(['hang-q-01', 'mate-03']);
   });
 });

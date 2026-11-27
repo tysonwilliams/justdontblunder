@@ -18,17 +18,23 @@ import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { text } from '@/src/components/ui/text';
 import { drillHref } from '@/src/logic/drillLink';
 import { themeLabel, type DrillTheme } from '@/src/logic/drills';
+import { dueTodayCount, dueTodayLabel } from '@/src/logic/reviewSchedule';
 import { LESSONS } from '@/src/logic/lessons';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { useFeedbackSettings } from '@/src/store/feedbackSettings';
-import { missesForDate, useProgressStore, type Experience } from '@/src/store/progress';
+import { useProgressStore, type Experience } from '@/src/store/progress';
 import { useThemePreference } from '@/src/store/themePreference';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import type { ThemePreference } from '@/src/theme/preference';
+import { metadataFor } from '@/src/seo/site';
 import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+
+export function generateMetadata() {
+  return metadataFor('/progress');
+}
 
 const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
 
@@ -63,8 +69,7 @@ export default function ProgressScreen() {
     dailyStreak,
     recordStreak,
     bestPuzzleStreak,
-    missedDate,
-    missedIds,
+    review,
     drillsCompleted,
     drillsCorrect,
     blundersAvoided,
@@ -79,7 +84,8 @@ export default function ProgressScreen() {
   } = useProgressStore();
 
   const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
-  const missCount = missesForDate(missedDate, missedIds).length;
+  const dueCount = dueTodayCount(review);
+  const reviewWaiting = review.length > 0;
   const badges = badgeList(dailyStreak, recordStreak, bestPuzzleStreak, blundersAvoided);
 
   return (
@@ -220,10 +226,12 @@ export default function ProgressScreen() {
             <>
               <Button
                 style={wideActions ? styles.action : undefined}
-                label={missCount > 0 ? `Review misses (${missCount})` : 'No misses to review'}
-                variant={missCount > 0 ? 'primary' : 'secondary'}
+                label={
+                  dueCount > 0 ? dueTodayLabel(dueCount) : reviewWaiting ? 'Review ahead' : 'Nothing due today'
+                }
+                variant={dueCount > 0 ? 'primary' : 'secondary'}
                 onPress={() => {
-                  if (missCount === 0) return;
+                  if (!reviewWaiting) return;
                   router.push(drillHref('review') as Href);
                 }}
               />
