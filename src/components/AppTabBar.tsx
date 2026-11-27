@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 
+import { MenuButton } from '@/src/components/SettingsMenu';
 import { XpChip } from '@/src/components/XpChip';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconBoard, IconDrill, IconHome, IconProgress, IconTrain } from '@/src/components/ui/icons';
@@ -81,7 +82,6 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
             <Text style={styles.brandText}>Just Don't Blunder</Text>
           </View>
         ) : null}
-        {wide ? <XpChip /> : null}
         <View style={[styles.links, wide && styles.linksWide]}>
           {state.routes.map((route, index) => {
             const focused = state.index === index;
@@ -119,6 +119,12 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
               </Pressable>
             );
           })}
+          {wide ? (
+            <View style={styles.trailing}>
+              <XpChip />
+              <MenuButton />
+            </View>
+          ) : null}
         </View>
       </View>
     </View>
@@ -214,7 +220,17 @@ const styles = themedStyleSheet((colors) => ({
   linksWide: {
     gap: spacing.xs,
     flexShrink: 0,
+    alignItems: 'center',
     justifyContent: 'flex-end',
+  },
+  trailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginLeft: spacing.sm,
+    paddingLeft: spacing.sm,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
   },
   link: {
     flex: 1,

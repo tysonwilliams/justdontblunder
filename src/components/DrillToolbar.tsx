@@ -1,19 +1,27 @@
-import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
-import { Chip, FilterChips, SegmentedControl } from '@/src/components/ui/Chip';
+import { MenuButton } from '@/src/components/SettingsMenu';
+import { controlA11y } from '@/src/components/ui/a11y';
+import { Button } from '@/src/components/ui/Button';
+import { SegmentedControl } from '@/src/components/ui/Chip';
+import { ColorLegend } from '@/src/components/ui/ColorLegend';
+import { IconChevronDown, IconSliders } from '@/src/components/ui/icons';
 import { PHONE_TOOLBAR_HEIGHT } from '@/src/components/ui/phoneSlots';
 import { SettingSwitch } from '@/src/components/ui/SettingSwitch';
+import { Sheet } from '@/src/components/ui/Sheet';
+import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import {
   DRILL_MODES,
   THEME_FILTERS,
+  themeFilterLabel,
   type DrillMode,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { spacing } from '@/src/theme';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 export type DrillToolbarProps = {
   mode: DrillMode;
@@ -25,134 +33,235 @@ export type DrillToolbarProps = {
   onStreak?: (streak: boolean) => void;
 };
 
-const PHONE_MODE_LABEL: Record<DrillMode, string> = {
+const MODE_LABEL: Record<DrillMode, string> = {
   play: 'Play',
   pick: 'Pick',
   review: 'Review',
 };
 
-const PHONE_THEME_LABEL: Record<ThemeFilter, string> = {
-  all: 'All',
-  hanging: 'Hang',
-  fork: 'Fork',
-  pin: 'Pin',
-  back_rank: 'Rank',
-  missed_mate: 'Mate',
+const MODE_DETAIL: Record<DrillMode, string> = {
+  play: 'Make any safe move on the board.',
+  pick: 'Compare two arrows and choose the safe move.',
+  review: 'Replay positions you missed earlier.',
 };
 
 export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onStreak }: DrillToolbarProps) {
-  useTheme();
+  const { colors } = useTheme();
   const { phone } = useLayout();
-  const streakToggle =
-    mode === 'play' && onStreak ? (
-      <SettingSwitch compact label="Streak" value={streak} onChange={onStreak} testID="streak-toggle" />
-    ) : null;
+  const [open, setOpen] = useState(false);
 
-  if (phone) {
-    return (
-      <View style={styles.phone}>
-        <ModeRow mode={mode} onMode={onMode} phone streakToggle={streakToggle} />
-        <SegmentedControl
-          height={32}
-          value={theme}
-          onChange={onTheme}
-          options={THEME_FILTERS.map((item) => ({
-            id: item.id,
-            label: PHONE_THEME_LABEL[item.id],
-            spoken: item.label,
-            testID: `drill-theme-${item.id}`,
-          }))}
-        />
-      </View>
-    );
-  }
+  const filtered = mode !== 'play' || theme !== 'all';
+  const summary = theme === 'all' ? MODE_LABEL[mode] : `${MODE_LABEL[mode]} · ${themeFilterLabel(theme)}`;
 
   return (
-    <View style={styles.toolbar}>
-      <ModeRow mode={mode} onMode={onMode} phone={false} streakToggle={streakToggle} />
-      <FilterChips
-        options={THEME_FILTERS.map((item) => ({ ...item, testID: `drill-theme-${item.id}` }))}
-        value={theme}
-        onChange={onTheme}
-      />
-    </View>
-  );
-}
+    <>
+      <View style={[styles.bar, phone && styles.barPhone]}>
+        <Pressable
+          {...controlA11y('button', `Drill options: ${summary}`, open)}
+          testID="drill-options-trigger"
+          onPress={() => setOpen(true)}
+          style={(state) => {
+            const hovered = 'hovered' in state && Boolean(state.hovered);
+            return [
+              styles.trigger,
+              phone && styles.triggerPhone,
+              filtered && styles.triggerActive,
+              (hovered || state.pressed) && !filtered && styles.triggerHover,
+              state.pressed && styles.pressed,
+            ];
+          }}>
+          <IconSliders color={filtered ? colors.accent : colors.textMuted} size={phone ? 14 : 16} />
+          <Text
+            style={[styles.triggerText, phone && styles.triggerTextPhone, filtered && styles.triggerTextActive]}
+            numberOfLines={1}>
+            {summary}
+          </Text>
+          <IconChevronDown color={filtered ? colors.accent : colors.textDim} size={14} />
+        </Pressable>
 
-function ModeRow({
-  mode,
-  onMode,
-  phone,
-  streakToggle,
-}: {
-  mode: DrillMode;
-  onMode: (mode: DrillMode) => void;
-  phone: boolean;
-  streakToggle: ReactNode;
-}) {
-  if (phone) {
-    return (
-      <View style={styles.phoneModes}>
-        <View style={styles.phoneModesGrow}>
+        <View style={styles.right}>
+          {mode === 'play' && onStreak ? (
+            <SettingSwitch compact label="Streak" value={streak} onChange={onStreak} testID="streak-toggle" />
+          ) : null}
+          <ColorLegend compact={phone} />
+          {phone ? <MenuButton compact /> : null}
+        </View>
+      </View>
+
+      <Sheet
+        visible={open}
+        onClose={() => setOpen(false)}
+        title="Drill options"
+        subtitle={MODE_DETAIL[mode]}
+        testID="drill-options-sheet">
+        <View style={styles.section}>
+          <Text style={text.section}>Mode</Text>
           <SegmentedControl
-            height={32}
+            height={38}
             value={mode}
             onChange={onMode}
             options={DRILL_MODES.map((item) => ({
               id: item.id,
-              label: PHONE_MODE_LABEL[item.id],
+              label: MODE_LABEL[item.id],
               spoken: item.label,
               testID: `drill-mode-${item.id}`,
             }))}
           />
         </View>
-        {streakToggle}
-      </View>
-    );
-  }
 
-  return (
-    <View style={styles.deskModes}>
-      {DRILL_MODES.map((item) => (
-        <Chip
-          key={item.id}
-          label={item.label}
-          selected={item.id === mode}
-          testID={`drill-mode-${item.id}`}
-          onPress={() => onMode(item.id)}
-        />
-      ))}
-      {streakToggle}
-    </View>
+        <View style={styles.section}>
+          <Text style={text.section}>Theme</Text>
+          <View style={styles.themeGrid}>
+            {THEME_FILTERS.map((item) => {
+              const selected = item.id === theme;
+              return (
+                <Pressable
+                  key={item.id}
+                  {...controlA11y('button', item.label, selected)}
+                  testID={`drill-theme-${item.id}`}
+                  onPress={() => onTheme(item.id)}
+                  style={(state) => {
+                    const hovered = 'hovered' in state && Boolean(state.hovered);
+                    return [
+                      styles.themeOption,
+                      selected && styles.themeOptionOn,
+                      (hovered || state.pressed) && !selected && styles.themeOptionHover,
+                    ];
+                  }}>
+                  <Text
+                    style={[styles.themeLabel, selected && styles.themeLabelOn]}
+                    numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {mode === 'play' && onStreak ? (
+          <View style={styles.section}>
+            <View style={styles.divider} />
+            <SettingSwitch plain label="Streak (sudden death)" value={streak} onChange={onStreak} />
+            <Text style={styles.helper}>No hints. One blunder ends the run.</Text>
+          </View>
+        ) : null}
+
+        <Button label="Done" onPress={() => setOpen(false)} testID="drill-options-done" />
+      </Sheet>
+    </>
   );
 }
 
-const styles = themedStyleSheet(() => ({
-  toolbar: {
-    gap: spacing[6],
-  },
-  deskModes: {
+const styles = themedStyleSheet((colors) => ({
+  bar: {
     width: '100%',
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
   },
-  phone: {
+  barPhone: {
     height: PHONE_TOOLBAR_HEIGHT,
-    gap: spacing[2],
-    justifyContent: 'center',
     overflow: 'hidden',
   },
-  phoneModes: {
-    height: 32,
+  trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing[6],
+    minHeight: 40,
+    maxWidth: '100%',
+    flexShrink: 1,
+    paddingHorizontal: spacing[12],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    cursor: 'pointer',
   },
-  phoneModesGrow: {
-    flex: 1,
-    minWidth: 0,
+  triggerPhone: {
+    minHeight: 32,
     height: 32,
+    paddingHorizontal: spacing[10],
+    gap: spacing[5],
+  },
+  triggerActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  triggerHover: {
+    backgroundColor: colors.surfaceRaised,
+  },
+  pressed: {
+    opacity: 0.84,
+  },
+  triggerText: {
+    fontFamily: fonts.bodyBold,
+    color: colors.text,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[18],
+    flexShrink: 1,
+  },
+  triggerTextPhone: {
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[16],
+  },
+  triggerTextActive: {
+    color: colors.accent,
+  },
+  right: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    flexShrink: 0,
+  },
+  section: {
+    gap: spacing[10],
+  },
+  themeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  themeOption: {
+    width: '48%',
+    flexGrow: 1,
+    minHeight: 42,
+    paddingHorizontal: spacing[12],
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  themeOptionOn: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  themeOptionHover: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+  },
+  themeLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[18],
+    color: colors.text,
+  },
+  themeLabelOn: {
+    color: colors.accentText,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  helper: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+    marginTop: -spacing[6],
   },
 }));

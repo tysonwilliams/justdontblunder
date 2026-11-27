@@ -97,3 +97,66 @@ export function IconInfo({ color, size = 26 }: IconProps) {
     </Svg>
   );
 }
+
+export function IconMenu({ color, size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4.5 7h15M4.5 12h15M4.5 17h15" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconSliders({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+      <Path
+        d="M16 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM10 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+        stroke={color}
+        strokeWidth={1.9}
+      />
+    </Svg>
+  );
+}
+
+export function IconChevronDown({ color, size = 14 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="m6 9 6 6 6-6" stroke={color} strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+export function IconHelp({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"
+        stroke={color}
+        strokeWidth={1.8}
+      />
+      <Path
+        d="M9.6 9.5a2.5 2.5 0 0 1 4.7 1.1c0 1.6-2.3 2-2.3 3.4"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <Path d="M12 17.2h.01" stroke={color} strokeWidth={2.4} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconBookmark({ color, size = 16, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6.5 4.5h11a1 1 0 0 1 1 1v14.8l-6.5-4.1-6.5 4.1V5.5a1 1 0 0 1 1-1Z"
+        stroke={color}
+        fill={filled ? color : 'none'}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+

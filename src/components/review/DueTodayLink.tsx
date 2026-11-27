@@ -36,7 +36,7 @@ export function DueTodayLink({ variant }: { variant: 'pill' | 'line' }) {
 
 const styles = StyleSheet.create({
   line: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     maxWidth: '100%',
     minWidth: 0,
     padding: 0,

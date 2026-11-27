@@ -1,36 +1,32 @@
 import { useRouter, type Href } from 'expo-router';
-import { Children, type ReactNode, useState } from 'react';
-import { Text, View, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
-import { AccountEntry } from '@/src/components/auth/AccountEntry';
 import { AccountPrompt } from '@/src/components/auth/AccountPrompt';
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
 import { GameImport } from '@/src/components/progress/GameImport';
 import { StreakLeaderboard } from '@/src/components/progress/StreakLeaderboard';
-import { StreakBadge } from '@/src/components/StreakBadge';
+import { MenuButton } from '@/src/components/SettingsMenu';
+import { controlA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
-import { Chip, FilterChips } from '@/src/components/ui/Chip';
-import { Dialog } from '@/src/components/ui/Dialog';
+import { IconCheck, IconChevronDown } from '@/src/components/ui/icons';
+import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { Screen } from '@/src/components/ui/Screen';
-import { SettingSwitch } from '@/src/components/ui/SettingSwitch';
 import { Bone } from '@/src/components/ui/Skeleton';
 import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { text } from '@/src/components/ui/text';
+import { useLayout } from '@/src/components/ui/useLayout';
 import { drillHref } from '@/src/logic/drillLink';
 import { themeLabel, type DrillTheme } from '@/src/logic/drills';
 import { dueTodayCount, dueTodayLabel } from '@/src/logic/reviewSchedule';
 import { LESSONS } from '@/src/logic/lessons';
-import { playFeedback } from '@/src/feedback/playFeedback';
 import { drillsDoneCount } from '@/src/store/drillStats';
-import { useFeedbackSettings } from '@/src/store/feedbackSettings';
-import { useProgressStore, type Experience } from '@/src/store/progress';
-import { useThemePreference } from '@/src/store/themePreference';
+import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import type { ThemePreference } from '@/src/theme/preference';
 import { metadataFor } from '@/src/seo/site';
-import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 export function generateMetadata() {
   return metadataFor('/progress');
@@ -38,33 +34,15 @@ export function generateMetadata() {
 
 const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
 
-const START: readonly { id: Experience; label: string; testID: string }[] = [
-  { id: 'new', label: 'Brand new', testID: 'experience-new' },
-  { id: 'basics', label: 'Know the basics', testID: 'experience-basics' },
-];
-
-const APPEARANCE: readonly { id: ThemePreference; label: string; testID: string }[] = [
-  { id: 'system', label: 'System', testID: 'theme-system' },
-  { id: 'light', label: 'Light', testID: 'theme-light' },
-  { id: 'dark', label: 'Dark', testID: 'theme-dark' },
-];
-
 export default function ProgressScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const wideActions = width >= 720;
-  const themeCols = width < 560 ? 2 : width < 980 ? 3 : 5;
-  const badgeCols = width < 720 ? 2 : 5;
-  const statCols = width < 560 ? 2 : width < 980 ? 3 : 4;
-  useTheme();
-  const preference = useThemePreference((state) => state.preference);
-  const setPreference = useThemePreference((state) => state.setPreference);
-  const sound = useFeedbackSettings((state) => state.sound);
-  const setSound = useFeedbackSettings((state) => state.setSound);
-  const haptics = useFeedbackSettings((state) => state.haptics);
-  const setHaptics = useFeedbackSettings((state) => state.setHaptics);
+  const { phone } = useLayout();
+  const wideGrid = width >= 820;
+  const { colors } = useTheme();
   const progressReady = useHydrated(useProgressStore.persist) && !forceSkeleton();
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [showAllStats, setShowAllStats] = useState(false);
+
   const {
     dailyStreak,
     recordStreak,
@@ -78,223 +56,138 @@ export default function ProgressScreen() {
     themeStats,
     completedLessons,
     xp,
-    experience,
-    resetProgress,
-    setExperience,
   } = useProgressStore();
 
   const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
   const dueCount = dueTodayCount(review);
   const reviewWaiting = review.length > 0;
   const badges = badgeList(dailyStreak, recordStreak, bestPuzzleStreak, blundersAvoided);
+  const earnedCount = badges.filter((badge) => badge.earned).length;
 
   return (
     <Screen>
       <View style={styles.page}>
         <View style={styles.header}>
-          <Text style={text.eyebrow}>This device</Text>
-          <Text style={text.display}>Progress</Text>
-          <AccountEntry />
+          <View style={styles.headerCopy}>
+            <Text style={text.eyebrow}>Progress</Text>
+            <Text style={phone ? text.title : text.display}>Your training</Text>
+          </View>
+          <View style={styles.headerActions}>
+            {progressReady && reviewWaiting ? (
+              <Button
+                compact
+                fullWidth={false}
+                label={dueCount > 0 ? dueTodayLabel(dueCount) : 'Review ahead'}
+                variant={dueCount > 0 ? 'primary' : 'secondary'}
+                onPress={() => router.push(drillHref('review') as Href)}
+              />
+            ) : null}
+            {phone ? <MenuButton /> : null}
+          </View>
         </View>
 
         <AccountPrompt />
 
-        <View style={styles.group}>
-          <Text style={text.section}>Appearance</Text>
-          <FilterChips options={APPEARANCE} value={preference} onChange={setPreference} />
-          <View style={styles.toggles}>
-            <SettingSwitch
-              label="Sound"
-              value={sound}
-              testID="setting-sound"
-              onChange={(next) => {
-                setSound(next);
-                if (next) playFeedback('save');
-              }}
-            />
-            <SettingSwitch
-              label="Haptics"
-              value={haptics}
-              testID="setting-haptics"
-              onChange={(next) => {
-                setHaptics(next);
-                if (next) playFeedback('pickup');
-              }}
-            />
-          </View>
-        </View>
-
-        <View style={styles.banner}>
+        <View style={styles.heroCard}>
           {progressReady ? (
-            dailyStreak > 0 ? (
-              <StreakBadge streak={dailyStreak} celebrate={dailyStreak > 1} />
-            ) : (
-              <Text style={text.bodyStrong}>No streak yet. Finish a drill to start one.</Text>
-            )
+            <>
+              <View style={styles.heroRow}>
+                <HeroStat label="Day streak" value={String(dailyStreak)} highlight={dailyStreak > 0} />
+                <HeroStat label="XP" value={String(xp)} />
+                <HeroStat label="Accuracy" value={drillsCompleted > 0 ? `${accuracy}%` : '—'} />
+                <HeroStat label="Best run" value={String(bestPuzzleStreak)} />
+              </View>
+              {showAllStats ? (
+                <View style={styles.extraStats}>
+                  <ExtraStat label="Lessons" value={`${completedLessons.length}/${LESSONS.length}`} />
+                  <ExtraStat label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />
+                  <ExtraStat label="Saves" value={String(blundersAvoided)} />
+                  <ExtraStat label="Blunders" value={String(blundersMade)} />
+                  <ExtraStat label="Practice moves" value={String(practiceMoves)} />
+                  <ExtraStat label="Best day streak" value={String(recordStreak)} />
+                </View>
+              ) : null}
+              <Pressable
+                {...controlA11y('button', showAllStats ? 'Hide breakdown' : 'More stats', showAllStats)}
+                testID="progress-more-stats"
+                onPress={() => setShowAllStats((current) => !current)}
+                style={(state) => {
+                  const hovered = 'hovered' in state && Boolean(state.hovered);
+                  return [styles.expandRow, (hovered || state.pressed) && styles.expandRowHover];
+                }}>
+                <Text style={styles.expandLabel}>{showAllStats ? 'Hide breakdown' : 'More stats'}</Text>
+                <View style={showAllStats ? styles.chevronUp : undefined}>
+                  <IconChevronDown color={colors.textMuted} size={14} />
+                </View>
+              </Pressable>
+            </>
           ) : (
-            <Bone width={220} height={22} radius={radii.pill} />
+            <View style={styles.heroRow}>
+              <Bone width="22%" height={48} radius={radii.md} />
+              <Bone width="22%" height={48} radius={radii.md} />
+              <Bone width="22%" height={48} radius={radii.md} />
+              <Bone width="22%" height={48} radius={radii.md} />
+            </View>
           )}
         </View>
 
-        <StreakLeaderboard />
+        <View style={[styles.columns, wideGrid && styles.columnsWide]}>
+          <View style={styles.col}>
+            <View style={styles.card}>
+              <Text style={text.section}>Themes</Text>
+              {progressReady ? (
+                <View style={styles.themeList}>
+                  {THEMES.map((theme) => (
+                    <ThemeRow key={theme} theme={theme} tally={themeStats[theme]} />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.themeList}>
+                  {THEMES.map((theme) => (
+                    <Bone key={theme} height={28} radius={radii.sm} />
+                  ))}
+                </View>
+              )}
+            </View>
 
-        <View style={styles.group}>
-          <Text style={text.section}>Where you started</Text>
-          <Text style={text.muted}>Brand new opens Learn. Know the basics opens Drills.</Text>
-          <View style={[styles.toggles, styles.togglesWrap]}>
-            {START.map((item) => (
-              <Chip
-                key={item.id}
-                label={item.label}
-                testID={item.testID}
-                selected={experience === item.id}
-                onPress={() => setExperience(item.id)}
-              />
-            ))}
-            <Button
-              label="Show the welcome again"
-              variant="ghost"
-              fullWidth={false}
-              testID="show-welcome"
-              onPress={() => {
-                setExperience(null);
-                router.push('/' as Href);
-              }}
-            />
-          </View>
-        </View>
-
-        <View style={styles.group}>
-          <Text style={text.section}>Themes</Text>
-          <Grid columns={themeCols}>
-            {progressReady
-              ? THEMES.map((theme) => <CategoryStat key={theme} theme={theme} tally={themeStats[theme]} />)
-              : THEMES.map((theme) => <TileBone key={theme} />)}
-          </Grid>
-        </View>
-
-        <View style={styles.group}>
-          <Text style={text.section}>Badges</Text>
-          <Grid columns={badgeCols}>
-            {progressReady
-              ? badges.map((badge) => (
-              <View
-                key={badge.title}
-                style={[styles.tile, styles.badge, badge.earned ? styles.badgeOn : styles.badgeOff]}>
-                <Text style={[styles.badgeState, badge.earned ? styles.badgeStateOn : styles.badgeStateOff]}>
-                  {badge.earned ? 'Earned' : 'Locked'}
+            <View style={styles.card}>
+              <View style={styles.cardHead}>
+                <Text style={text.section}>Badges</Text>
+                <Text style={text.muted}>
+                  {earnedCount}/{badges.length}
                 </Text>
-                <Text style={styles.badgeTitle}>{badge.title}</Text>
-                <Text style={[styles.badgeDetail, badge.earned && styles.badgeDetailOn]}>{badge.detail}</Text>
               </View>
-            ))
-              : badges.map((badge) => <TileBone key={badge.title} tall />)}
-          </Grid>
-        </View>
-
-        <View style={styles.group}>
-          <Text style={text.section}>Totals</Text>
-          <Grid columns={statCols}>
-            {progressReady
-              ? [
-                  <Stat key="xp" label="XP" value={String(xp)} />,
-                  <Stat key="lessons" label="Lessons" value={`${completedLessons.length}/${LESSONS.length}`} />,
-                  <Stat key="drills" label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />,
-                  <Stat key="accuracy" label="Accuracy" value={`${accuracy}%`} />,
-                  <Stat key="saves" label="Saves" value={String(blundersAvoided)} />,
-                  <Stat key="blunders" label="Blunders" value={String(blundersMade)} />,
-                  <Stat key="practice" label="Practice moves" value={String(practiceMoves)} />,
-                  <Stat key="day" label="Best day streak" value={String(recordStreak)} />,
-                  <Stat key="run" label="Best run" value={String(bestPuzzleStreak)} />,
-                ]
-              : Array.from({ length: 9 }, (_, index) => <TileBone key={index} />)}
-          </Grid>
-        </View>
-
-        {progressReady ? (
-          <GameImport />
-        ) : (
-          <View style={styles.group}>
-            <Bone width={140} height={16} />
-            <Bone height={44} radius={radii.md} />
-            <Bone height={88} radius={radii.md} />
+              <View style={styles.badgeWrap}>
+                {progressReady
+                  ? badges.map((badge) => (
+                      <View
+                        key={badge.title}
+                        style={[styles.badgePill, badge.earned ? styles.badgeOn : styles.badgeOff]}>
+                        {badge.earned ? <IconCheck color={colors.accent} size={14} /> : null}
+                        <Text style={[styles.badgeTitle, badge.earned && styles.badgeTitleOn]}>{badge.title}</Text>
+                        <Text style={styles.badgeDetail}>{badge.detail}</Text>
+                      </View>
+                    ))
+                  : badges.map((badge) => <Bone key={badge.title} width={110} height={34} radius={radii.pill} />)}
+              </View>
+            </View>
           </View>
-        )}
 
-        <View style={[styles.actions, wideActions && styles.actionsRow]}>
-          {progressReady ? (
-            <>
-              <Button
-                style={wideActions ? styles.action : undefined}
-                label={
-                  dueCount > 0 ? dueTodayLabel(dueCount) : reviewWaiting ? 'Review ahead' : 'Nothing due today'
-                }
-                variant={dueCount > 0 ? 'primary' : 'secondary'}
-                onPress={() => {
-                  if (!reviewWaiting) return;
-                  router.push(drillHref('review') as Href);
-                }}
-              />
-              <Button
-                style={wideActions ? styles.action : undefined}
-                label="Reset local progress"
-                variant="secondary"
-                onPress={() => setConfirmReset(true)}
-              />
-            </>
-          ) : (
-            <>
-              <View style={wideActions ? styles.action : undefined}>
-                <Bone height={44} radius={radii.lg} />
+          <View style={styles.col}>
+            {progressReady ? (
+              <GameImport />
+            ) : (
+              <View style={styles.card}>
+                <Bone width={140} height={16} />
+                <Bone height={44} radius={radii.md} />
               </View>
-              <View style={wideActions ? styles.action : undefined}>
-                <Bone height={44} radius={radii.lg} />
-              </View>
-            </>
-          )}
-        </View>
-
-        <View style={styles.group}>
-          <Text style={text.section}>Privacy and data</Text>
-          <Text style={text.muted}>
-            Progress on this device stays here until you erase it. An account is optional, and play stays open without
-            one.
-          </Text>
-          <View style={[styles.toggles, styles.togglesWrap]}>
-            <Button
-              label="Privacy policy"
-              variant="secondary"
-              fullWidth={false}
-              testID="progress-privacy"
-              onPress={() => router.push('/privacy' as Href)}
-            />
-            <Button
-              label="Delete data"
-              variant="secondary"
-              fullWidth={false}
-              testID="progress-delete"
-              onPress={() => router.push('/delete-account' as Href)}
-            />
+            )}
+            <StreakLeaderboard />
           </View>
         </View>
+
         <AboutFooter />
       </View>
-
-      <Dialog visible={confirmReset}>
-        <Text style={styles.dialogTitle}>Reset progress?</Text>
-        <Text style={styles.dialogBody}>
-          Streaks, XP, lessons, drill results, and saved positions on this device will go back to zero.
-        </Text>
-        <Button
-          label="Reset"
-          variant="danger"
-          onPress={() => {
-            resetProgress();
-            setConfirmReset(false);
-          }}
-        />
-        <Button label="Cancel" variant="ghost" onPress={() => setConfirmReset(false)} />
-      </Dialog>
     </Screen>
   );
 }
@@ -307,37 +200,37 @@ function badgeList(
 ): { title: string; detail: string; earned: boolean }[] {
   const days = Math.max(dailyStreak, recordStreak);
   return [
-    { title: 'First save', detail: 'Save a piece', earned: saves >= 1 },
-    { title: 'On a roll', detail: '3-day streak', earned: days >= 3 },
-    { title: 'Week', detail: '7-day streak', earned: days >= 7 },
+    { title: 'First save', detail: '1 save', earned: saves >= 1 },
+    { title: 'On a roll', detail: '3 days', earned: days >= 3 },
+    { title: 'Week', detail: '7 days', earned: days >= 7 },
     { title: 'Hot run', detail: '5 in a row', earned: bestPuzzleStreak >= 5 },
     { title: 'Flawless', detail: '10 in a row', earned: bestPuzzleStreak >= 10 },
   ];
 }
 
-function Grid({ columns, children }: { columns: number; children: ReactNode }) {
+function HeroStat({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <View style={styles.grid}>
-      {Children.map(children, (child, index) => (
-        <View key={index} style={{ width: `${100 / columns}%`, padding: spacing[6] }}>
-          {child}
-        </View>
-      ))}
+    <View style={styles.heroStat}>
+      <Text style={[text.stat, highlight && styles.heroHighlight]}>{value}</Text>
+      <Text style={styles.heroLabel} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
 
-function TileBone({ tall = false }: { tall?: boolean }) {
+function ExtraStat({ label, value }: { label: string; value: string }) {
   return (
-    <View style={[styles.tile, tall && styles.badge]}>
-      <Bone width={tall ? '40%' : '48%'} height={tall ? 14 : 28} />
-      <Bone width="72%" height={16} />
-      {tall ? <Bone width="56%" height={14} /> : null}
+    <View style={styles.extraCell}>
+      <Text style={styles.extraValue}>{value}</Text>
+      <Text style={styles.extraLabel} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
 
-function CategoryStat({
+function ThemeRow({
   theme,
   tally,
 }: {
@@ -346,23 +239,17 @@ function CategoryStat({
 }) {
   const attempts = tally?.attempts ?? 0;
   const correct = tally?.correct ?? 0;
-  const accuracy = attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
+  const ratio = attempts > 0 ? correct / attempts : 0;
+  const pct = attempts > 0 ? `${Math.round(ratio * 100)}%` : '—';
   return (
-    <View style={styles.tile}>
-      <Text style={[text.stat, attempts === 0 && styles.dim]}>{attempts === 0 ? '—' : `${accuracy}%`}</Text>
-      <View style={styles.tileCopy}>
-        <Text style={styles.tileLabel}>{themeLabel(theme)}</Text>
-        <Text style={text.muted}>{attempts === 0 ? 'Not started' : `${correct}/${attempts}`}</Text>
+    <View style={styles.themeRow}>
+      <View style={styles.themeTop}>
+        <Text style={styles.themeName}>{themeLabel(theme)}</Text>
+        <Text style={styles.themeMeta}>
+          {attempts === 0 ? 'Not started' : `${pct} · ${correct}/${attempts}`}
+        </Text>
       </View>
-    </View>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.tile}>
-      <Text style={text.stat}>{value}</Text>
-      <Text style={styles.tileLabel}>{label}</Text>
+      <ProgressTrack progress={ratio} />
     </View>
   );
 }
@@ -370,126 +257,187 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = themedStyleSheet((colors) => ({
   page: {
     width: '100%',
-    gap: spacing[12],
-    paddingBottom: spacing.xs,
+    gap: spacing.md,
+    paddingBottom: spacing.lg,
   },
   header: {
-    gap: spacing[6],
-  },
-  banner: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing[12],
-    minHeight: 56,
-    justifyContent: 'center',
-  },
-  group: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
   },
-  toggles: {
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing[2],
+  },
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flexShrink: 0,
   },
-  togglesWrap: {
-    flexWrap: 'wrap',
-    width: '100%',
-    maxWidth: '100%',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -spacing[6],
-  },
-  tile: {
+  heroCard: {
     backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing[14],
-    paddingVertical: spacing[14],
-    minHeight: 90,
+    padding: spacing.md,
+    gap: spacing[12],
+  },
+  heroRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: spacing[10],
+    gap: spacing.sm,
   },
-  tileCopy: {
-    gap: spacing.xxs,
+  heroStat: {
+    flex: 1,
+    minWidth: 72,
+    gap: spacing[2],
   },
-  tileLabel: {
+  heroHighlight: {
+    color: colors.accent,
+  },
+  heroLabel: {
     fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  extraStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[12],
+    paddingTop: spacing[12],
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  extraCell: {
+    width: '30%',
+    minWidth: 96,
+    flexGrow: 1,
+    gap: spacing[2],
+  },
+  extraValue: {
+    fontFamily: fonts.display,
+    fontSize: fontSizes[18],
+    lineHeight: lineHeights[22],
     color: colors.text,
-    fontSize: fontSizes[15],
+  },
+  extraLabel: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  expandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[6],
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    cursor: 'pointer',
+  },
+  expandRowHover: {
+    opacity: 0.8,
+  },
+  expandLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  chevronUp: {
+    transform: [{ rotate: '180deg' }],
+  },
+  columns: {
+    gap: spacing.md,
+  },
+  columnsWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  col: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.md,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing[12],
+  },
+  cardHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  themeList: {
+    gap: spacing[12],
+  },
+  themeRow: {
+    gap: spacing[6],
+  },
+  themeTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  themeName: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[14],
     lineHeight: lineHeights[20],
+    color: colors.text,
   },
-  dim: {
-    color: colors.textDim,
+  themeMeta: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
   },
-  badge: {
-    minHeight: 108,
-    justifyContent: 'flex-start',
-    gap: spacing.xs,
+  badgeWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  badgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[6],
+    borderRadius: radii.pill,
+    borderWidth: 1,
   },
   badgeOn: {
     borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
   },
   badgeOff: {
-    backgroundColor: colors.surface,
-  },
-  badgeState: {
-    fontFamily: fonts.bodyExtra,
-    fontSize: fontSizes[11],
-    lineHeight: lineHeights[14],
-    letterSpacing: letterSpacing.badge,
-    textTransform: 'uppercase',
-  },
-  badgeStateOn: {
-    color: colors.accent,
-  },
-  badgeStateOff: {
-    color: colors.textDim,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   badgeTitle: {
-    fontFamily: fonts.bodyExtra,
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  badgeTitleOn: {
     color: colors.text,
-    fontSize: fontSizes[16],
-    lineHeight: lineHeights[22],
   },
   badgeDetail: {
     fontFamily: fonts.body,
-    color: colors.textMuted,
-    fontSize: fontSizes[14],
-    lineHeight: lineHeights[20],
-  },
-  badgeDetailOn: {
-    color: colors.text,
-  },
-  actions: {
-    gap: spacing.sm,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-  },
-  action: {
-    flex: 1,
-  },
-  dialogTitle: {
-    fontFamily: fonts.display,
-    fontSize: fontSizes[24],
-    lineHeight: lineHeights[30],
-    color: colors.text,
-    textAlign: 'center',
-    letterSpacing: letterSpacing.tight,
-  },
-  dialogBody: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes[15],
-    lineHeight: lineHeights[22],
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textDim,
   },
 }));

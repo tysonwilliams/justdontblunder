@@ -7,7 +7,13 @@ import { liveA11y } from '@/src/components/ui/a11y';
 import { SettingSwitch } from '@/src/components/ui/SettingSwitch';
 import { Bone } from '@/src/components/ui/Skeleton';
 import { text } from '@/src/components/ui/text';
-import { loadLeaderboardPage, saveLeaderboardName, type LeaderboardPage, type LeaderboardRow } from '@/src/data/leaderboard';
+import { useLayout } from '@/src/components/ui/useLayout';
+import {
+  loadLeaderboardPage,
+  saveLeaderboardName,
+  type LeaderboardPage,
+  type LeaderboardRow,
+} from '@/src/data/leaderboard';
 import { useAccountStore } from '@/src/auth/session';
 import { checkDisplayName, DISPLAY_NAME_MAX } from '@/src/logic/displayName';
 import { drillHref } from '@/src/logic/drillLink';
@@ -132,34 +138,52 @@ export function StreakLeaderboardView({
   onPlay,
 }: ViewProps) {
   const { colors } = useTheme();
+  const { phone } = useLayout();
   const boardsReady = !loading && configured && !unavailable;
   return (
-    <View style={styles.wrap} testID="leaderboard">
-      <Text style={text.section}>Streak</Text>
+    <View style={styles.card} testID="leaderboard">
+      <View style={styles.top}>
+        <View style={styles.topCopy}>
+          <Text style={text.section}>Streak leaderboard</Text>
+          <Text style={text.bodyStrong} testID="leaderboard-local-best">
+            Best on this device: {best}
+          </Text>
+        </View>
+        <Button compact label="Play Streak" fullWidth={false} testID="leaderboard-play" onPress={onPlay} />
+      </View>
+
       <Text style={text.muted}>
         Positions come one after another. The first blunder ends the run. Any safe move passes.
       </Text>
-      <Text style={text.body} testID="leaderboard-local-best">
-        Best on this device: {best}
-      </Text>
-      <Button label="Play Streak" testID="leaderboard-play" onPress={onPlay} />
+
       {signedIn ? (
         <View style={styles.form}>
-          <TextInput
-            value={name}
-            onChangeText={onName}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={DISPLAY_NAME_MAX}
-            placeholder="Public name"
-            placeholderTextColor={colors.textDim}
-            accessibilityLabel="Public display name"
-            testID="leaderboard-name"
-            style={[styles.field, { color: colors.text }]}
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              value={name}
+              onChangeText={onName}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={DISPLAY_NAME_MAX}
+              placeholder="Public name"
+              placeholderTextColor={colors.textDim}
+              accessibilityLabel="Public display name"
+              testID="leaderboard-name"
+              style={[styles.field, { color: colors.text }]}
+            />
+            <Button
+              compact
+              variant="secondary"
+              fullWidth={false}
+              label={saving ? 'Saving' : 'Save'}
+              testID="leaderboard-save"
+              onPress={onSave}
+            />
+          </View>
           <SettingSwitch
+            plain
             label="Show on the leaderboard"
             value={optedIn}
             testID="leaderboard-opt-in"
@@ -170,7 +194,6 @@ export function StreakLeaderboardView({
               ? 'The board shows this name and your score. It does not show your email.'
               : 'Off until you turn it on. The board shows the name, not your email.'}
           </Text>
-          <Button label={saving ? 'Saving' : 'Save'} testID="leaderboard-save" onPress={onSave} />
         </View>
       ) : loading ? null : (
         <Text style={text.muted}>{GUEST_NOTE}</Text>
@@ -184,7 +207,7 @@ export function StreakLeaderboardView({
       {!loading && !configured ? <Text style={text.muted}>{NO_SERVER}</Text> : null}
       {!loading && configured && unavailable ? <Text style={text.muted}>{UNAVAILABLE}</Text> : null}
       {boardsReady ? (
-        <>
+        <View style={[styles.boards, !phone && styles.boardsWide]}>
           <BoardList
             title="This week"
             detail="Resets Monday at 00:00 UTC"
@@ -192,7 +215,7 @@ export function StreakLeaderboardView({
             rows={week}
           />
           <BoardList title="All-time best" detail="Highest run posted" testID="leaderboard-all-time" rows={allTime} />
-        </>
+        </View>
       ) : null}
     </View>
   );
@@ -228,29 +251,61 @@ function BoardList({
 }
 
 const styles = themedStyleSheet((colors) => ({
-  wrap: {
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing[12],
+  },
+  top: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
   },
+  topCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing[2],
+  },
   form: {
+    gap: spacing[6],
+    paddingTop: spacing[4],
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
   field: {
+    flex: 1,
+    minWidth: 0,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: radii.md,
     paddingHorizontal: spacing[12],
-    paddingVertical: spacing[10],
+    paddingVertical: spacing.sm,
     fontFamily: fonts.body,
-    fontSize: fontSizes[16],
-    minHeight: 44,
+    fontSize: fontSizes[15],
+    minHeight: 40,
+  },
+  boards: {
+    gap: spacing.sm,
+  },
+  boardsWide: {
+    flexDirection: 'row',
   },
   board: {
+    flex: 1,
+    minWidth: 0,
     gap: spacing[4],
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing[12],
     paddingVertical: spacing[12],
   },

@@ -1,66 +1,112 @@
-import { Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
-import { useLayout } from '@/src/components/ui/useLayout';
+import { controlA11y } from '@/src/components/ui/a11y';
+import { IconHelp } from '@/src/components/ui/icons';
+import { Sheet } from '@/src/components/ui/Sheet';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
-export function ColorLegend() {
+/**
+ * Quiet "?" trigger that opens the board color guide in a clean sheet,
+ * keeping board screens uncluttered.
+ */
+export function ColorLegend({ compact = false }: { compact?: boolean }) {
   const { colors } = useTheme();
-  const { phone } = useLayout();
+  const [open, setOpen] = useState(false);
+
   const items = [
-    { label: 'Good save', color: colors.success },
-    { label: 'Blunder', color: colors.danger },
-    { label: 'In danger', color: colors.warning },
+    { label: 'Good save', detail: 'A safe move that avoids losing material or getting mated.', color: colors.success },
+    { label: 'Blunder', detail: 'Hangs material or allows mate in one.', color: colors.danger },
+    { label: 'In danger', detail: 'The piece or square currently under threat.', color: colors.warning },
   ];
+
   return (
-    <View style={[styles.row, phone && styles.rowPhone]} accessibilityRole="text">
-      {items.map((item) => (
-        <View key={item.label} style={styles.item}>
-          <View style={[styles.swatch, phone && styles.swatchPhone, { backgroundColor: item.color }]} />
-          <Text style={[styles.label, phone && styles.labelPhone]}>{item.label}</Text>
+    <>
+      <Pressable
+        {...controlA11y('button', 'Board color guide', open)}
+        testID="color-legend-trigger"
+        hitSlop={spacing.xs}
+        onPress={() => setOpen(true)}
+        style={(state) => {
+          const hovered = 'hovered' in state && Boolean(state.hovered);
+          return [
+            styles.trigger,
+            compact && styles.triggerCompact,
+            (hovered || state.pressed) && styles.triggerHover,
+            state.pressed && styles.pressed,
+          ];
+        }}>
+        <IconHelp color={colors.textDim} size={compact ? 16 : 18} />
+      </Pressable>
+
+      <Sheet visible={open} onClose={() => setOpen(false)} title="Board colors" testID="color-legend-sheet">
+        <View style={styles.list}>
+          {items.map((item) => (
+            <View key={item.label} style={styles.item}>
+              <View style={[styles.swatch, { backgroundColor: item.color }]} />
+              <View style={styles.copy}>
+                <Text style={styles.label}>{item.label}</Text>
+                <Text style={styles.detail}>{item.detail}</Text>
+              </View>
+            </View>
+          ))}
         </View>
-      ))}
-    </View>
+      </Sheet>
+    </>
   );
 }
 
 const styles = themedStyleSheet((colors) => ({
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    rowGap: spacing[6],
+  trigger: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
   },
-  rowPhone: {
-    flexWrap: 'nowrap',
-    gap: spacing.sm,
-    height: 24,
-    overflow: 'hidden',
+  triggerCompact: {
+    width: 26,
+    height: 26,
+  },
+  triggerHover: {
+    backgroundColor: colors.hover,
+  },
+  pressed: {
+    opacity: 0.78,
+  },
+  list: {
+    gap: spacing[14],
+    paddingBottom: spacing.xs,
   },
   item: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[6],
-    minHeight: 24,
+    alignItems: 'flex-start',
+    gap: spacing[12],
   },
   swatch: {
-    width: 10,
-    height: 10,
-    borderRadius: radii.swatch,
+    width: 14,
+    height: 14,
+    borderRadius: radii.dot,
+    marginTop: spacing[4],
+    flexShrink: 0,
   },
-  swatchPhone: {
-    width: 8,
-    height: 8,
+  copy: {
+    flex: 1,
+    gap: spacing[2],
   },
   label: {
     fontFamily: fonts.bodyBold,
-    color: colors.textDim,
-    fontSize: fontSizes[13],
-    lineHeight: lineHeights[18],
+    color: colors.text,
+    fontSize: fontSizes[15],
+    lineHeight: lineHeights[20],
   },
-  labelPhone: {
-    fontSize: fontSizes[11],
-    lineHeight: lineHeights[14],
+  detail: {
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[20],
   },
 }));

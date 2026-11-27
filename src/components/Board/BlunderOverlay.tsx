@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/components/Board/useReducedMotion';
-import { liveA11y } from '@/src/components/ui/a11y';
+import { controlA11y, liveA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
-import { IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
+import { IconBookmark, IconCheck, IconInfo, IconX } from '@/src/components/ui/icons';
 import { PHONE_BANNER } from '@/src/components/ui/phoneSlots';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
@@ -16,12 +16,20 @@ import type { Palette } from '@/src/theme/tokens';
 
 type Tone = 'danger' | 'success' | 'warn';
 
+type HeaderAction = {
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+  testID?: string;
+};
+
 type Props = {
   visible: boolean;
   title: string;
   message: string;
   tone?: Tone;
   hint?: string;
+  headerAction?: HeaderAction;
   actionLabel?: string;
   onDismiss?: () => void;
   actionTestID?: string;
@@ -41,6 +49,7 @@ export function BlunderOverlay({
   message,
   tone = 'danger',
   hint,
+  headerAction,
   actionLabel = 'Got it',
   onDismiss,
   actionTestID,
@@ -88,9 +97,12 @@ export function BlunderOverlay({
             <ToneIcon tone={tone} color={glyphColor(colors, tone)} size={iconSize} />
           </View>
           <View style={styles.bannerCopy}>
-            <Text style={styles.bannerTitle} numberOfLines={1}>
-              {title}
-            </Text>
+            <View style={styles.bannerTitleRow}>
+              <Text style={styles.bannerTitle} numberOfLines={1}>
+                {title}
+              </Text>
+              {headerAction ? <BookmarkAction action={headerAction} compact /> : null}
+            </View>
             <Text style={styles.bannerMessage} numberOfLines={2} testID="coach-line">
               {copy}
             </Text>
@@ -152,6 +164,7 @@ export function BlunderOverlay({
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
+        {headerAction ? <BookmarkAction action={headerAction} compact={false} /> : null}
       </View>
       <Text style={text.body} numberOfLines={tight ? 3 : undefined} testID="coach-line">
         {message}
@@ -199,6 +212,41 @@ export function BlunderOverlay({
         </>
       )}
     </Animated.View>
+  );
+}
+
+function BookmarkAction({ action, compact }: { action: HeaderAction; compact: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      {...controlA11y('button', action.label, Boolean(action.active))}
+      testID={action.testID}
+      hitSlop={spacing[6]}
+      onPress={action.onPress}
+      style={(state) => {
+        const hovered = 'hovered' in state && Boolean(state.hovered);
+        return [
+          styles.bookmark,
+          compact && styles.bookmarkCompact,
+          action.active && styles.bookmarkActive,
+          (hovered || state.pressed) && !action.active && styles.bookmarkHover,
+        ];
+      }}>
+      <IconBookmark
+        color={action.active ? colors.accent : colors.textMuted}
+        size={compact ? 12 : 14}
+        filled={Boolean(action.active)}
+      />
+      <Text
+        style={[
+          styles.bookmarkLabel,
+          compact && styles.bookmarkLabelCompact,
+          action.active && styles.bookmarkLabelActive,
+        ]}
+        numberOfLines={1}>
+        {action.label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -278,12 +326,57 @@ const styles = themedStyleSheet((colors) => ({
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  bannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[6],
+  },
   bannerTitle: {
+    flex: 1,
     fontFamily: fonts.display,
     fontSize: fontSizes[14],
     lineHeight: lineHeights[16],
     color: colors.text,
     letterSpacing: letterSpacing.tight,
+  },
+  bookmark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    minHeight: 30,
+    paddingHorizontal: spacing[10],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  bookmarkCompact: {
+    minHeight: 20,
+    paddingHorizontal: spacing[6],
+    gap: spacing[3],
+  },
+  bookmarkActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  bookmarkHover: {
+    backgroundColor: colors.surfaceRaised,
+  },
+  bookmarkLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.text,
+  },
+  bookmarkLabelCompact: {
+    fontSize: fontSizes[10],
+    lineHeight: lineHeights[13],
+  },
+  bookmarkLabelActive: {
+    color: colors.accent,
   },
   bannerMessage: {
     fontFamily: fonts.body,
