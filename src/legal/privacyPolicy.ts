@@ -35,7 +35,7 @@ export const privacySections: readonly LegalSection[] = [
       },
       {
         kind: 'paragraph',
-        text: 'Progress stays on this device, in this browser. It includes your streak, XP, finished lessons, drill counts, the review schedule, positions built from a public username or a pasted game, the Chess.com or Lichess username you typed, and the scan cursor.',
+        text: 'Progress stays on this device, in this browser. It includes your streak, your best Streak run, XP, finished lessons, drill counts, the review schedule, positions built from a public username or a pasted game, the Chess.com or Lichess username you typed, and the scan cursor.',
       },
       {
         kind: 'paragraph',
@@ -247,6 +247,15 @@ export const privacySections: readonly LegalSection[] = [
         kind: 'paragraph',
         text: 'The daily_streaks table stores calendar dates you trained, using the timezone on your profile. The app sends the date of your latest drill and keeps dates already saved on the account.',
       },
+      { kind: 'subheading', text: 'Leaderboard' },
+      {
+        kind: 'paragraph',
+        text: 'Streak can post a score to a public weekly board and an all-time board. The week resets Monday at 00:00 UTC. This is off until you turn it on. You choose a public display name in the app. The board shows that name and the score. It does not show your email. Guests are not on the board. Your best Streak run stays on this device either way.',
+      },
+      {
+        kind: 'paragraph',
+        text: 'The leaderboard_names table stores the public display name and whether you opted in. The streak_scores table stores the score, the week, and the time. Both belong to the account. Deleting the account removes the leaderboard name and scores.',
+      },
       { kind: 'subheading', text: 'Starter puzzles' },
       {
         kind: 'paragraph',
@@ -345,7 +354,7 @@ export const privacySections: readonly LegalSection[] = [
       },
       {
         kind: 'paragraph',
-        text: 'The account and the rows that belong to it stay until you delete the account. The app has no separate expiry timer.',
+        text: 'The account and the rows that belong to it stay until you delete the account. A public display name and its scores stay until then. Turning the board off hides the name. It does not delete the scores. The app has no separate expiry timer.',
       },
       {
         kind: 'paragraph',
@@ -367,11 +376,11 @@ export const privacySections: readonly LegalSection[] = [
       { kind: 'link', href: DELETE_DATA_HREF, label: 'Delete data', testID: 'privacy-delete-link' },
       {
         kind: 'paragraph',
-        text: 'Erasing this device removes streaks, XP, lessons, drill results, review history, imported positions, the Chess.com or Lichess username, and the scan cursor stored here. If you are signed in, it also signs you out. The synced copy stays until you delete the account. Appearance and sound stay.',
+        text: 'Erasing this device removes streaks, XP, lessons, drill results, review history, imported positions, the Chess.com or Lichess username, and the scan cursor stored here. If you are signed in, it also signs you out. The synced copy stays until you delete the account, including a public leaderboard name and its scores. Appearance and sound stay.',
       },
       {
         kind: 'paragraph',
-        text: 'Deleting the account calls delete_my_account. That removes the sign-in sessions, then the account. The profile, linked usernames, scanned game ids, drills, reviews, attempt rows, and streak days go with it. The app then signs out and erases the progress on this device. You can keep playing as a guest. This cannot be undone.',
+        text: 'Deleting the account calls delete_my_account. That removes the sign-in sessions, then the account. The profile, linked usernames, scanned game ids, drills, reviews, attempt rows, streak days, and the leaderboard name and scores go with it. The app then signs out and erases the progress on this device. You can keep playing as a guest. This cannot be undone.',
       },
       {
         kind: 'paragraph',
@@ -406,7 +415,7 @@ export const privacySections: readonly LegalSection[] = [
     blocks: [
       {
         kind: 'paragraph',
-        text: 'The site is served over HTTPS. Supabase Auth holds the password for an email account. Your training rows are locked to your sign-in: you can read your own profile, usernames, game ids, drills, reviews, attempts, and streak days. Starter puzzles can be read with no account. Shared positions can be read by any signed-in player and are not labeled with an account. The app refuses a service-role key, so the browser cannot administer the database.',
+        text: 'The site is served over HTTPS. Supabase Auth holds the password for an email account. Your training rows are locked to your sign-in: you can read your own profile, usernames, game ids, drills, reviews, attempts, and streak days. The public Streak board shows a display name and a score, and only when that player turned it on. Starter puzzles can be read with no account. Shared positions can be read by any signed-in player and are not labeled with an account. The app refuses a service-role key, so the browser cannot administer the database.',
       },
     ],
   },

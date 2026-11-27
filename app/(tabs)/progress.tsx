@@ -6,6 +6,7 @@ import { AccountEntry } from '@/src/components/auth/AccountEntry';
 import { AccountPrompt } from '@/src/components/auth/AccountPrompt';
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
 import { GameImport } from '@/src/components/progress/GameImport';
+import { StreakLeaderboard } from '@/src/components/progress/StreakLeaderboard';
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { Button } from '@/src/components/ui/Button';
 import { Chip, FilterChips } from '@/src/components/ui/Chip';
@@ -134,6 +135,8 @@ export default function ProgressScreen() {
             <Bone width={220} height={22} radius={radii.pill} />
           )}
         </View>
+
+        <StreakLeaderboard />
 
         <View style={styles.group}>
           <Text style={text.section}>Where you started</Text>

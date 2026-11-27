@@ -169,7 +169,11 @@ The secret and the `.p8` stay out of Vercel and out of the app. The button stays
 
 ### Account deletion
 
-`public.delete_my_account()` is already in the database. The delete page calls it for a signed-in user, then signs out and erases the device copy. No new SQL.
+`public.delete_my_account()` is already in the database. The delete page calls it for a signed-in user, then signs out and erases the device copy. That RPC is unchanged. `leaderboard_names` and `streak_scores` reference `profiles` with `on delete cascade`, so the leaderboard name and scores go with the profile. Do not add a second delete RPC.
+
+### Streak leaderboard
+
+`supabase/migrations/20261126233215_streak_leaderboard.sql` adds the names, the scores, and the public views. It is not applied to the hosted project. Do not `supabase db push` or `config push`. Until someone applies it by hand, Streak still plays and the best run stays on the device. The public board is not part of the `jdb-progress-v1` sync snapshot. Profile sync does not write `leaderboard_names` or `streak_scores`.
 
 ## Local stack
 
@@ -199,11 +203,14 @@ Re-running the file updates the teaching columns and does not reset `created_at`
 | `review_entries` | that user | that user. |
 | `attempts` | that user | insert only. No update or delete policy. |
 | `daily_streaks` | that user | that user. `local_date` is the device calendar date for `profiles.timezone`. |
+| `leaderboard_names` | that user, own row | that user. `opted_in` defaults to false. The public board does not read this table directly. |
+| `streak_scores` | that user, own rows | that user, insert only. A trigger sets the week from the database clock and rejects an implausible, too-fast, or over-limit score. |
+| `streak_leaderboard_week`, `streak_leaderboard_all_time` | anon and authenticated | nobody. Display name and score only, for names that opted in. The week resets Monday 00:00 UTC. |
 | `client_errors` | nobody from the client | anon and authenticated can insert one row. No select, update, or delete. The row is message, stack, route, app version, and platform. No account id, email, or IP column. Apply `20261126233000_client_errors.sql` by hand. Do not `db push`. |
 
 RLS is enabled on every table. User-owned policies use `(select auth.uid())`. RLS is not forced: the table owner still bypasses it, which the signup trigger and the delete cascade need when `postgres` is not a superuser. API roles do not own the tables.
 
-`private` is not in the exposed API schemas. Security-definer functions live there with `search_path = ''`. `private.handle_new_user` inserts the profile and copies a display name with plain `coalesce`. `public.delete_my_account()` is the RPC a signed-in user calls to delete their `auth.users` row. Everything owned by that id cascades. Sessions are deleted before the user row. The app does not use `user_metadata` for authorization.
+`private` is not in the exposed API schemas. Security-definer functions live there with `search_path = ''`. `private.handle_new_user` inserts the profile and copies a display name with plain `coalesce`. `private.streak_runs` holds the open Streak clock and is not granted to the API. `public.delete_my_account()` is the RPC a signed-in user calls to delete their `auth.users` row. Everything owned by that id cascades, including leaderboard names and scores. Sessions are deleted before the user row. The app does not use `user_metadata` for authorization.
 
 Username scans still run in the browser. Sync uploads the cursor and the public game ids. Fallback ids that embed PGN text stay in AsyncStorage and are not uploaded.
 
@@ -213,4 +220,4 @@ Username scans still run in the browser. Sync uploads the cursor and the public 
 
 A review card is due now, or after 1, 3, 7, 16, or 35 days. A miss is due again the same day. `review_entries.interval_days` stores `0` for that short box, and `100 * consecutive saves + interval` after a save, so a 1-day card is not confused with the old two-save mirror. `supabase/migrations/20261126180000_review_spaced_repetition.sql` marks rows still on that mirror as due now. Apply it with the other migrations. Do not run `supabase db push` or `supabase config push`.
 
-With a client and a session, sign-in pulls, merges, saves the merge locally, then pushes. Local rows win when the two sides disagree, except a shared review card, which keeps the earlier due date and, on a tie, the shorter interval. Lists and counters are unions and maximums, so a guest drill, review, attempt, lesson, or seen game is not dropped. A blank guest document does not wipe an account. The puzzle pool cap keeps guest drills first. Push is skipped while a scan is running on this device.
+With a client and a session, sign-in pulls, merges, saves the merge locally, then pushes. Local rows win when the two sides disagree, except a shared review card, which keeps the earlier due date and, on a tie, the shorter interval. Lists and counters are unions and maximums, so a guest drill, review, attempt, lesson, or seen game is not dropped. A blank guest document does not wipe an account. The puzzle pool cap keeps guest drills first. Push is skipped while a scan is running on this device. The public Streak board is not part of the `jdb-progress-v1` snapshot.
