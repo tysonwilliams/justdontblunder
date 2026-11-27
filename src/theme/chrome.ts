@@ -9,6 +9,7 @@ export function applyDocumentTheme(scheme: ColorScheme, colors: Palette): void {
   root.style.colorScheme = scheme;
   root.style.setProperty('--jdb-bg', colors.background);
   root.style.setProperty('--jdb-fg', colors.text);
+  root.style.setProperty('--jdb-accent', colors.accent);
   root.style.backgroundColor = colors.background;
   root.style.color = colors.text;
   if (document.body) {
@@ -67,6 +68,10 @@ body > div:first-child {
 }
 #root:not(:empty) + #boot {
   display: none;
+}
+:focus-visible {
+  outline: 2px solid var(--jdb-accent, ${dark.accent});
+  outline-offset: 2px;
 }
 `;
 }

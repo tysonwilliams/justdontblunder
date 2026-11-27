@@ -15,6 +15,7 @@ import {
 } from '@/src/logic/drillLink';
 import {
   isCorrectDrillMove,
+  personalSourceLabel,
   type DrillPosition,
   type DrillSession as DrillSessionData,
 } from '@/src/logic/drills';
@@ -70,8 +71,10 @@ function reviewSession(theme: ThemeFilter, includeAhead = false) {
 
 export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak: boolean) {
   const { colors, scheme } = useTheme();
+  const experience = useProgressStore((s) => s.experience);
   const sudden = mode === 'play' && streak;
-  const guided = !sudden;
+  const unprompted = experience === 'intermediate';
+  const guided = !sudden && !unprompted;
   const reviewing = mode === 'review';
   const { state, dispatch } = useTrainerRound();
 
@@ -107,6 +110,11 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     () => (reviewing ? upcomingReviewCount(reviewEntries, theme) : 0),
     [reviewing, reviewEntries, theme],
   );
+  const reviewEntry = useMemo(
+    () => (reviewing && drill ? (reviewEntries.find((entry) => entry.id === drill.id) ?? null) : null),
+    [reviewing, drill, reviewEntries],
+  );
+  const sourceLabel = useMemo(() => (drill ? personalSourceLabel(drill) : null), [drill]);
 
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
@@ -285,12 +293,14 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     [drill, round, state.lastMove],
   );
   const baseSpeech = drill ? roundSpeech(round, drill, state.shownIdea ? null : state.lastMove) : '';
-  const roundCopy =
-    round === 'correct' && nextGapLabel
-      ? baseSpeech
-        ? `${baseSpeech} ${nextGapLabel}`
-        : nextGapLabel
-      : baseSpeech;
+  const gameMoveNote =
+    round !== 'playing' && drill?.source?.move && !baseSpeech.includes(drill.source.move)
+      ? `In your game you played ${drill.source.move}.`
+      : null;
+  const parts = [baseSpeech, gameMoveNote, round === 'correct' ? nextGapLabel : null].filter(
+    (part): part is string => Boolean(part && part.length > 0),
+  );
+  const roundCopy = parts.join(' ');
   const threatFrom = !state.shownIdea ? playback.arrow?.from : undefined;
   const threatTo = !state.shownIdea ? playback.arrow?.to : undefined;
   const threatArrow = useMemo<BoardArrow[]>(() => {
@@ -304,10 +314,13 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
 
   return {
     guided,
+    unprompted,
     streak: sudden,
     reviewing,
     practicingAhead,
     upcomingCount,
+    reviewSaves: reviewEntry?.saves ?? 0,
+    sourceLabel,
     hydrated,
     runSummary,
     done,
@@ -329,6 +342,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     shownIdea: state.shownIdea,
     runOver: state.runOver,
     bestPuzzleStreak,
+    hasReplay: state.replayLine.length > 0,
+    replayReply: playback.replay,
     onMove,
     revealIdea,
     tryAgain,

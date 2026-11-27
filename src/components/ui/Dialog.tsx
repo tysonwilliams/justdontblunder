@@ -1,20 +1,24 @@
 import type { ReactNode } from 'react';
-import { Modal, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { layout, radii, shadows, spacing } from '@/src/theme';
 
 type Props = {
   visible: boolean;
+  onClose?: () => void;
   children: ReactNode;
 };
 
-export function Dialog({ visible, children }: Props) {
+export function Dialog({ visible, onClose, children }: Props) {
   useTheme();
+  useKeyboardShortcuts({ Escape: onClose }, visible && Boolean(onClose));
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.backdrop}>
+        {onClose ? <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={StyleSheet.absoluteFill} /> : null}
         <View style={styles.card}>{children}</View>
       </View>
     </Modal>

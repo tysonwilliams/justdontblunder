@@ -5,12 +5,23 @@ export type OnboardingPrompt = 'welcome' | 'username';
 type SessionStore = {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem?: (key: string) => void;
 };
 
 let memory: OnboardingPrompt | null = null;
 
 export function resetOnboardingSessionForTests(): void {
   memory = null;
+}
+
+/** Clear the per-tab onboarding claim (used when the player explicitly asks to see Welcome again). */
+export function clearOnboardingClaim(storage: SessionStore | null = browserSession()): void {
+  memory = null;
+  try {
+    storage?.removeItem?.(ONBOARDING_SESSION_KEY);
+  } catch {
+    // Ignore storage errors in restricted browsing contexts.
+  }
 }
 
 function isPrompt(value: string | null): value is OnboardingPrompt {

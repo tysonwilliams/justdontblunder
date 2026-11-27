@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import type { Color } from 'chess.js';
 
+import { controlA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
 import { SegmentedControl } from '@/src/components/ui/Chip';
 import { text } from '@/src/components/ui/text';
+import { drillHref, themeFilterLabel } from '@/src/logic/drillLink';
+import type { DrillTheme } from '@/src/logic/drills';
 import { cleanUsername, type GameSite } from '@/src/logic/gameImport';
 import { poolSummary } from '@/src/logic/puzzlePool';
 import { analyzePastedPgn } from '@/src/logic/scanWorkerClient';
@@ -12,7 +16,7 @@ import { cancelOwnScan, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, radii, spacing } from '@/src/theme';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 type ImportTab = 'username' | 'pgn';
 
@@ -31,9 +35,13 @@ const COLORS: readonly { id: Color; label: string; testID: string }[] = [
   { id: 'b', label: 'I played Black', testID: 'import-black' },
 ];
 
+const THEME_KEYS: readonly DrillTheme[] = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'];
+
 export function GameImport() {
+  const router = useRouter();
   const { colors } = useTheme();
   const profile = useProgressStore((state) => state.gameProfile);
+  const ownDrills = useProgressStore((state) => state.ownDrills);
   const scan = useProgressStore((state) => state.scan);
   const mergeImportedDrills = useProgressStore((state) => state.mergeImportedDrills);
   const [tab, setTab] = useState<ImportTab>('username');
@@ -51,6 +59,24 @@ export function GameImport() {
   }, [profile]);
 
   const scanning = scan.phase === 'scanning';
+
+  const breakdown = useMemo(() => {
+    const counts: Record<DrillTheme, number> = {
+      hanging: 0,
+      fork: 0,
+      pin: 0,
+      back_rank: 0,
+      missed_mate: 0,
+    };
+    for (const drill of ownDrills) {
+      counts[drill.theme] = (counts[drill.theme] ?? 0) + 1;
+    }
+    return THEME_KEYS.map((theme) => ({ theme, count: counts[theme] }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count);
+  }, [ownDrills]);
+
+  const perGame = scan.games > 0 ? (ownDrills.length / scan.games).toFixed(1) : null;
 
   const findGames = async () => {
     if (scanning) {
@@ -124,7 +150,7 @@ export function GameImport() {
             style={[styles.field, { color: colors.text }]}
           />
           <Button
-            label={scanning ? 'Stop' : 'Find my blunders'}
+            label={scanning ? 'Stop' : profile ? 'Scan for newer games' : 'Find my blunders'}
             onPress={() => {
               void findGames();
             }}
@@ -155,6 +181,66 @@ export function GameImport() {
         <Text style={text.body} testID="import-status">
           {status || scan.message}
         </Text>
+      ) : null}
+
+      {ownDrills.length > 0 || scan.games > 0 ? (
+        <View style={styles.lab} testID="blunder-lab">
+          <View style={styles.labStats}>
+            {scan.games > 0 ? (
+              <View style={styles.labStat}>
+                <Text style={styles.labValue}>{scan.games}</Text>
+                <Text style={styles.labLabel}>Games scanned</Text>
+              </View>
+            ) : null}
+            <View style={styles.labStat}>
+              <Text style={styles.labValue}>{ownDrills.length}</Text>
+              <Text style={styles.labLabel}>Personal puzzles</Text>
+            </View>
+            {perGame ? (
+              <View style={styles.labStat}>
+                <Text style={styles.labValue}>{perGame}</Text>
+                <Text style={styles.labLabel}>Blunders / game</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {breakdown.length > 0 ? (
+            <View style={styles.blindSpotWrap}>
+              <Text style={styles.blindSpotTitle}>Your top blind spots — tap to drill</Text>
+              <View style={styles.pillRow}>
+                {breakdown.map((item, idx) => (
+                  <Pressable
+                    key={item.theme}
+                    {...controlA11y('button', `Drill ${themeFilterLabel(item.theme)}, ${item.count} personal puzzles`)}
+                    testID={`personal-theme-${item.theme}`}
+                    onPress={() => router.push(drillHref('play', item.theme) as Href)}
+                    style={(state) => {
+                      const hovered = 'hovered' in state && Boolean(state.hovered);
+                      return [
+                        styles.themePill,
+                        idx === 0 && styles.themePillTop,
+                        (hovered || state.pressed) && styles.themePillHover,
+                      ];
+                    }}>
+                    <Text style={[styles.themePillLabel, idx === 0 && styles.themePillLabelTop]}>
+                      {themeFilterLabel(item.theme)} · {item.count}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {ownDrills.length > 0 ? (
+            <Button
+              compact
+              variant="secondary"
+              label="Drill your blunders"
+              testID="drill-own-blunders"
+              onPress={() => router.push('/drills' as Href)}
+            />
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -196,5 +282,76 @@ const styles = themedStyleSheet((colors) => ({
   pgn: {
     minHeight: 88,
     textAlignVertical: 'top',
+  },
+  lab: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing[12],
+    gap: spacing[10],
+  },
+  labStats: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  labStat: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing[10],
+    paddingHorizontal: spacing[10],
+    gap: spacing[2],
+  },
+  labValue: {
+    fontFamily: fonts.display,
+    fontSize: fontSizes[20],
+    lineHeight: lineHeights[24],
+    color: colors.text,
+  },
+  labLabel: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
+  },
+  blindSpotWrap: {
+    gap: spacing[6],
+  },
+  blindSpotTitle: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[6],
+  },
+  themePill: {
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[5],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.background,
+    cursor: 'pointer',
+  },
+  themePillTop: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  themePillHover: {
+    opacity: 0.85,
+  },
+  themePillLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.text,
+  },
+  themePillLabelTop: {
+    color: colors.accent,
   },
 }));

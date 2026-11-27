@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 
 import { soundForSan } from '@/src/audio/moveSound';
@@ -14,6 +14,8 @@ type Playback = {
   /** Attacker → victim for the ply just shown, or the ply about to be played. */
   arrow: { from: Square; to: Square } | null;
   done: boolean;
+  /** Re-run the punishment animation from the student's blunder. */
+  replay: () => void;
 };
 
 /**
@@ -21,7 +23,9 @@ type Playback = {
  * `line` should be state owned by the caller so the timer is not restarted every render.
  */
 export function usePunishmentPlayback(active: boolean, line: PunishmentStep[]): Playback {
-  const replayKey = active ? line.map((step) => `${step.from}${step.to}${step.fen}`).join('|') : '';
+  const [runId, setRunId] = useState(0);
+  const baseKey = active ? line.map((step) => `${step.from}${step.to}${step.fen}`).join('|') : '';
+  const replayKey = baseKey ? `${baseKey}#${runId}` : '';
   const [trackedKey, setTrackedKey] = useState(replayKey);
   const [step, setStep] = useState(-1);
   if (trackedKey !== replayKey) {
@@ -54,6 +58,11 @@ export function usePunishmentPlayback(active: boolean, line: PunishmentStep[]): 
     };
   }, [active, replayKey]);
 
+  const replay = useCallback(() => {
+    if (lineRef.current.length === 0) return;
+    setRunId((n) => n + 1);
+  }, []);
+
   const done = active && (line.length === 0 || cursor >= line.length - 1);
   const shown = cursor >= 0 ? line[cursor] : null;
   const arrowStep =
@@ -64,5 +73,6 @@ export function usePunishmentPlayback(active: boolean, line: PunishmentStep[]): 
     move: shown ? { from: shown.from, to: shown.to } : null,
     arrow: arrowStep ? { from: arrowStep.from, to: arrowStep.to } : null,
     done,
+    replay,
   };
 }

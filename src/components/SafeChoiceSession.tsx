@@ -15,6 +15,7 @@ import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
 import type { DrillMode, ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT } from '@/src/logic/drills';
@@ -30,6 +31,35 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
   const { phone } = useLayout();
   const session = useSafeChoiceSession(theme);
   const toolbar = <DrillToolbar mode="pick" theme={theme} onMode={onMode} onTheme={onTheme} />;
+
+  useKeyboardShortcuts(
+    {
+      '1': () => {
+        if (session.round === 'playing') session.choose('A');
+      },
+      a: () => {
+        if (session.round === 'playing') session.choose('A');
+      },
+      '2': () => {
+        if (session.round === 'playing') session.choose('B');
+      },
+      b: () => {
+        if (session.round === 'playing') session.choose('B');
+      },
+      Enter: () => {
+        if (session.round === 'correct') session.next();
+        else if (session.round === 'retry' && session.replyReady) session.tryAgain();
+      },
+      ' ': () => {
+        if (session.round === 'correct') session.next();
+        else if (session.round === 'retry' && session.replyReady) session.tryAgain();
+      },
+      r: () => {
+        if (session.round === 'retry' && session.replyReady) session.tryAgain();
+      },
+    },
+    !session.done && Boolean(session.drill && session.presented),
+  );
 
   if (session.done) {
     const pct = session.score.total ? Math.round((session.score.correct / session.score.total) * 100) : 0;

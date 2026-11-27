@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type ComponentRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
 import type { Color, Square } from 'chess.js';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -121,6 +121,8 @@ function ChessBoardView({
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [rejectedFrom, setRejectedFrom] = useState<Square | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
+  const [userArrows, setUserArrows] = useState<BoardArrow[]>([]);
+  const [userMarks, setUserMarks] = useState<Square[]>([]);
 
   const activeFen = fen ?? gameFen;
   const [trackedFen, setTrackedFen] = useState(activeFen);
@@ -145,6 +147,8 @@ function ChessBoardView({
   const pressedPiece = useRef<Square | null>(null);
   /** Square newly selected on touch-down so the matching press-up does not deselect it. */
   const freshSelection = useRef<Square | null>(null);
+  const boardNodeRef = useRef<ComponentRef<typeof View>>(null);
+  const rightDownSquare = useRef<Square | null>(null);
   /** Legal targets for the marked piece. Drag frames read this instead of chess.js. */
   const marks = useRef<ShownMarks | null>(null);
   const suppressPress = useRef(false);
@@ -163,6 +167,7 @@ function ChessBoardView({
     onPositionChange,
     orientation,
     squareSize,
+    accent: colors.accent,
   });
   latest.current = {
     interactive,
@@ -175,6 +180,7 @@ function ChessBoardView({
     onPositionChange,
     orientation,
     squareSize,
+    accent: colors.accent,
   };
 
   if (trackedFen !== activeFen) {
@@ -184,6 +190,9 @@ function ChessBoardView({
     setPlacement(null);
     setRejectedFrom(null);
     setPendingPromotion(null);
+    setUserArrows([]);
+    setUserMarks([]);
+    rightDownSquare.current = null;
     marks.current = null;
     pressedPiece.current = null;
     freshSelection.current = null;
@@ -678,6 +687,62 @@ function ChessBoardView({
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const node = boardNodeRef.current as unknown as HTMLElement | null;
+    if (!node || typeof node.addEventListener !== 'function') return;
+
+    const squareFromPointer = (event: PointerEvent): Square | null => {
+      const now = latest.current;
+      if (now.squareSize <= 0) return null;
+      const rect = node.getBoundingClientRect();
+      const x = event.clientX - rect.left - BOARD_BORDER;
+      const y = event.clientY - rect.top - BOARD_BORDER;
+      return pointToSquare(x, y, now.squareSize * 8, now.orientation);
+    };
+
+    const onContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button === 2) {
+        rightDownSquare.current = squareFromPointer(event);
+        return;
+      }
+      if (event.button === 0) {
+        setUserArrows((prev) => (prev.length ? [] : prev));
+        setUserMarks((prev) => (prev.length ? [] : prev));
+      }
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (event.button !== 2) return;
+      const start = rightDownSquare.current;
+      rightDownSquare.current = null;
+      if (!start) return;
+      const end = squareFromPointer(event);
+      if (!end) return;
+      if (start === end) {
+        setUserMarks((prev) => (prev.includes(start) ? prev.filter((sq) => sq !== start) : [...prev, start]));
+      } else {
+        const accent = latest.current.accent;
+        setUserArrows((prev) => {
+          const exists = prev.some((arrow) => arrow.from === start && arrow.to === end);
+          if (exists) return prev.filter((arrow) => !(arrow.from === start && arrow.to === end));
+          return [...prev, { from: start, to: end, color: accent }];
+        });
+      }
+    };
+
+    node.addEventListener('contextmenu', onContextMenu);
+    node.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      node.removeEventListener('contextmenu', onContextMenu);
+      node.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, []);
+
   const hiddenSquares = squaresHiddenBy(flights);
   const rowKey = [
     activeFen,
@@ -716,10 +781,11 @@ function ChessBoardView({
     [rowKey],
   );
 
-  const arrowKey = arrows
+  const mergedArrows = userArrows.length ? [...arrows, ...userArrows] : arrows;
+  const arrowKey = mergedArrows
     .map((arrow) => `${arrow.from}${arrow.to}${arrow.color ?? ''}${arrow.label ?? ''}`)
     .join('|');
-  const arrowDraw = useMemo(() => (arrows.length ? arrows : EMPTY_ARROWS), [arrowKey]);
+  const arrowDraw = useMemo(() => (mergedArrows.length ? mergedArrows : EMPTY_ARROWS), [arrowKey]);
 
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
   const turnLine = boardStatusLine({
@@ -755,6 +821,7 @@ function ChessBoardView({
       ) : null}
       <GestureDetector gesture={pan} touchAction="none" userSelect="none">
         <View
+          ref={boardNodeRef}
           collapsable={false}
           testID="chess-board"
           style={[styles.hit, outer > 0 ? { height: outer } : styles.boardSquare, webBoardTouch]}
@@ -767,6 +834,27 @@ function ChessBoardView({
                 ))}
               </View>
             ))}
+            {userMarks.length > 0 && squareSize > 0 ? (
+              <View pointerEvents="none" style={styles.userMarkLayer}>
+                {userMarks.map((sq) => {
+                  const pos = squareOrigin(sq, orientation, squareSize);
+                  return (
+                    <View
+                      key={`mark-${sq}`}
+                      style={[
+                        styles.userMarkRing,
+                        {
+                          left: pos.x + 2,
+                          top: pos.y + 2,
+                          width: squareSize - 4,
+                          height: squareSize - 4,
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            ) : null}
             <BoardArrows arrows={arrowDraw} orientation={orientation} squareSize={squareSize} />
             <BoardCoordinates orientation={orientation} squareSize={squareSize} />
             {badge ? (
@@ -941,6 +1029,21 @@ const styles = themedStyleSheet((colors) => ({
     cursor: 'pointer',
   },
   promoCellHover: {
+    backgroundColor: colors.accentSoft,
+  },
+  userMarkLayer: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 8,
+  },
+  userMarkRing: {
+    position: 'absolute',
+    borderRadius: radii.pill,
+    borderWidth: 3,
+    borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
   },
 }));

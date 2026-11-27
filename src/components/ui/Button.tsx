@@ -18,6 +18,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   testID?: string;
   selected?: boolean;
+  disabled?: boolean;
 };
 
 export function Button({
@@ -29,24 +30,29 @@ export function Button({
   style,
   testID,
   selected = false,
+  disabled = false,
 }: Props) {
   const { colors } = useTheme();
   const { phone } = useLayout();
+  const a11y = controlA11y('button', label, selected);
   return (
     <Pressable
-      {...controlA11y('button', label, selected)}
+      {...a11y}
+      accessibilityState={{ ...a11y.accessibilityState, disabled }}
+      disabled={disabled}
       testID={testID}
       hitSlop={compact ? spacing[6] : 0}
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
       style={(state) => {
-        const hovered = 'hovered' in state && Boolean(state.hovered);
+        const hovered = !disabled && 'hovered' in state && Boolean(state.hovered);
         return [
           styles.base,
           phone && styles.basePhone,
           compact && styles.compact,
           fullWidth ? styles.full : styles.hug,
-          variantStyle(colors, variant, state.pressed, hovered),
-          state.pressed && styles.pressed,
+          variantStyle(colors, variant, !disabled && state.pressed, hovered),
+          !disabled && state.pressed && styles.pressed,
+          disabled && styles.disabled,
           style,
         ];
       }}>
@@ -130,6 +136,10 @@ const styles = StyleSheet.create({
   pressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.92,
+  },
+  disabled: {
+    opacity: 0.45,
+    cursor: 'auto',
   },
   full: {
     alignSelf: 'stretch',

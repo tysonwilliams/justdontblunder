@@ -39,22 +39,28 @@ export function stageMetrics(
   insetBottom = 0,
 ): StageMetrics {
   const topNav = width >= layout.nav;
-  const narrow = width < layout.split;
+  const railWidth = topNav
+    ? width >= layout.navRailExpandedMin
+      ? layout.navRail
+      : layout.navRailCompact
+    : 0;
+  const stageWidth = Math.max(280, width - railWidth);
+  const narrow = stageWidth < layout.split;
   const padX = narrow ? layout.gutter : width >= 1280 ? layout.padDesktop : layout.padTablet;
   const boardInset = narrow ? layout.boardInset : padX;
   const chromePad = padX - boardInset;
-  // Phone content starts below the notch. A window with no inset still gets a small top pad.
+  // Phone content starts below the notch. Desktop uses a left rail, reclaiming full height for the board.
   const padTop = topNav ? spacing[10] : Math.max(spacing.sm, insetTop);
   const padBottom = topNav ? spacing[12] : spacing.xxs;
-  const tabBar = topNav ? layout.tabBar + insetTop : layout.tabBarPhone + insetBottom;
-  const rawW = Math.max(280, width - boardInset * 2);
+  const tabBar = topNav ? insetTop : layout.tabBarPhone + insetBottom;
+  const rawW = Math.max(280, stageWidth - boardInset * 2);
   const contentHeight = Math.max(240, height - tabBar - padTop - padBottom);
   const turnRow = narrow ? TURN_ROW_PHONE : TURN_ROW_DESKTOP;
   const heightBoard = Math.floor(contentHeight - turnRow - spacing.xs);
   const splitCandidate = Math.min(heightBoard, layout.boardMax, rawW - ASIDE_MIN - SPLIT_GAP);
   const split =
     !narrow &&
-    width >= layout.split &&
+    stageWidth >= layout.split &&
     height >= layout.splitMinHeight &&
     splitCandidate >= SPLIT_BOARD_MIN;
 

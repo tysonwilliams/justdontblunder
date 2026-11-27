@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   claimOnboarding,
+  clearOnboardingClaim,
   resetOnboardingSessionForTests,
   shouldOfferUsernameSheet,
   shouldOfferWelcome,
@@ -17,6 +18,9 @@ function memoryStorage() {
     },
     setItem(key: string, value: string) {
       values.set(key, value);
+    },
+    removeItem(key: string) {
+      values.delete(key);
     },
   };
 }
@@ -67,5 +71,14 @@ describe('onboarding prompts', () => {
     expect(shouldOfferUsernameSheet({ ...usernameBase, drillsCompleted: 1 })).toBe(true);
     expect(claimOnboarding('username', next)).toBe(true);
     expect(claimOnboarding('welcome', next)).toBe(false);
+  });
+
+  it('releases the tab claim when clearOnboardingClaim is called', () => {
+    const storage = memoryStorage();
+    expect(claimOnboarding('username', storage)).toBe(true);
+    expect(claimOnboarding('welcome', storage)).toBe(false);
+    clearOnboardingClaim(storage);
+    expect(storage.values.has(ONBOARDING_SESSION_KEY)).toBe(false);
+    expect(claimOnboarding('welcome', storage)).toBe(true);
   });
 });

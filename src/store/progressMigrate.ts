@@ -245,7 +245,7 @@ function readFlag(value: unknown): boolean {
 }
 
 function readExperience(value: unknown): Experience | null {
-  if (value === 'new' || value === 'basics') return value;
+  if (value === 'new' || value === 'basics' || value === 'intermediate') return value;
   return null;
 }
 

@@ -3,7 +3,7 @@ import type { GameProfile } from '@/src/logic/gameImport';
 import type { ReviewEntry } from '@/src/logic/reviewPile';
 import type { ScanCursor } from '@/src/logic/scanCursor';
 
-export type Experience = 'new' | 'basics';
+export type Experience = 'new' | 'basics' | 'intermediate';
 
 export type ThemeTally = { attempts: number; correct: number };
 

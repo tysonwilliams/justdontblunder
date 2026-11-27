@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { addLocalDays, localDateKey } from '@/src/logic/localDate';
 import { drillFromHang } from '@/src/logic/personalDrill';
 import {
+  enrollImportedReviews,
   installImported,
   noteSave,
+  parseDrillList,
   rememberBankMiss,
   rememberPosition,
   reviewFromSaved,
@@ -127,5 +129,47 @@ describe('review pile', () => {
     expect(reviewFromSaved({ review: [{ id: 'hang-q-01', saves: 4, intervalDays: 16, dueOn: '2026-12-01' }] }, localDateKey())[0]?.dueOn).toBe(
       '2026-12-01',
     );
+  });
+
+  it('auto-enrolls new imported drills without resetting already scheduled positions', () => {
+    const first = drillFromHang('rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3');
+    const second = drillFromHang('4k3/8/8/8/8/8/1b6/R3K3 w - - 0 1');
+    expect(first && second).toBeTruthy();
+    if (!first || !second) return;
+    const scheduled = noteSave(rememberPosition([], first, TODAY), first.id, TODAY);
+    const enrolled = enrollImportedReviews(scheduled, [first, second], 8, TODAY);
+    expect(enrolled.map((e) => e.id)).toEqual([second.id, first.id]);
+    expect(enrolled.find((e) => e.id === first.id)).toMatchObject({
+      saves: 1,
+      intervalDays: 1,
+      dueOn: addLocalDays(TODAY, 1),
+    });
+    expect(enrolled.find((e) => e.id === second.id)).toMatchObject({
+      saves: 0,
+      intervalDays: 0,
+      dueOn: TODAY,
+    });
+  });
+
+  it('preserves extended provenance metadata when sanitizing saved drills', () => {
+    const hang = drillFromHang('rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3');
+    expect(hang).toBeTruthy();
+    if (!hang) return;
+    const enriched = {
+      ...hang,
+      source: {
+        gameId: 'c:123',
+        move: 'Nc3',
+        opponent: 'Carlsen',
+        timeClass: 'rapid',
+        moveNumber: 12,
+        playedAt: 1700000000000,
+        url: 'https://www.chess.com/game/live/123',
+        lastMove: { from: 'g8' as const, to: 'f6' as const },
+        setupFen: 'rnbqkbnr/pppp1ppp/8/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 1 2',
+      },
+    };
+    const [parsed] = parseDrillList([enriched]);
+    expect(parsed?.source).toEqual(enriched.source);
   });
 });

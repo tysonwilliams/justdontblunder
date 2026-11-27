@@ -15,6 +15,7 @@ import { Sheet } from '@/src/components/ui/Sheet';
 import { text } from '@/src/components/ui/text';
 import { signOutCurrentAccount, useAccountStore } from '@/src/auth/session';
 import { playFeedback } from '@/src/feedback/playFeedback';
+import { clearOnboardingClaim } from '@/src/logic/onboardingPrompt';
 import { useFeedbackSettings } from '@/src/store/feedbackSettings';
 import { useProgressStore, type Experience } from '@/src/store/progress';
 import { useThemePreference } from '@/src/store/themePreference';
@@ -31,7 +32,8 @@ const APPEARANCE: readonly { id: ThemePreference; label: string; testID: string 
 
 const START: readonly { id: Experience; label: string; testID: string }[] = [
   { id: 'new', label: 'Brand new', testID: 'experience-new' },
-  { id: 'basics', label: 'Know the basics', testID: 'experience-basics' },
+  { id: 'basics', label: 'Basics', testID: 'experience-basics' },
+  { id: 'intermediate', label: 'Club 1000+', testID: 'experience-intermediate' },
 ];
 
 const SIGN_OUT_FAILED = 'Could not sign out. Try again.';
@@ -171,10 +173,18 @@ export function SettingsMenu() {
             value={experience ?? 'basics'}
             onChange={setExperience}
           />
+          <Text style={styles.note}>
+            {experience === 'intermediate'
+              ? 'Unprompted scanning on drills (no highlighted danger square until you ask for a hint) and a stronger practice opponent.'
+              : experience === 'new'
+                ? 'Guided prompts, danger highlights, and a gentler practice opponent.'
+                : 'Guided prompts, danger highlights, and a club-beginner practice opponent.'}
+          </Text>
           <MenuRow
             label="Show welcome again"
             testID="show-welcome"
             onPress={() => {
+              clearOnboardingClaim();
               setExperience(null);
               navigate('/' as Href);
             }}
@@ -211,7 +221,7 @@ export function SettingsMenu() {
         </View>
       </Sheet>
 
-      <Dialog visible={confirmReset}>
+      <Dialog visible={confirmReset} onClose={() => setConfirmReset(false)}>
         <Text style={styles.dialogTitle}>Reset progress?</Text>
         <Text style={styles.dialogBody}>
           Streaks, XP, lessons, drill results, and saved positions on this device will go back to zero.

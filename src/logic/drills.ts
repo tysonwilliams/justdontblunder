@@ -48,7 +48,54 @@ export type DrillSource = {
   gameId: string;
   /** SAN of the move that blundered. */
   move?: string;
+  /** Opponent handle when parsed from Chess.com, Lichess, or PGN headers. */
+  opponent?: string;
+  /** Speed bucket such as rapid, blitz, classical, daily. */
+  timeClass?: string;
+  /** Fullmove number in the original game. */
+  moveNumber?: number;
+  /** Epoch milliseconds when the game finished. */
+  playedAt?: number;
+  /** Public game URL on Chess.com or Lichess. */
+  url?: string;
+  /** Opponent's move immediately preceding the blunder position. */
+  lastMove?: { from: Square; to: Square };
+  /** Position before the opponent's triggering move. */
+  setupFen?: string;
 };
+
+/** Compact provenance pill for personal puzzles imported from real games. */
+export function personalSourceLabel(drill: Pick<DrillPosition, 'id' | 'source'>): string | null {
+  const source = drill.source;
+  if (!source) return drill.id.startsWith('own-') ? 'From your games' : null;
+  const parts: string[] = [];
+  const kind = source.timeClass ? `Your ${source.timeClass} game` : 'Your game';
+  parts.push(source.opponent ? `${kind} vs. ${source.opponent}` : kind);
+  if (typeof source.moveNumber === 'number' && source.moveNumber > 0) {
+    parts.push(`Move ${source.moveNumber}`);
+  }
+  return parts.join(' · ');
+}
+
+/** Short 1-line headline matching the active tactical theme. */
+export function themeHeadline(theme: DrillTheme): string {
+  switch (theme) {
+    case 'hanging':
+      return 'Stop hanging pieces.';
+    case 'fork':
+      return 'Spot the fork.';
+    case 'pin':
+      return 'Answer the pin.';
+    case 'back_rank':
+      return 'Guard the back rank.';
+    case 'missed_mate':
+      return 'Stop mate in one.';
+    default: {
+      const _exhaustive: never = theme;
+      return _exhaustive;
+    }
+  }
+}
 
 export type DrillSession = {
   id: string;

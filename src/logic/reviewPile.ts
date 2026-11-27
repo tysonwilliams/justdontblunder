@@ -81,6 +81,34 @@ export function installImported(
   return [...added, ...kept];
 }
 
+/**
+ * Auto-enroll up to `limit` newest imported personal blunders into spaced review
+ * without resetting any card already scheduled in `entries`.
+ */
+export function enrollImportedReviews(
+  entries: readonly ReviewEntry[],
+  drills: readonly DrillPosition[],
+  limit = 8,
+  today = localDateKey(),
+): ReviewEntry[] {
+  const existingKeys = new Set<string>();
+  const existingIds = new Set<string>();
+  for (const entry of entries) {
+    existingIds.add(entry.id);
+    if (entry.drill) existingKeys.add(fenKey(entry.drill.fen));
+  }
+  const added: ReviewEntry[] = [];
+  for (const drill of drills) {
+    if (added.length >= limit) break;
+    const key = fenKey(drill.fen);
+    if (existingIds.has(drill.id) || existingKeys.has(key)) continue;
+    existingIds.add(drill.id);
+    existingKeys.add(key);
+    added.push({ id: drill.id, ...dueNow(today), drill });
+  }
+  return added.length > 0 ? [...added, ...entries] : [...entries];
+}
+
 export function reviewFromSaved(
   saved: { review?: unknown; missedIds?: unknown },
   today = localDateKey(),
@@ -149,14 +177,57 @@ function cleanDrill(value: unknown): DrillPosition | null {
 
 function readSource(value: unknown): DrillPosition['source'] | undefined {
   if (!value || typeof value !== 'object') return undefined;
-  const source = value as { gameId?: unknown; move?: unknown };
+  const source = value as {
+    gameId?: unknown;
+    move?: unknown;
+    opponent?: unknown;
+    timeClass?: unknown;
+    moveNumber?: unknown;
+    playedAt?: unknown;
+    url?: unknown;
+    lastMove?: unknown;
+    setupFen?: unknown;
+  };
   if (typeof source.gameId !== 'string') return undefined;
   const gameId = source.gameId.trim();
   if (gameId.length === 0 || gameId.length > 180) return undefined;
-  if (typeof source.move !== 'string') return { gameId };
-  const move = source.move.trim();
-  if (move.length === 0 || move.length > 32) return { gameId };
-  return { gameId, move };
+  const out: NonNullable<DrillPosition['source']> = { gameId };
+  if (typeof source.move === 'string') {
+    const move = source.move.trim();
+    if (move.length > 0 && move.length <= 32) out.move = move;
+  }
+  if (typeof source.opponent === 'string') {
+    const opponent = source.opponent.trim();
+    if (opponent.length > 0 && opponent.length <= 64) out.opponent = opponent;
+  }
+  if (typeof source.timeClass === 'string') {
+    const timeClass = source.timeClass.trim().toLowerCase();
+    if (timeClass.length > 0 && timeClass.length <= 24) out.timeClass = timeClass;
+  }
+  if (typeof source.moveNumber === 'number' && Number.isInteger(source.moveNumber) && source.moveNumber > 0 && source.moveNumber <= 500) {
+    out.moveNumber = source.moveNumber;
+  }
+  if (typeof source.playedAt === 'number' && Number.isFinite(source.playedAt) && source.playedAt > 0) {
+    out.playedAt = source.playedAt;
+  }
+  if (typeof source.url === 'string' && source.url.startsWith('https://') && source.url.length <= 240) {
+    out.url = source.url;
+  }
+  if (source.lastMove && typeof source.lastMove === 'object') {
+    const lm = source.lastMove as { from?: unknown; to?: unknown };
+    if (isSquare(lm.from) && isSquare(lm.to)) {
+      out.lastMove = { from: lm.from, to: lm.to };
+    }
+  }
+  if (typeof source.setupFen === 'string' && source.setupFen.length <= 120) {
+    try {
+      new Chess(source.setupFen);
+      out.setupFen = source.setupFen;
+    } catch {
+      // Ignore malformed setupFen.
+    }
+  }
+  return out;
 }
 
 function isTheme(value: unknown): value is DrillTheme {

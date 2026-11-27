@@ -1,7 +1,13 @@
 import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 
-import { chooseBlackReply, PRACTICE_OPPONENT_ELO } from '@/src/logic/reply';
+import {
+  chooseBlackReply,
+  chooseBotReply,
+  defaultPracticeElo,
+  materialBalance,
+  PRACTICE_OPPONENT_ELO,
+} from '@/src/logic/reply';
 import { hangingGain } from '@/src/logic/safety';
 
 describe('chooseBlackReply', () => {
@@ -82,5 +88,19 @@ describe('chooseBlackReply', () => {
     game.move('Nf3');
     const reply = chooseBlackReply(game.fen());
     expect(reply?.san.startsWith('Q')).toBe(false);
+  });
+
+  it('plays opening and tactical moves as White and computes material balance', () => {
+    const opening = chooseBotReply('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 1200);
+    expect(opening?.san).toBe('e4');
+
+    const mateAsWhite = chooseBotReply('4k3/7Q/5K2/8/8/8/8/8 w - - 0 1', 1500);
+    expect(mateAsWhite?.san).toMatch(/#$/);
+
+    expect(materialBalance('4k3/8/8/8/8/8/4Q3/4K3 w - - 0 1', 'w')).toBe(9);
+    expect(materialBalance('4k3/8/8/8/8/8/4Q3/4K3 w - - 0 1', 'b')).toBe(-9);
+    expect(defaultPracticeElo('new')).toBe(600);
+    expect(defaultPracticeElo('basics')).toBe(1200);
+    expect(defaultPracticeElo('intermediate')).toBe(1500);
   });
 });

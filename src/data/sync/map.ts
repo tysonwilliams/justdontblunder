@@ -251,7 +251,7 @@ function profileRow(snapshot: SyncSnapshot, userId: string): ProfileWrite {
   return {
     id: userId,
     timezone: snapshot.timezone,
-    experience: preferences.experience,
+    experience: preferences.experience === 'intermediate' ? 'basics' : preferences.experience,
     welcome_skipped: preferences.welcomeSkipped,
     drills_prompt_skipped: preferences.drillsPromptSkipped,
     missed_date: dateOrNull(review.missedDate),
