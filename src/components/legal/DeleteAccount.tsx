@@ -19,7 +19,7 @@ import { fonts, fontSizes, letterSpacing, lineHeights, spacing } from '@/src/the
 const ERASED = 'Erased. Progress and the scan cursor on this device are gone. You can keep playing as a guest.';
 const ERASE_FAILED = 'Could not erase this device. Try again.';
 const ACCOUNT_DELETED =
-  'Your account and the synced progress are deleted. Progress on this device is erased. You can keep playing as a guest.';
+  'Your account, the leaderboard name and scores, and the synced progress are deleted. Progress on this device is erased. You can keep playing as a guest.';
 const ACCOUNT_LOCAL_FAILED =
   'The account was deleted, but this device could not be erased. Use Erase my data on this device.';
 const ACCOUNT_FAILED = 'The account could not be deleted. You are still signed in. Try again.';
@@ -78,7 +78,7 @@ export function DeleteAccount() {
           Erasing removes streaks, XP, lessons, drill results, review history, imported positions, a linked Chess.com
           or Lichess username, and the scan cursor on this device. Appearance and sound stay. You can keep playing
           immediately. If an account is signed in, this also signs out. The synced copy stays until you delete the
-          account.
+          account, including a public leaderboard name and its scores.
         </Text>
         <Button
           label="Erase my data on this device"
@@ -108,8 +108,8 @@ export function DeleteAccount() {
           <>
             <Text style={text.body}>
               Deleting the account removes the profile, linked Chess.com and Lichess usernames, scanned game ids,
-              drills, review history, attempts, and streak days. The copy on this device is erased too. Play stays
-              open as a guest afterwards.
+              drills, review history, attempts, streak days, and the leaderboard name and scores. The copy on this
+              device is erased too. Play stays open as a guest afterwards.
             </Text>
             <Button
               label="Delete my account"
@@ -134,8 +134,8 @@ export function DeleteAccount() {
           <>
             <Text style={styles.dialogTitle}>Delete your account?</Text>
             <Text style={styles.dialogBody}>
-              This deletes the account and the synced progress, then erases the copy on this device. You can keep
-              playing as a guest. This cannot be undone.
+              This deletes the account, the leaderboard name and scores, and the synced progress, then erases the
+              copy on this device. You can keep playing as a guest. This cannot be undone.
             </Text>
             <Button
               label={working ? 'Deleting' : 'Delete account'}

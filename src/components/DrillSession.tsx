@@ -12,6 +12,7 @@ import { play } from '@/src/components/ui/playStyles';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { radii } from '@/src/theme';
 import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
+import { shownBest } from '@/src/logic/streak';
 
 type Props = {
   mode: DrillPlayMode;
@@ -69,7 +70,7 @@ export function DrillSession({ mode, theme, streak, onMode, onTheme, onStreak }:
         emptyReview={session.reviewing && session.session.positions.length === 0}
         correct={session.score.correct}
         total={session.score.total}
-        best={Math.max(session.bestPuzzleStreak, session.score.correct)}
+        best={shownBest(session.score.correct, session.bestPuzzleStreak)}
         onRestart={session.restart}
       />
     );

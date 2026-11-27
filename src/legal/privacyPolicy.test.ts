@@ -57,6 +57,14 @@ describe('privacy policy', () => {
     expect(policy).toContain('attempts table');
     expect(policy).toContain('does not add a row for each move');
     expect(policy).toContain('daily_streaks');
+    expect(policy).toContain('leaderboard_names');
+    expect(policy).toContain('streak_scores');
+    expect(policy).toContain('public display name');
+    expect(policy).toContain('does not show your email');
+    expect(policy).toContain('Monday at 00:00 UTC');
+    expect(policy).toContain('off until you turn it on');
+    expect(policy).toContain('leaderboard name and scores');
+    expect(policy).toContain('your best Streak run');
     expect(policy).toContain('puzzles table');
     expect(policy).toContain('Any signed-in player can read it.');
   });

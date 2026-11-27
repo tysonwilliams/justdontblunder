@@ -19,6 +19,7 @@ import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT, themeInstruction, themeLabel, turnPrompt, type DrillTheme } from '@/src/logic/drills';
+import { drillStreakExtra } from '@/src/logic/streak';
 import { spacing } from '@/src/theme';
 
 type Session = ReturnType<typeof useDrillSession>;
@@ -98,7 +99,7 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
           total={session.session.positions.length}
           spaced={false}
           phone
-          extra={session.streak ? String(session.score.correct) : undefined}
+          extra={drillStreakExtra(session.streak, session.score.correct, session.bestPuzzleStreak, true)}
         />
       </View>
     </BoardLead>
@@ -126,7 +127,7 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
           index={session.index}
           total={session.session.positions.length}
           spaced
-          extra={session.streak ? `${session.score.correct} in a row` : undefined}
+          extra={drillStreakExtra(session.streak, session.score.correct, session.bestPuzzleStreak, false)}
         />
       </View>
       <ProgressTrack progress={session.progress} />

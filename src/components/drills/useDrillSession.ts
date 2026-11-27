@@ -6,6 +6,7 @@ import { highlightsForRound } from '@/src/components/Board/highlight';
 import { useTrainerRound } from '@/src/components/trainer/useTrainerRound';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
+import { openStreakRun, publishStreakScore } from '@/src/data/leaderboard';
 import {
   reviewForEntries,
   sessionForTheme,
@@ -20,6 +21,7 @@ import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
 import { missFeedback, roundSpeech } from '@/src/logic/saveFeedback';
 import { buildPuzzlePool } from '@/src/logic/puzzlePool';
+import { shownBest, streakScoreInRange } from '@/src/logic/streak';
 import { roundProgress, trainerBoard, type TrainerMove } from '@/src/logic/trainerRound';
 import { applyRoundEffects } from '@/src/store/trainerResult';
 import { useProgressStore } from '@/src/store/progress';
@@ -80,6 +82,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const [runSummary, setRunSummary] = useState<DrillRunSummary | null>(null);
   const reviewStarted = useRef(false);
   const started = useRef(false);
+  const postedRun = useRef<string | null>(null);
   const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
   positionsRef.current = session.positions;
 
@@ -147,6 +150,21 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     applyRoundEffects(dispatch({ type: 'finishRun' }).effects, undefined, false);
   }, [done, sudden, dispatch]);
 
+  useEffect(() => {
+    if (!sudden) return;
+    void openStreakRun();
+  }, [sudden, session.startedAt]);
+
+  useEffect(() => {
+    if (!sudden || !state.runRecorded) return;
+    const length = state.score.correct;
+    const key = `${session.startedAt}:${length}`;
+    if (postedRun.current === key) return;
+    postedRun.current = key;
+    if (!streakScoreInRange(length)) return;
+    void publishStreakScore(length);
+  }, [sudden, state.runRecorded, state.score.correct, session.startedAt]);
+
   const restart = () => {
     begin(reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()));
   };
@@ -212,7 +230,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
       (state.lastMove ? playedSan(current.fen, state.lastMove.from, state.lastMove.to) : null);
     setRunSummary({
       saved: state.score.correct,
-      best: Math.max(bestPuzzleStreak, state.score.correct),
+      best: shownBest(state.score.correct, bestPuzzleStreak),
       playedSan: played,
       missText:
         state.missedPlay?.text ??
