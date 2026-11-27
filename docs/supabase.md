@@ -19,6 +19,7 @@ The URL and the anon key are already set. Expo inlines `EXPO_PUBLIC_*` at build 
 | `EXPO_PUBLIC_SYNC_ENABLED` | leave unset. Set the string `false` only to turn sync off |
 | `EXPO_PUBLIC_OAUTH_PROVIDERS` | leave unset. Google and Apple buttons stay hidden. After those providers are enabled, set `google`, `apple`, or `google,apple`, then redeploy |
 | `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | public web client id `129452132407-vqeapd2vu4md3qn81t439kpdbocksghq.apps.googleusercontent.com`. Set this in Vercel so Google's consent screen shows this site. Leave it unset to keep the Supabase redirect |
+| `EXPO_PUBLIC_ERROR_REPORTING` | leave unset. Crash reports stay off. Set the string `true` only after `supabase/migrations/20261126233000_client_errors.sql` is applied, then redeploy. Any other value, including unset, sends nothing |
 
 Redeploy after an app change so the sign-in screens ship. No new env var is required for sync. OAuth buttons need `EXPO_PUBLIC_OAUTH_PROVIDERS`, and only after Google or Apple is enabled below. Google on the web also needs `EXPO_PUBLIC_GOOGLE_CLIENT_ID`. Without that client id, Google keeps the Supabase redirect.
 
@@ -198,6 +199,7 @@ Re-running the file updates the teaching columns and does not reset `created_at`
 | `review_entries` | that user | that user. |
 | `attempts` | that user | insert only. No update or delete policy. |
 | `daily_streaks` | that user | that user. `local_date` is the device calendar date for `profiles.timezone`. |
+| `client_errors` | nobody from the client | anon and authenticated can insert one row. No select, update, or delete. The row is message, stack, route, app version, and platform. No account id, email, or IP column. Apply `20261126233000_client_errors.sql` by hand. Do not `db push`. |
 
 RLS is enabled on every table. User-owned policies use `(select auth.uid())`. RLS is not forced: the table owner still bypasses it, which the signup trigger and the delete cascade need when `postgres` is not a superuser. API roles do not own the tables.
 

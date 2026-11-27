@@ -6,6 +6,11 @@ import { LessonPlayer } from '@/src/components/LessonPlayer';
 import { PlaySkeleton } from '@/src/components/ui/Skeleton';
 import { legacyLearnRedirect } from '@/src/logic/drillLink';
 import { parseLessonId, type LessonId } from '@/src/logic/lessons';
+import { metadataFor } from '@/src/seo/site';
+
+export function generateMetadata() {
+  return metadataFor('/learn');
+}
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;

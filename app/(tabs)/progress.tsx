@@ -28,7 +28,12 @@ import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import type { ThemePreference } from '@/src/theme/preference';
+import { metadataFor } from '@/src/seo/site';
 import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+
+export function generateMetadata() {
+  return metadataFor('/progress');
+}
 
 const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
 

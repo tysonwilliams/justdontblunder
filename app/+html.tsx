@@ -1,16 +1,17 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
+import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { ReactNode } from 'react';
 
 import { themeBootScript, themeShellCss } from '@/src/theme/chrome';
 import { palettes } from '@/src/theme/tokens';
 
-// This file is web-only and used to configure the root HTML for every
-// web page during static rendering.
-// The contents of this function only run in Node.js environments and
-// do not have access to the DOM or browser APIs.
+// Web-only root document for static rendering. This runs in Node and does not
+// touch the DOM. headNodes carries the per-route title, description, and cards.
+// bodyNodes carries the scripts that hydrate the page.
 export default function Root({ children }: { children: ReactNode }) {
+  const { bodyAttributes, bodyNodes, headNodes, htmlAttributes } = useServerDocumentContext();
+
   return (
-    <html lang="en">
+    <html lang="en" {...htmlAttributes}>
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -19,18 +20,21 @@ export default function Root({ children }: { children: ReactNode }) {
           content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
         />
         <meta name="theme-color" content={palettes.dark.background} />
+        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
         <script dangerouslySetInnerHTML={{ __html: themeBootScript() }} />
-
-        {/*
-          Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
-          However, body scrolling is often nice to have for mobile web. If you want to enable it, remove this line.
-        */}
         <ScrollViewStyleReset />
-
-        {/* Paint the page before React so the saved scheme does not flash. */}
         <style dangerouslySetInnerHTML={{ __html: themeShellCss() }} />
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body {...bodyAttributes}>
+        {children}
+        <div id="boot" aria-hidden="true">
+          <div className="frame" />
+        </div>
+        {bodyNodes}
+      </body>
     </html>
   );
 }

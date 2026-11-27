@@ -71,49 +71,4 @@ body > div:first-child {
 `;
 }
 
-/**
- * Document for `web.output: "single"`. Expo reads `public/index.html` in dev
- * and on export. `app/+html.tsx` is the static-rendering shell and uses the
- * same boot script and CSS. `%LANG_ISO_CODE%` and `%WEB_TITLE%` are Expo tokens.
- */
-export function spaIndexHtml(): string {
-  return `<!doctype html>
-<html lang="%LANG_ISO_CODE%">
-  <head>
-    <meta charset="utf-8" />
-    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
-    />
-    <meta name="theme-color" content="${palettes.dark.background}" />
-    <title>%WEB_TITLE%</title>
-    <script>${themeBootScript()}</script>
-    <!-- The react-native-web recommended style reset. -->
-    <style id="expo-reset">
-      html,
-      body {
-        height: 100%;
-      }
-      body {
-        overflow: hidden;
-      }
-      #root {
-        display: flex;
-        height: 100%;
-        flex: 1;
-      }
-    </style>
-    <style id="jdb-theme">
-${themeShellCss()}
-    </style>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <div id="boot" aria-hidden="true"><div class="frame"></div></div>
-  </body>
-</html>
-`;
-}
 

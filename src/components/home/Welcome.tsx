@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { Button } from '@/src/components/ui/Button';
 import { text } from '@/src/components/ui/text';
 import { accountsConfigured } from '@/src/auth/session';
+import { claimOnboarding, shouldOfferWelcome } from '@/src/logic/onboardingPrompt';
 import { useProgressStore, type Experience } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
@@ -15,7 +16,7 @@ const CHOICES: readonly { id: Experience; label: string; href: Href }[] = [
   { id: 'basics', label: 'I know the basics', href: '/drills' },
 ];
 
-/** First-run choice. Sits over Home only, so other screens keep their board still. */
+/** First-run choice. Sits over Home only, so other screens keep their board still. One tab shows this or the username card, not both. */
 export function Welcome() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -25,7 +26,8 @@ export function Welcome() {
   const setExperience = useProgressStore((state) => state.setExperience);
   const skipWelcome = useProgressStore((state) => state.skipWelcome);
 
-  if (!hydrated || experience || welcomeSkipped) return null;
+  if (!shouldOfferWelcome({ hydrated, experience, welcomeSkipped })) return null;
+  if (!claimOnboarding('welcome')) return null;
 
   return (
     <View style={[styles.scrim, { backgroundColor: colors.overlay }]} testID="welcome">
