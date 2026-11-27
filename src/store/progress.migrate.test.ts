@@ -17,6 +17,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 import { Chess } from 'chess.js';
 
 import { pastedGameDrills } from '@/src/logic/gameImport';
+import { localDateKey } from '@/src/logic/localDate';
 import { drillFromHang } from '@/src/logic/personalDrill';
 import { SCAN_PAUSED_MESSAGE } from '@/src/logic/scanCursor';
 import {
@@ -117,7 +118,9 @@ describe('progress migration', () => {
 
   it('keeps an older miss list that has not been stored as review entries', () => {
     const migrated = migrateProgress({ missedIds: ['hang-q-01'] }, 0);
-    expect(migrated.review.review).toEqual([{ id: 'hang-q-01', saves: 0 }]);
+    expect(migrated.review.review).toEqual([
+      { id: 'hang-q-01', saves: 0, intervalDays: 0, dueOn: localDateKey() },
+    ]);
     expect(migrated.review.missedIds).toEqual(['hang-q-01']);
   });
 
@@ -246,7 +249,11 @@ describe('progress migration', () => {
     expect(state.dailyStreak).toBe(6);
     expect(state.lastDrillDate).toBe('2026-11-13');
     expect(state.xp).toBe(80);
-    expect(state.review.find((entry) => entry.id === 'hang-q-01')).toMatchObject({ saves: 1 });
+    expect(state.review.find((entry) => entry.id === 'hang-q-01')).toMatchObject({
+      saves: 0,
+      intervalDays: 0,
+      dueOn: localDateKey(),
+    });
     expect(state.review.find((entry) => entry.id === missed.id)?.drill).toMatchObject({
       id: missed.id,
       fen: missed.fen,

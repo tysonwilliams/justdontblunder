@@ -34,7 +34,7 @@ export const privacySections: readonly LegalSection[] = [
       },
       {
         kind: 'paragraph',
-        text: 'Progress stays on this device, in this browser. It includes your streak, XP, finished lessons, drill counts, the review pile, positions built from a public username or a pasted game, the Chess.com or Lichess username you typed, and the scan cursor.',
+        text: 'Progress stays on this device, in this browser. It includes your streak, XP, finished lessons, drill counts, the review schedule, positions built from a public username or a pasted game, the Chess.com or Lichess username you typed, and the scan cursor.',
       },
       {
         kind: 'paragraph',
@@ -225,12 +225,12 @@ export const privacySections: readonly LegalSection[] = [
       { kind: 'subheading', text: 'Reviews' },
       {
         kind: 'paragraph',
-        text: 'The review_entries table is your review pile:',
+        text: 'The review_entries table is your review schedule:',
       },
       {
         kind: 'list',
         items: [
-          'The puzzle or position, and whether you have saved it once.',
+          'The puzzle or position, and how many times in a row you have saved it.',
           'A due date, the interval in days, and its place in the pile.',
           'A list for miss notes. Play does not fill that list.',
           'When the row was created and last updated.',

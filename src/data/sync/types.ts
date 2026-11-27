@@ -12,10 +12,11 @@ export type SyncAttempt = {
   createdAt: string;
 };
 
-/** Due date and miss notes that the local pile does not store. */
+/** Due date and miss notes copied from the review schedule. */
 export type ReviewMeta = {
   id: string;
   dueOn: string | null;
+  /** Unpacked gap in days. 0 means due now. */
   intervalDays: number;
   missHistory: string[];
 };
@@ -104,9 +105,11 @@ export type ReviewWrite = {
   puzzle_id: string | null;
   fen_key: string | null;
   local_id: string | null;
+  /** Legacy column. The scheduler writes 0. The gap lives in interval_days. */
   saves: 0 | 1;
   miss_history: string[];
   due_on: string | null;
+  /** 0, or 100 * consecutive saves + the interval (1, 3, 7, 16, or 35). */
   interval_days: number;
   pile_index: number;
 };

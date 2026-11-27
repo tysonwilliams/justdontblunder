@@ -74,7 +74,7 @@ describe('erase device data', () => {
       welcomeSkipped: true,
       drillsPromptSkipped: true,
       gameProfile: { site: 'lichess', username: 'Ada' },
-      review: [{ id: 'hang-q-01', saves: 1 }],
+      review: [{ id: 'hang-q-01', saves: 1, intervalDays: 1, dueOn: '2026-04-01' }],
       missedIds: ['hang-q-01'],
       scan: pausedScan(),
       scanPromptDismissed: true,

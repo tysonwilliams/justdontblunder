@@ -18,6 +18,7 @@ import type { Square } from 'chess.js';
 
 import { reviewForEntries } from '@/src/logic/drillLink';
 import { getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
+import { addLocalDays, localDateKey } from '@/src/logic/localDate';
 import { drillFromHang } from '@/src/logic/personalDrill';
 import { reviewMiss } from '@/src/logic/puzzlePool';
 import { reviewFromSaved } from '@/src/logic/reviewPile';
@@ -38,9 +39,10 @@ describe('progress review pile', () => {
     });
   });
 
-  it('keeps an older miss when a new one is recorded, and drops it on the second save', () => {
+  it('keeps an older card when a new miss is recorded, and a save schedules the next gap', () => {
+    const today = localDateKey();
     useProgressStore.setState({
-      review: [{ id: 'hang-q-01', saves: 1 }],
+      review: [{ id: 'hang-q-01', saves: 1, intervalDays: 1, dueOn: addLocalDays(today, 1) }],
       missedIds: ['hang-q-01'],
       missedDate: '2020-01-01',
     });
@@ -49,22 +51,33 @@ describe('progress review pile', () => {
     expect(useProgressStore.getState().review.find((entry) => entry.id === 'hang-q-01')?.saves).toBe(1);
 
     useProgressStore.getState().recordSave('hang-q-01');
-    expect(useProgressStore.getState().missedIds).toEqual(['mate-03']);
+    const saved = useProgressStore.getState().review.find((entry) => entry.id === 'hang-q-01');
+    expect(saved).toMatchObject({ saves: 2, intervalDays: 3, dueOn: addLocalDays(today, 3) });
+    expect(useProgressStore.getState().missedIds).toEqual(['mate-03', 'hang-q-01']);
 
     useProgressStore.getState().recordMiss('mate-03');
-    expect(useProgressStore.getState().review.find((entry) => entry.id === 'mate-03')?.saves).toBe(0);
+    expect(useProgressStore.getState().review.find((entry) => entry.id === 'mate-03')).toMatchObject({
+      saves: 0,
+      intervalDays: 0,
+      dueOn: today,
+    });
   });
 
   it('stores one practice position and replaces it when the same game is imported', () => {
     const drill = drillFromHang(HANGING_QUEEN);
     expect(drill).toBeTruthy();
     if (!drill) return;
+    const today = localDateKey();
     useProgressStore.getState().savePersonalDrill(drill);
-    expect(useProgressStore.getState().review[0]?.saves).toBe(0);
+    expect(useProgressStore.getState().review[0]).toMatchObject({ saves: 0, intervalDays: 0, dueOn: today });
     useProgressStore.getState().recordSave(drill.id);
     useProgressStore.getState().savePersonalDrill(drill);
     expect(useProgressStore.getState().review).toHaveLength(1);
-    expect(useProgressStore.getState().review[0]?.saves).toBe(1);
+    expect(useProgressStore.getState().review[0]).toMatchObject({
+      saves: 1,
+      intervalDays: 1,
+      dueOn: addLocalDays(today, 1),
+    });
 
     useProgressStore.getState().saveImportedDrills([drill]);
     expect(useProgressStore.getState().review).toHaveLength(1);
@@ -92,7 +105,11 @@ describe('progress review pile', () => {
     persistTrainerResult(false, personal, false);
     expect(useProgressStore.getState().review[0]?.drill?.fen).toBe(personal.fen);
     persistTrainerResult(true, personal, true);
-    expect(useProgressStore.getState().review.find((entry) => entry.id === personal.id)?.saves).toBe(1);
+    expect(useProgressStore.getState().review.find((entry) => entry.id === personal.id)).toMatchObject({
+      saves: 1,
+      intervalDays: 1,
+      dueOn: addLocalDays(localDateKey(), 1),
+    });
   });
 
   it('resolves a repeated home id to the bank puzzle', () => {

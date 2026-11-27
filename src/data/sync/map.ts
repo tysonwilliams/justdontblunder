@@ -1,6 +1,6 @@
 import beginnerBlunders from '@/src/data/beginner-blunders.json';
 
-import { addCalendarDays, cleanTimeZone, isCalendarDate, whole } from '@/src/data/sync/dates';
+import { cleanTimeZone, isCalendarDate, whole } from '@/src/data/sync/dates';
 import { isPublicGameId } from '@/src/data/sync/gameIds';
 import type {
   AttemptWrite,
@@ -24,7 +24,14 @@ import type {
 import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
 import { ownDrillId } from '@/src/logic/personalDrill';
 import { profileFromSaved } from '@/src/logic/gameImport';
+import { isDateKey, localDateKey } from '@/src/logic/localDate';
 import { fenKey, parseDrillList, reviewFromSaved, type ReviewEntry } from '@/src/logic/reviewPile';
+import {
+  packIntervalDays,
+  scheduleFromSaved,
+  scheduleFromStored,
+  type ReviewSchedule,
+} from '@/src/logic/reviewSchedule';
 import { cleanUsername, cursorFromSaved, type GameSite, type ScanCursor } from '@/src/logic/scanCursor';
 import type { Experience, ScanPhase } from '@/src/store/progressTypes';
 import type { PersistedProgress } from '@/src/store/progressMigrate';
@@ -110,11 +117,11 @@ export function rowsFromSnapshot(snapshot: SyncSnapshot, userId: string): Remote
     });
   });
 
-  const anchor = dateOrNull(progress.review.missedDate) ?? dateOrNull(progress.training.lastDrillDate);
+  const today = localDateKey();
   const metaById = new Map(snapshot.reviewMeta.map((meta) => [meta.id, meta]));
   const reviewEntries: ReviewWrite[] = [];
   progress.review.review.forEach((entry, index) => {
-    const row = reviewRow(entry, metaById.get(entry.id), anchor, drillKeys, userId, index);
+    const row = reviewRow(entry, metaById.get(entry.id), today, drillKeys, userId, index);
     if (row) reviewEntries.push(row);
   });
 
@@ -314,24 +321,18 @@ function scannedRows(progress: PersistedProgress, userId: string): ScannedGameWr
 function reviewRow(
   entry: ReviewEntry,
   meta: ReviewMeta | undefined,
-  anchor: string | null,
+  today: string,
   drillKeys: Map<string, string>,
   userId: string,
   index: number,
 ): ReviewWrite | null {
-  const saves = entry.saves === 1 ? 1 : 0;
-  const derived = meta ?? {
-    id: entry.id,
-    dueOn: anchor ? addCalendarDays(anchor, saves) : null,
-    intervalDays: saves,
-    missHistory: [],
-  };
+  const schedule = scheduleForWrite(entry, meta, today);
   const base = {
     user_id: userId,
-    saves,
-    miss_history: cleanHistory(derived.missHistory),
-    due_on: derived.dueOn && isCalendarDate(derived.dueOn) ? derived.dueOn : null,
-    interval_days: Math.min(whole(derived.intervalDays), 3650),
+    saves: 0 as const,
+    miss_history: cleanHistory(meta?.missHistory ?? []),
+    due_on: isCalendarDate(schedule.dueOn) ? schedule.dueOn : null,
+    interval_days: packIntervalDays(schedule),
     pile_index: index,
   } as const;
   if (entry.drill && isCatalogId(entry.drill.id)) {
@@ -447,17 +448,18 @@ function reviewFromRow(
   positions: Map<number, PositionRow>,
   localByPosition: Map<number, string>,
   puzzles: Map<string, PuzzleRow>,
+  today = localDateKey(),
 ): { entry: ReviewEntry; meta: ReviewMeta } | null {
-  const saves = row.saves === 1 ? 1 : 0;
+  const schedule = scheduleFromStored(Math.min(whole(row.interval_days), 3650), dateOrNull(row.due_on), today);
   const meta: ReviewMeta = {
     id: '',
-    dueOn: dateOrNull(row.due_on),
-    intervalDays: Math.min(whole(row.interval_days), 3650),
+    dueOn: schedule.dueOn,
+    intervalDays: schedule.intervalDays,
     missHistory: cleanHistory(row.miss_history),
   };
   if (row.puzzle_id && isCatalogId(row.puzzle_id)) {
     meta.id = row.puzzle_id;
-    return { entry: { id: row.puzzle_id, saves }, meta };
+    return { entry: { id: row.puzzle_id, ...schedule }, meta };
   }
   if (row.position_id == null) return null;
   const position = positions.get(row.position_id);
@@ -476,7 +478,15 @@ function reviewFromRow(
   });
   if (!drill) return null;
   meta.id = drill.id;
-  return { entry: { id: drill.id, saves, drill }, meta };
+  return { entry: { id: drill.id, ...schedule, drill }, meta };
+}
+
+function scheduleForWrite(entry: ReviewEntry, meta: ReviewMeta | undefined, today: string): ReviewSchedule {
+  if (isDateKey(entry.dueOn) && Number.isFinite(entry.intervalDays)) return scheduleFromSaved(entry, today);
+  if (meta?.dueOn && isCalendarDate(meta.dueOn) && meta.intervalDays >= 3) {
+    return scheduleFromSaved({ saves: 0, dueOn: meta.dueOn, intervalDays: meta.intervalDays }, today);
+  }
+  return scheduleFromSaved(entry, today);
 }
 
 function attemptFromRow(row: RemoteRead['attempts'][number], localByPosition: Map<number, string>): SyncAttempt | null {

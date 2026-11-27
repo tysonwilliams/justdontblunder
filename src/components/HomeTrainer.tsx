@@ -7,9 +7,9 @@ import { HomeEntryCards } from '@/src/components/home/HomeEntryCards';
 import { Welcome } from '@/src/components/home/Welcome';
 import { homeEntryHref, useHomeTrainer, type HomeEntryId } from '@/src/components/home/useHomeTrainer';
 import { StreakBadge } from '@/src/components/StreakBadge';
+import { DueTodayLink } from '@/src/components/review/DueTodayLink';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { Button } from '@/src/components/ui/Button';
-import { StatusPill } from '@/src/components/ui/Chip';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
 import { LineBox } from '@/src/components/ui/LineBox';
 import { footFitsExtra } from '@/src/components/ui/phoneSlots';
@@ -45,7 +45,7 @@ export function HomeTrainer() {
       intro={
         <BoardLead>
           <View style={[styles.meta, phone && styles.metaPhone]}>
-            <StatusPill>Daily trainer</StatusPill>
+            <DueTodayLink variant="pill" />
             <View style={play.metaRight}>
               <PuzzleCount index={trainer.index} total={trainer.total} spaced phone={phone} />
               <StreakSlot phone={phone} hydrated={trainer.hydrated} streak={trainer.streak} />

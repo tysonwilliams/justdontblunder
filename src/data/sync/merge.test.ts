@@ -102,50 +102,84 @@ describe('mergeSnapshots', () => {
     expect(merged.progress.training.completedLessons).toEqual(['a', 'b']);
   });
 
-  it('keeps the guest review when the save counts disagree and keeps a remote-only miss', () => {
+  it('keeps the earlier due date when both sides have a card, and keeps a remote-only card', () => {
     const merged = mergeSnapshots(
       snapshot(
-        { review: { review: [{ id: 'hang-q-01', saves: 1 }], missedDate: '2026-01-02' } },
-        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-01-03', intervalDays: 1, missHistory: ['Nf6'] }] },
+        {
+          review: {
+            review: [{ id: 'hang-q-01', saves: 4, intervalDays: 16, dueOn: '2026-08-01' }],
+            missedDate: '2026-01-02',
+          },
+        },
+        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-08-01', intervalDays: 16, missHistory: ['Nf6'] }] },
       ),
       snapshot(
         {
           review: {
             review: [
-              { id: 'hang-q-01', saves: 0 },
-              { id: 'hang-q-02', saves: 0 },
+              { id: 'hang-q-01', saves: 1, intervalDays: 1, dueOn: '2026-02-01' },
+              { id: 'hang-q-02', saves: 2, intervalDays: 3, dueOn: '2026-06-01' },
             ],
           },
         },
-        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-04-01', intervalDays: 3, missHistory: ['again'] }] },
+        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-02-01', intervalDays: 1, missHistory: ['again'] }] },
       ),
     );
-    expect(merged.progress.review.review.map((entry) => [entry.id, entry.saves])).toEqual([
-      ['hang-q-01', 1],
-      ['hang-q-02', 0],
+    expect(merged.progress.review.review.map((entry) => [entry.id, entry.dueOn, entry.intervalDays])).toEqual([
+      ['hang-q-01', '2026-02-01', 1],
+      ['hang-q-02', '2026-06-01', 3],
     ]);
     expect(merged.reviewMeta.find((meta) => meta.id === 'hang-q-01')).toMatchObject({
-      dueOn: '2026-01-03',
+      dueOn: '2026-02-01',
       intervalDays: 1,
       missHistory: ['Nf6', 'again'],
     });
   });
 
-  it('keeps the account due date when both sides have the same save count', () => {
+  it('keeps the shorter interval when both cards are due the same day', () => {
     const merged = mergeSnapshots(
       snapshot(
-        { review: { review: [{ id: 'hang-q-01', saves: 1 }] } },
+        { review: { review: [{ id: 'hang-q-01', saves: 4, intervalDays: 16, dueOn: '2026-05-01' }] } },
+        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-05-01', intervalDays: 16, missHistory: ['Nf6'] }] },
+      ),
+      snapshot(
+        { review: { review: [{ id: 'hang-q-01', saves: 2, intervalDays: 3, dueOn: '2026-05-01' }] } },
+        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-05-01', intervalDays: 3, missHistory: ['again'] }] },
+      ),
+    );
+    expect(merged.progress.review.review[0]).toMatchObject({
+      dueOn: '2026-05-01',
+      intervalDays: 3,
+      saves: 2,
+    });
+    expect(merged.reviewMeta[0]).toMatchObject({
+      dueOn: '2026-05-01',
+      intervalDays: 3,
+      missHistory: ['Nf6', 'again'],
+    });
+  });
+
+  it('treats an old pile card as due now when it is merged with a later schedule', () => {
+    const merged = mergeSnapshots(
+      snapshot(
+        { review: { review: [{ id: 'hang-q-01', saves: 1, intervalDays: 1, dueOn: 'not-a-date' }] } },
         { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-01-03', intervalDays: 1, missHistory: ['Nf6'] }] },
       ),
       snapshot(
-        { review: { review: [{ id: 'hang-q-01', saves: 1 }] } },
-        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2026-04-01', intervalDays: 3, missHistory: ['again'] }] },
+        { review: { review: [{ id: 'hang-q-01', saves: 3, intervalDays: 7, dueOn: '2027-02-01' }] } },
+        { reviewMeta: [{ id: 'hang-q-01', dueOn: '2027-02-01', intervalDays: 7, missHistory: [] }] },
       ),
+      '2026-11-26T15:00:00.000Z',
     );
+    expect(merged.progress.review.review[0]).toMatchObject({
+      saves: 0,
+      intervalDays: 0,
+      dueOn: '2026-11-26',
+    });
     expect(merged.reviewMeta[0]).toMatchObject({
-      dueOn: '2026-04-01',
-      intervalDays: 3,
-      missHistory: ['Nf6', 'again'],
+      dueOn: '2026-11-26',
+      intervalDays: 0,
+      missHistory: ['Nf6'],
     });
   });
 
@@ -268,7 +302,9 @@ describe('mergeSnapshots', () => {
       snapshot(
         {
           training: { xp: 4, completedLessons: ['guest-lesson'], dailyStreak: 2 },
-          review: { review: [{ id: guestDrill.id, saves: 0, drill: guestDrill }] },
+          review: {
+            review: [{ id: guestDrill.id, saves: 0, intervalDays: 0, dueOn: '2026-03-01', drill: guestDrill }],
+          },
           library: { ownDrills: [guestDrill] },
           preferences: { experience: 'basics', welcomeSkipped: true, drillsPromptSkipped: false },
           scan: {
@@ -295,7 +331,9 @@ describe('mergeSnapshots', () => {
       snapshot(
         {
           training: { xp: 9, completedLessons: ['account-lesson'], dailyStreak: 5 },
-          review: { review: [{ id: accountDrill.id, saves: 1, drill: accountDrill }] },
+          review: {
+            review: [{ id: accountDrill.id, saves: 1, intervalDays: 1, dueOn: '2026-08-01', drill: accountDrill }],
+          },
           library: { ownDrills: [accountDrill] },
           preferences: { experience: 'new', welcomeSkipped: false, drillsPromptSkipped: true },
           scan: {
@@ -325,6 +363,7 @@ describe('mergeSnapshots', () => {
     expect(merged.progress.training.dailyStreak).toBe(5);
     expect(merged.progress.training.completedLessons).toEqual(['guest-lesson', 'account-lesson']);
     expect(merged.progress.review.review.map((entry) => entry.id)).toEqual([guestDrill.id, accountDrill.id]);
+    expect(merged.progress.review.review[1]).toMatchObject({ dueOn: '2026-08-01', intervalDays: 1, saves: 1 });
     expect(merged.progress.preferences.experience).toBe('basics');
     expect(merged.progress.scan.cursor?.seen).toEqual(['l:guest', 'l:account']);
     expect(merged.attempts.map((attempt) => attempt.clientId)).toEqual(['guest-attempt', 'account-attempt']);

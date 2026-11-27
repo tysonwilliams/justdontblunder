@@ -109,15 +109,33 @@ export function FilterChips<T extends string>({
   return <View style={styles.wrap}>{items}</View>;
 }
 
-export function StatusPill({ children }: { children: ReactNode }) {
+export function StatusPill({
+  children,
+  onPress,
+  testID,
+  label,
+  shrink = false,
+}: {
+  children: ReactNode;
+  onPress?: () => void;
+  testID?: string;
+  label?: string;
+  shrink?: boolean;
+}) {
   useTheme();
   const { phone } = useLayout();
+  const spoken = label ?? (typeof children === 'string' ? children : 'Status');
+  const style = [styles.pill, phone && styles.pillPhone, shrink && styles.pillShrink];
+  const body = (
+    <Text style={[styles.pillText, phone && styles.pillTextPhone]} numberOfLines={1}>
+      {children}
+    </Text>
+  );
+  if (!onPress) return <View style={style}>{body}</View>;
   return (
-    <View style={[styles.pill, phone && styles.pillPhone]}>
-      <Text style={[styles.pillText, phone && styles.pillTextPhone]} numberOfLines={1}>
-        {children}
-      </Text>
-    </View>
+    <Pressable {...controlA11y('button', spoken)} testID={testID} onPress={onPress} style={style}>
+      {body}
+    </Pressable>
   );
 }
 
@@ -254,5 +272,10 @@ const styles = themedStyleSheet((colors) => ({
     fontSize: fontSizes[10],
     lineHeight: lineHeights[14],
     letterSpacing: letterSpacing.pillCompact,
+  },
+  pillShrink: {
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: '100%',
   },
 }));
