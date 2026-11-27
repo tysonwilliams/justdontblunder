@@ -2,7 +2,20 @@ import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'che
 
 import { pieceValue } from '@/src/logic/safety';
 
-const BOOK = [
+const WHITE_BOOK = [
+  'e2e4',
+  'd2d4',
+  'g1f3',
+  'b1c3',
+  'f1c4',
+  'f1b5',
+  'c2c4',
+  'e2e3',
+  'd2d3',
+  'f1e2',
+];
+
+const BLACK_BOOK = [
   'e7e5',
   'd7d5',
   'g8f6',
@@ -27,22 +40,43 @@ const CENTER = new Set(['c5', 'd5', 'e5', 'd4', 'e4', 'c4', 'f5', 'f4']);
  */
 export const PRACTICE_OPPONENT_ELO = 1100;
 
+export const PRACTICE_ELOS = [600, 900, 1200, 1500] as const;
+export type PracticeElo = (typeof PRACTICE_ELOS)[number];
+
+export function defaultPracticeElo(experience: 'new' | 'basics' | 'intermediate' | null): PracticeElo {
+  switch (experience) {
+    case 'new':
+      return 600;
+    case 'intermediate':
+      return 1500;
+    case 'basics':
+    case null:
+      return 1200;
+    default: {
+      const _exhaustive: never = experience;
+      return _exhaustive;
+    }
+  }
+}
+
 const MATE_SCORE = 100;
 
-export type BlackReply = {
+export type BotReply = {
   from: Square;
   to: Square;
   san: string;
   fen: string;
 };
 
+export type BlackReply = BotReply;
+
 function searchPlies(elo: number): number {
   return elo >= 800 ? 2 : 1;
 }
 
-/** Share of non-forcing choices the opponent misses. Derived only from the Elo constant. */
+/** Share of non-forcing choices the opponent misses. Derived only from the Elo rating. */
 function slipRate(elo: number): number {
-  return Math.min(0.45, Math.max(0, (1400 - elo) / 1500));
+  return Math.min(0.45, Math.max(0, (1450 - elo) / 1500));
 }
 
 function slipBucket(fen: string): number {
@@ -64,6 +98,15 @@ function materialFor(game: Chess, side: Color): number {
     }
   }
   return total;
+}
+
+/** Net material delta in pawns from `side`'s perspective. */
+export function materialBalance(fen: string, side: Color): number {
+  try {
+    return materialFor(new Chess(fen), side);
+  } catch {
+    return 0;
+  }
 }
 
 function captureRank(move: Move): number {
@@ -100,9 +143,10 @@ function negamax(game: Chess, depth: number, alpha: number, beta: number): numbe
   return best;
 }
 
-function bookRank(move: Move): number {
-  const index = BOOK.indexOf(`${move.from}${move.to}`);
-  return index === -1 ? BOOK.length : index;
+function bookRank(move: Move, side: Color): number {
+  const book = side === 'w' ? WHITE_BOOK : BLACK_BOOK;
+  const index = book.indexOf(`${move.from}${move.to}`);
+  return index === -1 ? book.length : index;
 }
 
 function pieceRank(type: PieceSymbol): number {
@@ -127,8 +171,8 @@ function pieceRank(type: PieceSymbol): number {
 
 type Scored = { move: Move; score: number };
 
-function byHumanOrder(a: Scored, b: Scored): number {
-  const book = bookRank(a.move) - bookRank(b.move);
+function byHumanOrder(a: Scored, b: Scored, side: Color): number {
+  const book = bookRank(a.move, side) - bookRank(b.move, side);
   if (book !== 0) return book;
   const develop = pieceRank(a.move.piece) - pieceRank(b.move.piece);
   if (develop !== 0) return develop;
@@ -137,23 +181,23 @@ function byHumanOrder(a: Scored, b: Scored): number {
   return captureRank(b.move) - captureRank(a.move);
 }
 
-function shouldSlip(fen: string, best: number, second: number): boolean {
+function shouldSlip(fen: string, best: number, second: number, elo: number): boolean {
   if (best >= 3) return false;
   if (best - second >= 3) return false;
   if (best <= second) return false;
   const fullmove = Number(fen.split(' ')[5] ?? '1');
   if (fullmove < 8 && best <= 0) return false;
-  return slipBucket(fen) < slipRate(PRACTICE_OPPONENT_ELO) * 1000;
+  return slipBucket(fen) < slipRate(elo) * 1000;
 }
 
-/** Black's reply at club-beginner strength. */
-export function chooseBlackReply(fen: string): BlackReply | null {
+/** Opponent reply for whichever side is to move, tuned to `elo`. */
+export function chooseBotReply(fen: string, elo: number = PRACTICE_OPPONENT_ELO): BotReply | null {
   const game = new Chess(fen);
-  if (game.turn() !== 'b') return null;
+  const side = game.turn();
   const moves = orderedMoves(game);
   if (!moves.length) return null;
 
-  const plies = searchPlies(PRACTICE_OPPONENT_ELO);
+  const plies = searchPlies(elo);
   const ranked: Scored[] = [];
   for (const move of moves) {
     game.move(move);
@@ -161,20 +205,27 @@ export function chooseBlackReply(fen: string): BlackReply | null {
     game.undo();
     ranked.push({ move, score });
   }
-  ranked.sort((a, b) => b.score - a.score || byHumanOrder(a, b));
+  ranked.sort((a, b) => b.score - a.score || byHumanOrder(a, b, side));
   const best = ranked[0];
   if (!best) return null;
   const second = ranked[1]?.score ?? best.score;
 
   let chosen = best;
-  if (shouldSlip(fen, best.score, second)) {
+  if (shouldSlip(fen, best.score, second, elo)) {
     const floor = Math.max(-1, best.score - 1);
     const softer = ranked.filter((entry) => entry.score >= floor && entry.score < best.score);
-    softer.sort(byHumanOrder);
+    softer.sort((a, b) => byHumanOrder(a, b, side));
     if (softer[0]) chosen = softer[0];
   }
 
   const played = game.move(chosen.move);
   if (!played) return null;
   return { from: played.from, to: played.to, san: played.san, fen: game.fen() };
+}
+
+/** Black's reply at club-beginner strength. */
+export function chooseBlackReply(fen: string): BlackReply | null {
+  const game = new Chess(fen);
+  if (game.turn() !== 'b') return null;
+  return chooseBotReply(fen, PRACTICE_OPPONENT_ELO);
 }

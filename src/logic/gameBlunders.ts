@@ -80,6 +80,13 @@ function latestFirst(chronological: readonly DrillPosition[], limit: number): Dr
   return drills;
 }
 
+function cleanHeader(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === '?' || trimmed === 'Unknown') return undefined;
+  return trimmed.slice(0, 64);
+}
+
 function* replayBlunders(pgn: string, userColor: Color): Generator<DrillPosition | null> {
   let game: Chess;
   try {
@@ -88,9 +95,14 @@ function* replayBlunders(pgn: string, userColor: Color): Generator<DrillPosition
   } catch {
     return;
   }
+  const headers = game.getHeaders();
+  const opponent = cleanHeader(userColor === 'w' ? headers.Black : headers.White);
   const moves = game.history({ verbose: true });
   for (let index = moves.length - 1; index >= 0; index -= 1) game.undo();
-  for (const move of moves) {
+  let prevFen: string | undefined;
+  let prevMove: { from: import('chess.js').Square; to: import('chess.js').Square } | undefined;
+  for (let ply = 0; ply < moves.length; ply += 1) {
+    const move = moves[ply]!;
     const before = game.fen();
     const side = game.turn();
     let played;
@@ -101,14 +113,32 @@ function* replayBlunders(pgn: string, userColor: Color): Generator<DrillPosition
     }
     if (!played) return;
     if (side !== userColor) {
+      prevFen = before;
+      prevMove = { from: played.from, to: played.to };
       yield null;
       continue;
     }
-    yield drillFromBlunder({
+    const built = drillFromBlunder({
       fen: before,
       from: played.from,
       to: played.to,
       san: played.san,
     });
+    const moveNumber = Number(before.split(' ')[5]) || Math.floor(ply / 2) + 1;
+    yield built
+      ? {
+          ...built,
+          source: {
+            gameId: 'pasted',
+            move: played.san,
+            moveNumber,
+            ...(opponent ? { opponent } : {}),
+            ...(prevMove ? { lastMove: prevMove } : {}),
+            ...(prevFen ? { setupFen: prevFen } : {}),
+          },
+        }
+      : null;
+    prevFen = before;
+    prevMove = { from: played.from, to: played.to };
   }
 }

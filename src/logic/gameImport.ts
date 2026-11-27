@@ -47,6 +47,8 @@ export type GameRecord = {
   playedAt: number;
   speed: string;
   userColor: Color;
+  opponent?: string;
+  url?: string;
 };
 
 export type ChessComGame = {
@@ -185,12 +187,15 @@ export function recordsFromChessCom(username: string, games: readonly ChessComGa
     if (!game.pgn) continue;
     const userColor = colorFor(username, game.white?.username, game.black?.username);
     if (!userColor) continue;
+    const opponent = userColor === 'w' ? game.black?.username : game.white?.username;
     records.push({
       id: chessComGameId(game),
       pgn: game.pgn,
       playedAt: (game.end_time ?? 0) * 1000,
       speed,
       userColor,
+      ...(opponent ? { opponent } : {}),
+      ...(typeof game.url === 'string' && game.url.startsWith('https://') ? { url: game.url } : {}),
     });
   }
   return records;
@@ -202,14 +207,20 @@ export function recordsFromLichess(username: string, games: readonly LichessGame
     const speed = (game.speed ?? '').toLowerCase();
     if (!LICHESS_SPEEDS.has(speed)) continue;
     if (!game.pgn) continue;
-    const userColor = colorFor(username, lichessName(game.players?.white), lichessName(game.players?.black));
+    const whiteName = lichessName(game.players?.white);
+    const blackName = lichessName(game.players?.black);
+    const userColor = colorFor(username, whiteName, blackName);
     if (!userColor) continue;
+    const opponent = userColor === 'w' ? blackName : whiteName;
+    const url = typeof game.id === 'string' && game.id.trim() ? `https://lichess.org/${game.id.trim()}` : undefined;
     records.push({
       id: lichessGameId(game),
       pgn: game.pgn,
       playedAt: game.createdAt ?? 0,
       speed,
       userColor,
+      ...(opponent ? { opponent } : {}),
+      ...(url ? { url } : {}),
     });
   }
   return records;
@@ -504,7 +515,7 @@ async function absorb(records: readonly GameRecord[], budget: Budget): Promise<W
     for (let index = found.length - 1; index >= 0; index -= 1) {
       const drill = found[index];
       if (!drill) continue;
-      budget.fresh.push(withSource(drill, id));
+      budget.fresh.push(withSource(drill, id, game));
     }
     budget.seen.add(id);
     budget.cursor = rememberGame(budget.cursor, id, game.playedAt);
@@ -516,9 +527,22 @@ async function absorb(records: readonly GameRecord[], budget: Budget): Promise<W
   return 'done';
 }
 
-function withSource(drill: DrillPosition, gameId: string): DrillPosition {
-  const move = /^You played ([^.]+)\./.exec(drill.note)?.[1];
-  return { ...drill, source: move ? { gameId, move } : { gameId } };
+function withSource(drill: DrillPosition, gameId: string, game: GameRecord): DrillPosition {
+  const existing = drill.source;
+  const move = existing?.move ?? /^You played ([^.]+)\./.exec(drill.note)?.[1];
+  const opponent = game.opponent ?? existing?.opponent;
+  return {
+    ...drill,
+    source: {
+      ...existing,
+      gameId,
+      ...(move ? { move } : {}),
+      ...(opponent ? { opponent } : {}),
+      ...(game.speed ? { timeClass: game.speed } : {}),
+      ...(game.playedAt > 0 ? { playedAt: game.playedAt } : {}),
+      ...(game.url ? { url: game.url } : {}),
+    },
+  };
 }
 
 function recordId(game: GameRecord): string {

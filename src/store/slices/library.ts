@@ -3,6 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { DrillPosition } from '@/src/logic/drills';
 import type { GameProfile } from '@/src/logic/gameImport';
 import { PUZZLE_POOL_SIZE, keepOwnDrills, mergeOwnDrills } from '@/src/logic/puzzlePool';
+import { enrollImportedReviews } from '@/src/logic/reviewPile';
 import type { ProgressState } from '@/src/store/progressTypes';
 
 export type LibraryData = {
@@ -33,6 +34,7 @@ export const createLibrarySlice: StateCreator<ProgressState, [], [], LibrarySlic
         seen.add(id);
         pastedIds.push(id);
       }
-      return { ownDrills, pastedIds };
+      const review = drills.length > 0 ? enrollImportedReviews(state.review, drills) : state.review;
+      return { ownDrills, pastedIds, review, missedIds: review.map((entry) => entry.id) };
     }),
 });

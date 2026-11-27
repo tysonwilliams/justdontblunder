@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
@@ -15,10 +15,14 @@ import { play } from '@/src/components/ui/playStyles';
 import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT, themeInstruction, turnPrompt, type DrillTheme } from '@/src/logic/drills';
+import { REVIEW_INTERVALS } from '@/src/logic/reviewSchedule';
 import { drillStreakExtra } from '@/src/logic/streak';
-import { spacing } from '@/src/theme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { useTheme } from '@/src/theme/useTheme';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 type Session = ReturnType<typeof useDrillSession>;
 
@@ -31,7 +35,47 @@ type Props = {
 };
 
 export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) {
+  useTheme();
   const drill = session.drill;
+
+  useKeyboardShortcuts(
+    {
+      Enter: () => {
+        if (session.round === 'correct' || session.round === 'revealed') {
+          if (session.runOver) session.showRunSummary();
+          else session.next();
+        } else if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
+          if (session.shownIdea) session.showRunSummary();
+          else session.tryAgain();
+        }
+      },
+      ' ': () => {
+        if (session.round === 'correct' || session.round === 'revealed') {
+          if (session.runOver) session.showRunSummary();
+          else session.next();
+        } else if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
+          if (session.shownIdea) session.showRunSummary();
+          else session.tryAgain();
+        }
+      },
+      h: () => {
+        if (session.round === 'playing') session.revealIdea();
+      },
+      r: () => {
+        if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
+          if (session.shownIdea) session.showRunSummary();
+          else session.tryAgain();
+        }
+      },
+      p: () => {
+        if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady && session.hasReplay) {
+          session.replayReply();
+        }
+      },
+    },
+    Boolean(drill),
+  );
+
   if (!drill) return null;
   const toolbar = (
     <DrillToolbar
@@ -111,6 +155,20 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
   return (
     <BoardLead gap={spacing[10]}>
       {toolbar}
+      {session.sourceLabel || session.reviewing ? (
+        <View style={styles.metaStrip}>
+          {session.sourceLabel ? (
+            <View style={styles.sourcePill} testID="drill-source">
+              <Text style={styles.sourceText} numberOfLines={1}>
+                {session.sourceLabel}
+              </Text>
+            </View>
+          ) : null}
+          {session.reviewing ? (
+            <ReviewMasteryPips saves={session.reviewSaves} ahead={session.practicingAhead} />
+          ) : null}
+        </View>
+      ) : null}
       {task ? (
         <Text style={text.title} testID="drill-task">
           {task}
@@ -132,12 +190,36 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
   );
 }
 
+function ReviewMasteryPips({ saves, ahead }: { saves: number; ahead: boolean }) {
+  const total = REVIEW_INTERVALS.length;
+  const filled = Math.min(total, Math.max(0, saves));
+  return (
+    <View style={styles.masteryPill} testID="review-mastery">
+      <View style={styles.pipRow}>
+        {REVIEW_INTERVALS.map((gap, i) => (
+          <View key={gap} style={[styles.pip, i < filled && styles.pipOn]} />
+        ))}
+      </View>
+      <Text style={styles.masteryText}>
+        {ahead ? `Box ${filled}/${total} · ahead` : `Box ${filled}/${total}`}
+      </Text>
+    </View>
+  );
+}
+
 function DrillAside({ session, phone }: { session: Session; phone: boolean }) {
   const drill = session.drill;
   if (!drill) return null;
   if (session.round === 'playing') {
     if (session.streak) return <StreakAside phone={phone} onReveal={session.revealIdea} />;
-    return <GuidedAside phone={phone} theme={drill.theme} onReveal={session.revealIdea} />;
+    return (
+      <GuidedAside
+        phone={phone}
+        theme={drill.theme}
+        unprompted={session.unprompted}
+        onReveal={session.revealIdea}
+      />
+    );
   }
   return (
     <DrillFeedback
@@ -147,8 +229,10 @@ function DrillAside({ session, phone }: { session: Session; phone: boolean }) {
       runOver={session.runOver}
       shownIdea={session.shownIdea}
       replyReady={session.replyReady}
+      hasReplay={session.hasReplay}
       onNext={session.next}
       onAgain={session.tryAgain}
+      onReplay={session.replayReply}
       onDone={session.showRunSummary}
     />
   );
@@ -157,17 +241,19 @@ function DrillAside({ session, phone }: { session: Session; phone: boolean }) {
 function GuidedAside({
   phone,
   theme,
+  unprompted,
   onReveal,
 }: {
   phone: boolean;
   theme: DrillTheme;
+  unprompted: boolean;
   onReveal: () => void;
 }) {
   if (phone) {
     return (
       <View style={[play.phoneCard, styles.ideaCard]}>
         <Text style={[text.muted, text.mutedPhone]} numberOfLines={2}>
-          {themeInstruction(theme)}
+          {unprompted ? 'Find any safe move — no threat highlight.' : themeInstruction(theme)}
         </Text>
         <Button compact label="Show the idea" variant="secondary" onPress={onReveal} style={styles.trayButton} />
       </View>
@@ -175,8 +261,14 @@ function GuidedAside({
   }
   return (
     <View style={play.guide}>
-      <Text style={text.body}>{themeInstruction(theme)}</Text>
-      <Text style={text.muted}>The amber square is the piece under fire.</Text>
+      <Text style={text.body}>
+        {unprompted ? 'Scan the board yourself and play any safe move.' : themeInstruction(theme)}
+      </Text>
+      <Text style={text.muted}>
+        {unprompted
+          ? 'Club mode hides the amber danger highlight. Right-click to draw calculation arrows.'
+          : 'The amber square is the piece under fire. Right-click to draw calculation arrows.'}
+      </Text>
       <Button label="Show the idea" variant="secondary" onPress={onReveal} />
     </View>
   );
@@ -217,8 +309,10 @@ function DrillFeedback({
   runOver,
   shownIdea,
   replyReady,
+  hasReplay,
   onNext,
   onAgain,
+  onReplay,
   onDone,
 }: {
   round: Session['round'];
@@ -227,8 +321,10 @@ function DrillFeedback({
   runOver: boolean;
   shownIdea: boolean;
   replyReady: boolean;
+  hasReplay: boolean;
   onNext: () => void;
   onAgain: () => void;
+  onReplay: () => void;
   onDone: () => void;
 }) {
   return (
@@ -250,6 +346,9 @@ function DrillFeedback({
         actionLabel={replyReady ? 'Try again' : undefined}
         onDismiss={replyReady ? onAgain : undefined}
         actionTestID="try-again"
+        secondaryLabel={replyReady && hasReplay ? 'Replay' : undefined}
+        onSecondary={replyReady && hasReplay ? onReplay : undefined}
+        secondaryTestID="replay-reply"
       />
       <BlunderOverlay
         visible={round === 'revealed'}
@@ -275,12 +374,64 @@ function DrillFeedback({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet((colors) => ({
   progressRow: {
     height: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  metaStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing[6],
+  },
+  sourcePill: {
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[3],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    maxWidth: '100%',
+  },
+  sourceText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
+  },
+  masteryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[3],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  pipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  pip: {
+    width: 7,
+    height: 7,
+    borderRadius: radii.pill,
+    backgroundColor: colors.borderStrong,
+  },
+  pipOn: {
+    backgroundColor: colors.accent,
+  },
+  masteryText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
   },
   ideaCard: {
     paddingVertical: spacing[4],
@@ -289,4 +440,4 @@ const styles = StyleSheet.create({
   trayButton: {
     minHeight: 40,
   },
-});
+}));

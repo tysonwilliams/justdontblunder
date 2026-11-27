@@ -449,8 +449,12 @@ export const layout = {
   /** Side-by-side board + panel. Also requires enough viewport height. */
   split: 720,
   splitMinHeight: 640,
-  /** Top navigation instead of the bottom tab bar. */
+  /** Left navigation rail instead of the bottom tab bar. */
   nav: 900,
+  /** Width threshold where the left rail expands from icon-only to icons + labels. */
+  navRailExpandedMin: 1180,
+  navRail: 216,
+  navRailCompact: 72,
   stageMax: 1680,
   pageMax: 1040,
   asideMin: 300,

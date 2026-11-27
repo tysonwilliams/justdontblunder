@@ -19,6 +19,8 @@ import {
   type DrillMode,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
+import { dueTodayCount } from '@/src/logic/reviewSchedule';
+import { useProgressStore } from '@/src/store/progress';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
@@ -42,20 +44,79 @@ const MODE_LABEL: Record<DrillMode, string> = {
 const MODE_DETAIL: Record<DrillMode, string> = {
   play: 'Make any safe move on the board.',
   pick: 'Compare two arrows and choose the safe move.',
-  review: 'Replay positions you missed earlier.',
+  review: 'Replay positions due for spaced review.',
 };
 
 export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onStreak }: DrillToolbarProps) {
   const { colors } = useTheme();
   const { phone, topNav } = useLayout();
   const [open, setOpen] = useState(false);
+  const review = useProgressStore((state) => state.review);
+  const due = dueTodayCount(review);
 
   const filtered = mode !== 'play' || theme !== 'all';
   const summary = theme === 'all' ? MODE_LABEL[mode] : `${MODE_LABEL[mode]} · ${themeFilterLabel(theme)}`;
 
+  const modeOptions = DRILL_MODES.map((item) => ({
+    id: item.id,
+    label: item.id === 'review' && due > 0 ? `${MODE_LABEL[item.id]} (${due})` : MODE_LABEL[item.id],
+    spoken: item.id === 'review' && due > 0 ? `${item.label}, ${due} due` : item.label,
+    testID: `drill-mode-${item.id}`,
+  }));
+
+  if (!phone) {
+    return (
+      <View style={styles.deskWrap}>
+        <View style={styles.deskTopRow}>
+          <View style={styles.deskModeWrap}>
+            <SegmentedControl height={36} value={mode} onChange={onMode} options={modeOptions} />
+          </View>
+          <View style={styles.right}>
+            <ColorLegend compact={false} />
+            {!topNav ? <MenuButton /> : null}
+          </View>
+        </View>
+        <View style={styles.deskThemeRow}>
+          {THEME_FILTERS.map((item) => {
+            const selected = item.id === theme;
+            return (
+              <Pressable
+                key={item.id}
+                {...controlA11y('button', item.label, selected)}
+                testID={`drill-theme-${item.id}`}
+                onPress={() => onTheme(item.id)}
+                style={(state) => {
+                  const hovered = 'hovered' in state && Boolean(state.hovered);
+                  return [
+                    styles.deskThemePill,
+                    selected && styles.deskThemePillOn,
+                    (hovered || state.pressed) && !selected && styles.deskThemePillHover,
+                  ];
+                }}>
+                <Text
+                  style={[styles.deskThemeLabel, selected && styles.deskThemeLabelOn]}
+                  numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {mode === 'play' && onStreak ? (
+          <View style={styles.deskStreakRow}>
+            <SettingSwitch compact label="Streak" value={streak} onChange={onStreak} testID="streak-toggle" />
+            <Text style={styles.deskStreakNote} numberOfLines={1}>
+              {streak ? 'Sudden death · no hints' : 'Guided saves'}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <>
-      <View style={[styles.bar, phone && styles.barPhone]}>
+      <View style={[styles.bar, styles.barPhone]}>
         <Pressable
           {...controlA11y('button', `Drill options: ${summary}`, open)}
           testID="drill-options-trigger"
@@ -64,15 +125,15 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
             const hovered = 'hovered' in state && Boolean(state.hovered);
             return [
               styles.trigger,
-              phone && styles.triggerPhone,
+              styles.triggerPhone,
               filtered && styles.triggerActive,
               (hovered || state.pressed) && !filtered && styles.triggerHover,
               state.pressed && styles.pressed,
             ];
           }}>
-          <IconSliders color={filtered ? colors.accent : colors.textMuted} size={phone ? 14 : 16} />
+          <IconSliders color={filtered ? colors.accent : colors.textMuted} size={14} />
           <Text
-            style={[styles.triggerText, phone && styles.triggerTextPhone, filtered && styles.triggerTextActive]}
+            style={[styles.triggerText, styles.triggerTextPhone, filtered && styles.triggerTextActive]}
             numberOfLines={1}>
             {summary}
           </Text>
@@ -83,8 +144,8 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
           {mode === 'play' && onStreak ? (
             <SettingSwitch compact label="Streak" value={streak} onChange={onStreak} testID="streak-toggle" />
           ) : null}
-          <ColorLegend compact={phone} />
-          {!topNav ? <MenuButton compact={phone} /> : null}
+          <ColorLegend compact />
+          {!topNav ? <MenuButton compact /> : null}
         </View>
       </View>
 
@@ -96,17 +157,7 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
         testID="drill-options-sheet">
         <View style={styles.section}>
           <Text style={text.section}>Mode</Text>
-          <SegmentedControl
-            height={38}
-            value={mode}
-            onChange={onMode}
-            options={DRILL_MODES.map((item) => ({
-              id: item.id,
-              label: MODE_LABEL[item.id],
-              spoken: item.label,
-              testID: `drill-mode-${item.id}`,
-            }))}
-          />
+          <SegmentedControl height={38} value={mode} onChange={onMode} options={modeOptions} />
         </View>
 
         <View style={styles.section}>
@@ -154,6 +205,66 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
 }
 
 const styles = themedStyleSheet((colors) => ({
+  deskWrap: {
+    width: '100%',
+    gap: spacing[8],
+  },
+  deskTopRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  deskModeWrap: {
+    flex: 1,
+    maxWidth: 320,
+  },
+  deskThemeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[6],
+  },
+  deskThemePill: {
+    minHeight: 30,
+    paddingHorizontal: spacing[10],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  deskThemePillOn: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
+  },
+  deskThemePillHover: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+  },
+  deskThemeLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
+  },
+  deskThemeLabelOn: {
+    color: colors.accent,
+  },
+  deskStreakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[10],
+  },
+  deskStreakNote: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
   bar: {
     width: '100%',
     flexDirection: 'row',

@@ -12,15 +12,16 @@ export default function TabLayout() {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const wide = width >= WIDE;
+  const compactRail = wide && width < layout.navRailExpandedMin;
 
   return (
     <>
       <Tabs
-        tabBar={(props) => <AppTabBar {...props} wide={wide} />}
+        tabBar={(props) => <AppTabBar {...props} wide={wide} compactRail={compactRail} />}
         screenOptions={{
           headerShown: false,
           sceneStyle: { backgroundColor: colors.background },
-          tabBarPosition: wide ? 'top' : 'bottom',
+          tabBarPosition: wide ? 'left' : 'bottom',
         }}>
         <Tabs.Screen name="index" options={{ title: 'Home' }} />
         <Tabs.Screen name="learn" options={{ title: 'Learn' }} />

@@ -19,6 +19,7 @@ import {
   snapshotCursor,
   type ScanCursor,
 } from '@/src/logic/scanCursor';
+import { enrollImportedReviews, type ReviewEntry } from '@/src/logic/reviewPile';
 import { resetScanWorkerForTests } from '@/src/logic/scanWorkerClient';
 import { beginCoalescedPersist, endCoalescedPersist, resetProgressPersistForTests } from '@/src/store/progressStorage';
 import { useProgressStore, type ScanProgress } from '@/src/store/progress';
@@ -53,13 +54,20 @@ export type OwnScanHooks = {
 
 type ScanResult = 'done' | 'error' | 'paused' | 'scanning';
 
-function publish(scan: ScanProgress, drills?: readonly DrillPosition[], profile?: GameProfile): void {
+function publish(
+  scan: ScanProgress,
+  drills?: readonly DrillPosition[],
+  profile?: GameProfile,
+  enrollReview = false,
+): void {
   useProgressStore.setState((state) => {
     const next: {
       scan: ScanProgress;
       ownDrills?: DrillPosition[];
       pastedIds?: string[];
       gameProfile?: GameProfile;
+      review?: ReviewEntry[];
+      missedIds?: string[];
     } = { scan };
     if (drills) {
       const ownDrills = mergeScannedDrills(state.ownDrills, drills, state.pastedIds, PUZZLE_POOL_SIZE);
@@ -67,6 +75,11 @@ function publish(scan: ScanProgress, drills?: readonly DrillPosition[], profile?
       const live = new Set(ownDrills.map((drill) => drill.id));
       if (state.pastedIds.some((id) => !live.has(id))) {
         next.pastedIds = state.pastedIds.filter((id) => live.has(id));
+      }
+      if (enrollReview && drills.length > 0) {
+        const review = enrollImportedReviews(state.review, drills);
+        next.review = review;
+        next.missedIds = review.map((entry) => entry.id);
       }
     }
     if (profile) next.gameProfile = profile;
@@ -166,6 +179,7 @@ export async function runOwnScan(
         },
         scan.drills,
         { site, username },
+        true,
       );
       return 'done';
     } catch (error) {

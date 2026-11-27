@@ -15,6 +15,7 @@ import { fonts, fontSizes, layout, lineHeights, radii, spacing } from '@/src/the
 const CHOICES: readonly { id: Experience; label: string; href: Href }[] = [
   { id: 'new', label: "I'm brand new", href: '/learn' },
   { id: 'basics', label: 'I know the basics', href: '/drills' },
+  { id: 'intermediate', label: 'Club player (1000+ · no hints)', href: '/drills' },
 ];
 
 /** First-run choice. Sits over Home only, so other screens keep their board still. One tab shows this or the username card, not both. */

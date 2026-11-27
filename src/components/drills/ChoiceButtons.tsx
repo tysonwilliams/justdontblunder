@@ -24,11 +24,15 @@ export function ChoiceButtons({
           {...controlA11y('button', `Move ${option.key}, ${option.san}`, false)}
           testID={`choice-${option.key}`}
           onPress={() => onChoose(option.key)}
-          style={({ pressed }) => [
-            styles.choice,
-            compact && styles.choiceCompact,
-            pressed && styles.choiceOn,
-          ]}>
+          style={(state) => {
+            const hovered = 'hovered' in state && Boolean(state.hovered);
+            return [
+              styles.choice,
+              compact && styles.choiceCompact,
+              hovered && !state.pressed && styles.choiceHover,
+              state.pressed && styles.choiceOn,
+            ];
+          }}>
           <View style={[styles.choiceKey, compact && styles.choiceKeyCompact]}>
             <Text style={styles.choiceKeyText}>{option.key}</Text>
           </View>
@@ -64,6 +68,10 @@ const styles = themedStyleSheet((colors) => ({
     minHeight: 56,
     paddingHorizontal: spacing[10],
     gap: spacing.sm,
+  },
+  choiceHover: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.accent,
   },
   choiceOn: {
     backgroundColor: colors.surfaceRaised,

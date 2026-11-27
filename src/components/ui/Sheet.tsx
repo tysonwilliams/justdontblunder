@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconX } from '@/src/components/ui/icons';
 import { useScreenInsets } from '@/src/components/ui/screenInsets';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
@@ -24,6 +25,7 @@ export function Sheet({ visible, onClose, title, subtitle, variant = 'sheet', te
   const { colors } = useTheme();
   const { phone } = useLayout();
   const insets = useScreenInsets();
+  useKeyboardShortcuts({ Escape: onClose }, visible);
 
   if (!visible) return null;
 
