@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { PIECE_CREDIT } from '@/src/components/Board/pieceCredit';
+import { BrandMark } from '@/src/components/ui/BrandMark';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
 import { SegmentedControl } from '@/src/components/ui/Chip';
@@ -197,7 +198,13 @@ export function SettingsMenu() {
           </View>
         </View>
 
-        <Text style={styles.credit}>{PIECE_CREDIT}</Text>
+        <View style={styles.brandFooter}>
+          <View style={styles.brandRow}>
+            <BrandMark size={24} />
+            <Text style={styles.brandName}>Just Don't Blunder</Text>
+          </View>
+          <Text style={styles.credit}>{PIECE_CREDIT}</Text>
+        </View>
       </Sheet>
 
       <Dialog visible={confirmReset}>
@@ -311,12 +318,30 @@ const styles = themedStyleSheet((colors) => ({
   rowDanger: {
     color: colors.danger,
   },
+  brandFooter: {
+    gap: spacing[6],
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  brandName: {
+    fontFamily: fonts.display,
+    fontSize: fontSizes[14],
+    lineHeight: lineHeights[18],
+    letterSpacing: letterSpacing.tight,
+    color: colors.text,
+  },
   credit: {
     fontFamily: fonts.body,
     fontSize: fontSizes[12],
     lineHeight: lineHeights[16],
     color: colors.textDim,
-    paddingTop: spacing.xs,
   },
   dialogTitle: {
     fontFamily: fonts.display,

@@ -1,6 +1,7 @@
 import { Link, useRouter, type Href } from 'expo-router';
 import { Text, View } from 'react-native';
 
+import { BrandMark } from '@/src/components/ui/BrandMark';
 import { Button } from '@/src/components/ui/Button';
 import { text } from '@/src/components/ui/text';
 import { accountsConfigured } from '@/src/auth/session';
@@ -32,7 +33,10 @@ export function Welcome() {
   return (
     <View style={[styles.scrim, { backgroundColor: colors.overlay }]} testID="welcome">
       <View style={styles.card}>
-        <Text style={text.eyebrow}>Welcome</Text>
+        <View style={styles.brandRow}>
+          <BrandMark size={30} />
+          <Text style={text.eyebrow}>Just Don't Blunder</Text>
+        </View>
         <Text style={text.title}>How much chess have you played?</Text>
         <Text style={text.body}>We'll start you in the right place. You can change this anytime in Settings.</Text>
         {CHOICES.map((choice) => (
@@ -79,6 +83,11 @@ const styles = themedStyleSheet((colors) => ({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[10],
   },
   link: {
     alignSelf: 'center',

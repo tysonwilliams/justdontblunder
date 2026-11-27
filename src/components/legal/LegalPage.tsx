@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
+import { BrandMark } from '@/src/components/ui/BrandMark';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
 import { useTheme } from '@/src/theme/useTheme';
@@ -21,7 +22,10 @@ export function LegalPage({ eyebrow, title, children }: Props) {
     <Screen maxWidth={720}>
       <View style={styles.page}>
         <View style={styles.header}>
-          <Text style={text.eyebrow}>{eyebrow}</Text>
+          <View style={styles.brandRow}>
+            <BrandMark size={24} />
+            <Text style={text.eyebrow}>{eyebrow}</Text>
+          </View>
           <Text style={text.display}>{title}</Text>
         </View>
         {children}
@@ -39,5 +43,10 @@ const styles = themedStyleSheet(() => ({
   },
   header: {
     gap: spacing[6],
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
 }));

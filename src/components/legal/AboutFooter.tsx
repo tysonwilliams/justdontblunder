@@ -2,6 +2,7 @@ import { Link, type Href } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { PIECE_CREDIT } from '@/src/components/Board/pieceCredit';
+import { BrandMark } from '@/src/components/ui/BrandMark';
 import { text } from '@/src/components/ui/text';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
@@ -25,7 +26,10 @@ export function AboutFooter({ showProgressLink = false }: Props) {
   useTheme();
   return (
     <View style={styles.footer} testID="about-footer">
-      <Text style={text.section}>About</Text>
+      <View style={styles.brandRow}>
+        <BrandMark size={22} />
+        <Text style={text.section}>About</Text>
+      </View>
       <Text style={text.muted}>Just Don't Blunder. Play is open with no account.</Text>
       <View style={styles.links}>
         <TextLink href={PRIVACY_HREF} label="Privacy" testID="about-privacy" />
@@ -58,6 +62,11 @@ const styles = themedStyleSheet((colors) => ({
     width: '100%',
     gap: spacing[6],
     paddingTop: spacing.sm,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   links: {
     flexDirection: 'row',
