@@ -3,7 +3,7 @@ import { Text, TextInput, View } from 'react-native';
 import type { Color } from 'chess.js';
 
 import { Button } from '@/src/components/ui/Button';
-import { FilterChips } from '@/src/components/ui/Chip';
+import { SegmentedControl } from '@/src/components/ui/Chip';
 import { text } from '@/src/components/ui/text';
 import { cleanUsername, type GameSite } from '@/src/logic/gameImport';
 import { poolSummary } from '@/src/logic/puzzlePool';
@@ -13,6 +13,13 @@ import { useProgressStore } from '@/src/store/progress';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, radii, spacing } from '@/src/theme';
+
+type ImportTab = 'username' | 'pgn';
+
+const TABS: readonly { id: ImportTab; label: string; testID: string }[] = [
+  { id: 'username', label: 'Username', testID: 'import-tab-username' },
+  { id: 'pgn', label: 'Paste PGN', testID: 'import-tab-pgn' },
+];
 
 const SITES: readonly { id: GameSite; label: string; testID: string }[] = [
   { id: 'chesscom', label: 'Chess.com', testID: 'import-chesscom' },
@@ -29,6 +36,7 @@ export function GameImport() {
   const profile = useProgressStore((state) => state.gameProfile);
   const scan = useProgressStore((state) => state.scan);
   const mergeImportedDrills = useProgressStore((state) => state.mergeImportedDrills);
+  const [tab, setTab] = useState<ImportTab>('username');
   const [site, setSite] = useState<GameSite>(profile?.site ?? 'chesscom');
   const [username, setUsername] = useState(profile?.username ?? '');
   const [pgn, setPgn] = useState('');
@@ -87,47 +95,62 @@ export function GameImport() {
   };
 
   return (
-    <View style={styles.wrap}>
-      <Text style={text.section}>Your games</Text>
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <Text style={text.section}>Your games</Text>
+        <View style={styles.tabSwitch}>
+          <SegmentedControl height={30} options={TABS} value={tab} onChange={setTab} />
+        </View>
+      </View>
       <Text style={text.muted}>
-        A username, not a password. Public blitz, rapid, and classical games become your puzzles on this device.
+        {tab === 'username'
+          ? 'Public Chess.com or Lichess games become your puzzles. No password.'
+          : 'Paste a PGN to pull one-move blunders from a single game.'}
       </Text>
-      <FilterChips options={SITES} value={site} onChange={setSite} />
-      <TextInput
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-        autoCorrect={false}
-        spellCheck={false}
-        placeholder="Username"
-        placeholderTextColor={colors.textDim}
-        accessibilityLabel="Chess username"
-        testID="import-username"
-        style={[styles.field, { color: colors.text }]}
-      />
-      <Button
-        label={scanning ? 'Stop' : 'Find my blunders'}
-        onPress={() => {
-          void findGames();
-        }}
-        testID="import-find"
-      />
-      <Text style={text.muted}>Or paste one game.</Text>
-      <FilterChips options={COLORS} value={userColor} onChange={setUserColor} />
-      <TextInput
-        value={pgn}
-        onChangeText={setPgn}
-        autoCapitalize="none"
-        autoCorrect={false}
-        spellCheck={false}
-        multiline
-        placeholder="1. e4 e5 2. Qh5 …"
-        placeholderTextColor={colors.textDim}
-        accessibilityLabel="PGN"
-        testID="import-pgn"
-        style={[styles.field, styles.pgn, { color: colors.text }]}
-      />
-      <Button label="Use this game" variant="secondary" onPress={() => void usePgn()} testID="import-paste" />
+
+      {tab === 'username' ? (
+        <View style={styles.form}>
+          <SegmentedControl height={36} options={SITES} value={site} onChange={setSite} />
+          <TextInput
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            placeholder="Public username"
+            placeholderTextColor={colors.textDim}
+            accessibilityLabel="Chess username"
+            testID="import-username"
+            style={[styles.field, { color: colors.text }]}
+          />
+          <Button
+            label={scanning ? 'Stop' : 'Find my blunders'}
+            onPress={() => {
+              void findGames();
+            }}
+            testID="import-find"
+          />
+        </View>
+      ) : (
+        <View style={styles.form}>
+          <SegmentedControl height={36} options={COLORS} value={userColor} onChange={setUserColor} />
+          <TextInput
+            value={pgn}
+            onChangeText={setPgn}
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            multiline
+            placeholder="1. e4 e5 2. Qh5 …"
+            placeholderTextColor={colors.textDim}
+            accessibilityLabel="PGN"
+            testID="import-pgn"
+            style={[styles.field, styles.pgn, { color: colors.text }]}
+          />
+          <Button label="Use this game" variant="secondary" onPress={() => void usePgn()} testID="import-paste" />
+        </View>
+      )}
+
       {status || scan.message ? (
         <Text style={text.body} testID="import-status">
           {status || scan.message}
@@ -138,13 +161,31 @@ export function GameImport() {
 }
 
 const styles = themedStyleSheet((colors) => ({
-  wrap: {
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing[10],
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  tabSwitch: {
+    width: 196,
+    flexShrink: 0,
+  },
+  form: {
+    gap: spacing[10],
   },
   field: {
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: radii.md,
     paddingHorizontal: spacing[12],
     paddingVertical: spacing[10],

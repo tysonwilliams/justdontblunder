@@ -6,9 +6,7 @@ import { ChoiceButtons } from '@/src/components/drills/ChoiceButtons';
 import { useSafeChoiceSession } from '@/src/components/drills/useSafeChoiceSession';
 import { DrillToolbar } from '@/src/components/DrillToolbar';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
-import { ColorLegend } from '@/src/components/ui/ColorLegend';
 import { LineBox } from '@/src/components/ui/LineBox';
 import { PHONE_PROMPT_HEIGHT } from '@/src/components/ui/phoneSlots';
 import { PhoneTray } from '@/src/components/ui/PhoneTray';
@@ -19,7 +17,7 @@ import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import type { DrillMode, ThemeFilter } from '@/src/logic/drillLink';
-import { HABIT_PROMPT, themeLabel } from '@/src/logic/drills';
+import { HABIT_PROMPT } from '@/src/logic/drills';
 import { spacing } from '@/src/theme';
 
 type Props = {
@@ -58,7 +56,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
     <PlayFrame
       intro={
         phone ? (
-          <BoardLead gap={spacing[2]}>
+          <BoardLead gap={spacing[6]}>
             {toolbar}
             <LineBox height={PHONE_PROMPT_HEIGHT}>
               <Text style={play.phoneTitle} numberOfLines={2}>
@@ -73,19 +71,19 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
             </View>
           </BoardLead>
         ) : (
-          <BoardLead>
+          <BoardLead gap={spacing[10]}>
+            {toolbar}
             <Text style={text.title} testID="drill-task">
               Which move is safe?
             </Text>
             {session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
             {session.round === 'playing' ? <Text style={text.body}>{drill.prompt}</Text> : null}
-            {toolbar}
-            <View style={play.metaRow}>
-              <StatusPill>{themeLabel(drill.theme)}</StatusPill>
+            <View style={styles.progressRow}>
+              <View style={play.progressGrow}>
+                <ProgressTrack progress={session.progress} />
+              </View>
               <PuzzleCount index={session.index} total={session.session.positions.length} spaced />
             </View>
-            <ProgressTrack progress={session.progress} />
-            {session.round === 'playing' ? <ColorLegend /> : null}
           </BoardLead>
         )
       }

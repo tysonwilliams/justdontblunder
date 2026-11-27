@@ -13,9 +13,11 @@ type Props = {
   testID?: string;
   /** Content-sized row that fits the 32px phone drills toolbar. */
   compact?: boolean;
+  /** Borderless row for menus and sheets. */
+  plain?: boolean;
 };
 
-export function SettingSwitch({ label, value, onChange, testID, compact = false }: Props) {
+export function SettingSwitch({ label, value, onChange, testID, compact = false, plain = false }: Props) {
   useTheme();
   const { phone } = useLayout();
   const spoken = compact ? `${label} ${value ? 'on' : 'off'}` : label;
@@ -27,8 +29,9 @@ export function SettingSwitch({ label, value, onChange, testID, compact = false 
       onPress={() => onChange(!value)}
       style={[
         styles.row,
-        !compact && styles.rowGrow,
-        phone && styles.rowPhone,
+        plain && styles.rowPlain,
+        !compact && !plain && styles.rowGrow,
+        phone && !plain && styles.rowPhone,
         compact && styles.rowCompact,
         phone && compact && styles.rowCompactPhone,
         compact && value && styles.rowCompactOn,
@@ -65,6 +68,14 @@ const styles = themedStyleSheet((colors) => ({
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
     cursor: 'pointer',
+  },
+  rowPlain: {
+    width: '100%',
+    minHeight: 44,
+    paddingHorizontal: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: colors.transparent,
   },
   rowGrow: {
     flex: 1,

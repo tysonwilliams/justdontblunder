@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { sentence, usePracticeGame } from '@/src/components/practice/usePracticeGame';
 import { DueTodayLink } from '@/src/components/review/DueTodayLink';
+import { MenuButton } from '@/src/components/SettingsMenu';
 import { PlaySkeleton } from '@/src/components/ui/Skeleton';
 import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { liveA11y } from '@/src/components/ui/a11y';
@@ -20,6 +21,7 @@ import { useLayout } from '@/src/components/ui/useLayout';
 import { HABIT_PROMPT } from '@/src/logic/drills';
 import { drillFromBlunder, drillFromHang } from '@/src/logic/personalDrill';
 import { useProgressStore } from '@/src/store/progress';
+import { spacing } from '@/src/theme';
 
 export function PracticeScreen() {
   const { phone } = useLayout();
@@ -46,16 +48,27 @@ export function PracticeScreen() {
   const showFeedback = game.feedback != null && (game.tone === 'danger' || !game.gameOver);
   const preMoveHang = !game.feedback && !game.status ? game.hangingNow[0] : undefined;
   const danger = game.tone === 'danger';
-  const drillLabel = saved ? 'Saved' : 'Drill this';
+  const drillAction = offerKey
+    ? {
+        label: saved ? 'Saved' : 'Drill this',
+        active: saved,
+        onPress: saveOffer,
+        testID: 'drill-this',
+      }
+    : undefined;
 
   return (
     <PlayFrame
       intro={
-        <BoardLead>
-          <LineBox height={phone ? 16 : 16}>
+        <BoardLead gap={phone ? spacing[6] : spacing[10]}>
+          <View style={[styles.topRow, phone && styles.topRowPhone]}>
             <DueTodayLink variant="line" />
-          </LineBox>
-          <LineBox height={phone ? 22 : 32}>
+            <View style={styles.topRight}>
+              <ColorLegend compact={phone} />
+              {phone ? <MenuButton compact /> : null}
+            </View>
+          </View>
+          <LineBox height={phone ? 24 : 32}>
             <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>
               Your game
             </Text>
@@ -64,14 +77,6 @@ export function PracticeScreen() {
             <Text style={[text.habit, phone && text.habitPhone]} numberOfLines={1}>
               {HABIT_PROMPT}
             </Text>
-          </LineBox>
-          {phone ? null : (
-            <Text style={text.body}>
-              You play White. Black answers. If you leave a piece hanging, they take it.
-            </Text>
-          )}
-          <LineBox height={phone ? 24 : 28}>
-            <ColorLegend />
           </LineBox>
         </BoardLead>
       }
@@ -100,21 +105,19 @@ export function PracticeScreen() {
                   game.gameOver && game.resultLine ? `${game.panelMessage} ${game.resultLine}` : game.panelMessage
                 }
                 hint={game.feedback.bestMoveHint}
+                headerAction={drillAction}
                 actionLabel={danger ? 'Try again' : 'Continue'}
                 onDismiss={danger ? game.tryAgain : game.dismissFeedback}
                 actionTestID={danger ? 'try-again' : undefined}
-                secondaryLabel={offerKey ? drillLabel : undefined}
-                onSecondary={offerKey ? saveOffer : undefined}
-                secondaryTestID={offerKey ? 'drill-this' : undefined}
-                extraLabel={danger ? 'Continue' : undefined}
-                onExtra={danger ? game.dismissFeedback : undefined}
+                secondaryLabel={danger ? 'Continue' : undefined}
+                onSecondary={danger ? game.dismissFeedback : undefined}
               />
             ) : game.gameOver ? (
               <View {...liveA11y()} style={[play.guide, phone && play.phoneCard]}>
                 <Text style={[text.bodyStrong, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
                   {game.resultLine}
                 </Text>
-                <Button label="Play" onPress={game.resetBoard} />
+                <Button compact={phone} label="Play again" onPress={game.resetBoard} />
               </View>
             ) : game.status ? (
               <View {...liveA11y()} style={[play.guide, phone && play.phoneCard]}>
@@ -130,9 +133,7 @@ export function PracticeScreen() {
                 message={sentence(
                   `Before you move: your ${game.hangingNow[0].message.replace('You left the ', '').replace(' hanging', '')} on ${game.hangingNow[0].squares[0]} is hanging`,
                 )}
-                actionLabel={offerKey ? drillLabel : undefined}
-                onDismiss={offerKey ? saveOffer : undefined}
-                actionTestID={offerKey ? 'drill-this' : undefined}
+                headerAction={drillAction}
               />
             ) : (
               <View style={[play.guide, phone && play.phoneCard]}>
@@ -147,3 +148,25 @@ export function PracticeScreen() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  topRow: {
+    width: '100%',
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  topRowPhone: {
+    height: 30,
+    minHeight: 30,
+    overflow: 'hidden',
+  },
+  topRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    flexShrink: 0,
+  },
+});

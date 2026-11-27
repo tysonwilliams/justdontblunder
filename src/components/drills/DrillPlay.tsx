@@ -6,9 +6,7 @@ import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import type { useDrillSession } from '@/src/components/drills/useDrillSession';
 import { DrillToolbar } from '@/src/components/DrillToolbar';
 import { BoardLead } from '@/src/components/ui/BoardLead';
-import { StatusPill } from '@/src/components/ui/Chip';
 import { Button } from '@/src/components/ui/Button';
-import { ColorLegend } from '@/src/components/ui/ColorLegend';
 import { LineBox } from '@/src/components/ui/LineBox';
 import { PHONE_PROMPT_HEIGHT } from '@/src/components/ui/phoneSlots';
 import { PhoneTray } from '@/src/components/ui/PhoneTray';
@@ -18,7 +16,7 @@ import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
-import { HABIT_PROMPT, themeInstruction, themeLabel, turnPrompt, type DrillTheme } from '@/src/logic/drills';
+import { HABIT_PROMPT, themeInstruction, turnPrompt, type DrillTheme } from '@/src/logic/drills';
 import { drillStreakExtra } from '@/src/logic/streak';
 import { spacing } from '@/src/theme';
 
@@ -83,7 +81,7 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
   if (!drill) return null;
   const title = session.guided ? drill.prompt : turnPrompt(drill.sideToMove);
   return (
-    <BoardLead gap={spacing[2]}>
+    <BoardLead gap={spacing[6]}>
       {toolbar}
       <LineBox height={PHONE_PROMPT_HEIGHT}>
         <Text style={play.phoneTitle} numberOfLines={2}>
@@ -111,18 +109,18 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
   if (!drill) return null;
   const task = session.guided ? drill.prompt : session.round === 'playing' ? turnPrompt(drill.sideToMove) : null;
   return (
-    <BoardLead>
+    <BoardLead gap={spacing[10]}>
+      {toolbar}
       {task ? (
         <Text style={text.title} testID="drill-task">
           {task}
         </Text>
       ) : null}
       {session.guided && session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
-      {toolbar}
-      <View style={play.metaRow}>
-        <StatusPill>
-          {session.reviewing ? 'Review' : session.streak ? 'Streak' : themeLabel(drill.theme)}
-        </StatusPill>
+      <View style={styles.progressRow}>
+        <View style={play.progressGrow}>
+          <ProgressTrack progress={session.progress} />
+        </View>
         <PuzzleCount
           index={session.index}
           total={session.session.positions.length}
@@ -130,8 +128,6 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
           extra={drillStreakExtra(session.streak, session.score.correct, session.bestPuzzleStreak, false)}
         />
       </View>
-      <ProgressTrack progress={session.progress} />
-      {session.guided && session.round === 'playing' ? <ColorLegend /> : null}
     </BoardLead>
   );
 }

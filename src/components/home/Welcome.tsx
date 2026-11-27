@@ -34,7 +34,7 @@ export function Welcome() {
       <View style={styles.card}>
         <Text style={text.eyebrow}>Welcome</Text>
         <Text style={text.title}>How much chess have you played?</Text>
-        <Text style={text.body}>We'll start you in the right place. You can change this later in Progress.</Text>
+        <Text style={text.body}>We'll start you in the right place. You can change this anytime in Settings.</Text>
         {CHOICES.map((choice) => (
           <Button
             key={choice.id}

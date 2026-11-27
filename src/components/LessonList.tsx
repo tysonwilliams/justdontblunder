@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
+import { MenuButton } from '@/src/components/SettingsMenu';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconCheck } from '@/src/components/ui/icons';
 import { Bone } from '@/src/components/ui/Skeleton';
@@ -23,7 +24,7 @@ export function LessonList({ onOpen }: Props) {
   const { colors } = useTheme();
   const completed = useProgressStore((s) => s.completedLessons);
   const ready = useHydrated(useProgressStore.persist) && !forceSkeleton();
-  const { split } = useLayout();
+  const { split, phone } = useLayout();
   const done = new Set(completed);
 
   return (
@@ -31,7 +32,10 @@ export function LessonList({ onOpen }: Props) {
       <View style={styles.stack}>
         <View style={[styles.page, split && styles.pageSplit]}>
           <View style={[styles.intro, split && styles.introSide]}>
-            <Text style={text.eyebrow}>Course</Text>
+            <View style={styles.introTop}>
+              <Text style={text.eyebrow}>Course</Text>
+              {phone ? <MenuButton compact /> : null}
+            </View>
             <Text style={split ? text.display : text.title}>Learn</Text>
             <Text style={text.muted}>
               Six short lessons on blunders. About two minutes each. Any lesson is open.
@@ -106,6 +110,12 @@ const styles = themedStyleSheet((colors) => ({
   },
   intro: {
     gap: spacing[6],
+  },
+  introTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   introSide: {
     width: 280,
