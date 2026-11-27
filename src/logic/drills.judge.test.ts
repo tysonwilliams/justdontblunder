@@ -59,7 +59,7 @@ describe('the drill judge', () => {
         expect(isCorrectDrillMove(item, from, to), `${item.id} ${trap.move}`).toBe(true);
         const copy = roundSpeech('correct', item, { from, to });
         expect(copy, item.id).toMatch(/Safe/);
-        expect(copy, item.id).toMatch(/^Your .+ Watch /);
+        expect(copy, item.id).toMatch(/Watch /);
         expect(copy, item.id).not.toMatch(/Careful|miss|blunder|lose/i);
         expect(copy.length, copy).toBeLessThanOrEqual(92);
         expect(highlightsForRound('correct', { from, to }, item.atRiskSquare).tone).toBe('success');
@@ -111,7 +111,7 @@ describe('the drill judge', () => {
   it('scores the queen step to c6 as a save and still rejects a one-move loss', () => {
     expect(ok('hang-q-02', 'd5c6')).toBe(true);
     expect(roundSpeech('correct', drill('hang-q-02'), { from: 'd5', to: 'c6' })).toBe(
-      'Your queen steps off d5. Safe. Watch Bb5.',
+      'Qc6 gets your queen off d5. Safe. Watch Bb5.',
     );
     expect(ok('fork-06', 'c3e4')).toBe(true);
     expect(roundSpeech('correct', drill('fork-06'), { from: 'c3', to: 'e4' })).toMatch(/Watch d5/);

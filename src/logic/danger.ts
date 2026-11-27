@@ -167,7 +167,12 @@ type DangerDrill = {
  * Every theme, including pins, uses this rule rather than a hand-written move list.
  * `theme` stays on the drill so a new theme fails the build until it is judged here.
  */
-export function moveRemovesDanger(drill: DangerDrill, from: Square, to: Square): boolean {
+export function moveRemovesDanger(
+  drill: DangerDrill,
+  from: Square,
+  to: Square,
+  promotion: 'q' | 'r' | 'b' | 'n' = 'q',
+): boolean {
   switch (drill.theme) {
     case 'hanging':
     case 'fork':
@@ -180,7 +185,7 @@ export function moveRemovesDanger(drill: DangerDrill, from: Square, to: Square):
       return _exhaustive;
     }
   }
-  const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
+  const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove, promotion);
   if (outcome === null) return false;
   return outcome >= 0;
 }

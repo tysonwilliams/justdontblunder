@@ -1,13 +1,12 @@
 import { memo } from 'react';
 import { Text, View } from 'react-native';
-import Svg, { Polygon } from 'react-native-svg';
+import Svg, { G, Polygon } from 'react-native-svg';
 
 import { centerOf, labelAnchor } from '@/src/components/Board/boardCoords';
 import type { BoardArrow } from '@/src/components/Board/boardTypes';
-import { markColor } from '@/src/theme';
+import { fonts, markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts } from '@/src/theme';
 
 type Props = {
   arrows: readonly BoardArrow[];
@@ -20,6 +19,14 @@ export const BoardArrows = memo(function BoardArrows({ arrows, orientation, squa
   if (!arrows.length || squareSize <= 0) return null;
   const inner = squareSize * 8;
   const fallback = markColor('danger', scheme, colors);
+
+  // Track destination collisions so two labeled arrows ending on the same square never cover each other.
+  const destTotals = new Map<string, number>();
+  for (const arrow of arrows) {
+    if (!arrow.label) continue;
+    destTotals.set(arrow.to, (destTotals.get(arrow.to) ?? 0) + 1);
+  }
+  const destSeen = new Map<string, number>();
 
   return (
     <>
@@ -37,7 +44,19 @@ export const BoardArrows = memo(function BoardArrows({ arrows, orientation, squa
       {arrows.map((arrow) => {
         if (!arrow.label) return null;
         const badge = Math.max(22, Math.min(32, squareSize * 0.34));
-        const at = labelAnchor(arrow.to, orientation, squareSize);
+        const totalOnDest = destTotals.get(arrow.to) ?? 1;
+        const slot = destSeen.get(arrow.to) ?? 0;
+        destSeen.set(arrow.to, slot + 1);
+        const at =
+          totalOnDest > 1
+            ? midpointAnchor(
+                centerOf(arrow.from, orientation, squareSize),
+                centerOf(arrow.to, orientation, squareSize),
+                slot,
+                badge,
+                inner,
+              )
+            : labelAnchor(arrow.to, orientation, squareSize);
         return (
           <View
             key={`label-${arrow.from}${arrow.to}${arrow.label}`}
@@ -63,6 +82,23 @@ export const BoardArrows = memo(function BoardArrows({ arrows, orientation, squa
   );
 });
 
+function midpointAnchor(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  slot: number,
+  badge: number,
+  boardPx: number,
+): { x: number; y: number } {
+  const t = 0.46;
+  const rawX = from.x + (to.x - from.x) * t + (slot === 0 ? -badge * 0.15 : badge * 0.15);
+  const rawY = from.y + (to.y - from.y) * t;
+  const pad = badge * 0.6;
+  return {
+    x: Math.max(pad, Math.min(boardPx - pad, rawX)),
+    y: Math.max(pad, Math.min(boardPx - pad, rawY)),
+  };
+}
+
 function ArrowShape({
   from,
   to,
@@ -79,26 +115,26 @@ function ArrowShape({
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len;
   const uy = dy / len;
-  const startX = from.x + ux * square * 0.32;
-  const startY = from.y + uy * square * 0.32;
-  const tipX = to.x - ux * square * 0.18;
-  const tipY = to.y - uy * square * 0.18;
-  const head = square * 0.28;
+  const startX = from.x + ux * square * 0.3;
+  const startY = from.y + uy * square * 0.3;
+  const tipX = to.x - ux * square * 0.16;
+  const tipY = to.y - uy * square * 0.16;
+  const head = square * 0.3;
   const baseX = tipX - ux * head;
   const baseY = tipY - uy * head;
   const px = -uy;
   const py = ux;
-  const wing = head * 0.55;
+  const halfShaft = Math.max(3, Math.min(11, square * 0.085));
+  const wing = head * 0.58;
   const points = `${tipX},${tipY} ${baseX + px * wing},${baseY + py * wing} ${baseX - px * wing},${baseY - py * wing}`;
   return (
-    <>
+    <G opacity={0.82}>
       <Polygon
-        points={`${startX + px * 3},${startY + py * 3} ${baseX + px * 3},${baseY + py * 3} ${baseX - px * 3},${baseY - py * 3} ${startX - px * 3},${startY - py * 3}`}
+        points={`${startX + px * halfShaft},${startY + py * halfShaft} ${baseX + px * halfShaft},${baseY + py * halfShaft} ${baseX - px * halfShaft},${baseY - py * halfShaft} ${startX - px * halfShaft},${startY - py * halfShaft}`}
         fill={color}
-        opacity={0.62}
       />
       <Polygon points={points} fill={color} />
-    </>
+    </G>
   );
 }
 

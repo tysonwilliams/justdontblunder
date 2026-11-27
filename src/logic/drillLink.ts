@@ -7,7 +7,7 @@ import {
   type DrillTheme,
 } from '@/src/logic/drills';
 import { localDateKey } from '@/src/logic/localDate';
-import { orderForReview } from '@/src/logic/reviewSchedule';
+import { filterDueEntries, orderForReview } from '@/src/logic/reviewSchedule';
 
 export type DrillMode = 'play' | 'pick' | 'review';
 
@@ -136,16 +136,29 @@ export function reviewForTheme(
   return createReviewSession(ids, theme === 'all' ? undefined : theme, personal);
 }
 
-/** Review loads bank ids from the starter set and personal misses from the stored position. Due cards come first. */
+/** Review loads due bank ids from the starter set and personal misses from the stored position. */
 export function reviewForEntries(
   entries: readonly { id: string; dueOn?: string; intervalDays?: number; drill?: DrillPosition }[],
   theme: ThemeFilter,
   today = localDateKey(),
+  options: { includeAhead?: boolean } = {},
 ): DrillSession {
-  const ordered = orderForReview(entries, today);
+  const source = options.includeAhead ? entries : filterDueEntries(entries, today);
+  const ordered = orderForReview(source, today);
   return reviewForTheme(
     ordered.map((entry) => entry.id),
     theme,
     ordered.flatMap((entry) => (entry.drill ? [entry.drill] : [])),
   );
+}
+
+/** Count of scheduled review cards matching `theme` that are not due today yet. */
+export function upcomingReviewCount(
+  entries: readonly { id: string; dueOn?: string; intervalDays?: number; drill?: DrillPosition }[],
+  theme: ThemeFilter,
+  today = localDateKey(),
+): number {
+  const all = reviewForEntries(entries, theme, today, { includeAhead: true }).positions.length;
+  const due = reviewForEntries(entries, theme, today, { includeAhead: false }).positions.length;
+  return Math.max(0, all - due);
 }

@@ -9,7 +9,7 @@ import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { sessionForTheme, type ThemeFilter } from '@/src/logic/drillLink';
 import { isCorrectDrillMove, type DrillPosition, type DrillSession as DrillSessionData } from '@/src/logic/drills';
-import { buildPuzzlePool } from '@/src/logic/puzzlePool';
+import { buildPoolForTheme } from '@/src/logic/puzzlePool';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
 import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/src/logic/safeChoice';
@@ -46,7 +46,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
   const { state, dispatch } = useTrainerRound();
   const hydrated = useHydrated(useProgressStore.persist);
   const [session, setSession] = useState<DrillSessionData>(() =>
-    sessionForTheme(theme, buildPuzzlePool(useProgressStore.getState().ownDrills)),
+    sessionForTheme(theme, buildPoolForTheme(useProgressStore.getState().ownDrills, theme)),
   );
   const started = useRef(false);
   const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
@@ -84,7 +84,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
       const personal = theme === 'all' ? own : own.filter((item) => item.theme === theme);
       return {
         personal,
-        rebuilt: sessionForTheme(theme, buildPuzzlePool(own)).positions,
+        rebuilt: sessionForTheme(theme, buildPoolForTheme(own, theme)).positions,
       };
     },
     (positions) => {
@@ -193,7 +193,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     next,
     tryAgain,
     begin,
-    restart: () => begin(sessionForTheme(theme, buildPuzzlePool(useProgressStore.getState().ownDrills))),
+    restart: () => begin(sessionForTheme(theme, buildPoolForTheme(useProgressStore.getState().ownDrills, theme))),
   };
 }
 

@@ -1,3 +1,4 @@
+import { PHONE_FOOT_MIN, PHONE_LEAD } from '@/src/components/ui/phoneSlots';
 import { layout, spacing } from '@/src/theme';
 
 /** Turn line above the squares. Matches the board meta row at each size. */
@@ -59,10 +60,10 @@ export function stageMetrics(
 
   if (!split) {
     const contentW = Math.min(rawW, layout.stageMax);
-    // A narrow window keeps the square near the glass. Copy uses padX.
-    // A short landscape window is shorter than it is wide, so the square
-    // yields to the height instead.
-    const heightCap = Math.max(220, contentHeight - turnRow - 96);
+    // Keep the square full width on standard phones, while yielding on very short
+    // viewports (such as Mobile Safari on compact phones) so the header and tray never clip.
+    const reserve = narrow ? PHONE_LEAD + PHONE_FOOT_MIN : 96;
+    const heightCap = Math.max(220, contentHeight - turnRow - reserve);
     const boardWidth = Math.round(Math.min(contentW, heightCap));
     const chromeBudget = contentHeight - boardWidth - turnRow;
     return {

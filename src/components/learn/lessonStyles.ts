@@ -8,8 +8,14 @@ export const lessonStyles = StyleSheet.create({
     gap: spacing.xs,
   },
   metaPhone: {
-    height: 20,
-    overflow: 'hidden',
+    height: 30,
+    alignItems: 'center',
+  },
+  metaActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    flexShrink: 0,
   },
   eyebrowPhone: {
     flex: 1,
@@ -21,10 +27,11 @@ export const lessonStyles = StyleSheet.create({
     flex: 1,
   },
   back: {
-    minHeight: 32,
+    minHeight: 30,
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
     borderRadius: radii.pill,
+    cursor: 'pointer',
   },
   backPressed: {
     opacity: 0.7,
@@ -34,5 +41,16 @@ export const lessonStyles = StyleSheet.create({
     paddingVertical: spacing[6],
     gap: spacing.xs,
     overflow: 'hidden',
+  },
+  doneActions: {
+    gap: spacing.sm,
+  },
+  doneActionsPhone: {
+    flexDirection: 'row',
+    gap: spacing[6],
+  },
+  doneActionPhone: {
+    flex: 1,
+    flexBasis: 0,
   },
 });

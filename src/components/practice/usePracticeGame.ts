@@ -107,12 +107,13 @@ export function usePracticeGame() {
   const onMove = useCallback(
     (event: BoardMoveEvent) => {
       if (gate.current.thinking || gate.current.gameOver) return false;
-      const result = judgePracticeMove(event.beforeFen, event.from, event.to, 'w');
+      const result = judgePracticeMove(event.beforeFen, event.from, event.to, 'w', event.promotion);
       const hadHanging = findHangingPieces(event.beforeFen, 'w').length > 0;
       const retried = retryUncounted.current;
       retryUncounted.current = false;
       if (countRetriedMove(retried)) {
         markPracticeMove(result.ok && hadHanging, !result.ok);
+        awardXp(result.ok);
       }
       if (result.ok) checkpoint.current = null;
       else checkpoint.current = { fen: event.beforeFen, lastMove: lastMoveRef.current };
@@ -122,7 +123,6 @@ export function usePracticeGame() {
         from: event.from,
         to: event.to,
       });
-      awardXp(result.ok);
       setFen(event.afterFen);
       setLastMove({ from: event.from, to: event.to });
       setReplySan(null);

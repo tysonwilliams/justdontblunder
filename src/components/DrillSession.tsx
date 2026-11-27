@@ -68,10 +68,12 @@ export function DrillSession({ mode, theme, streak, onMode, onTheme, onStreak }:
         reviewing={session.reviewing}
         streak={streak}
         emptyReview={session.reviewing && session.session.positions.length === 0}
+        upcomingCount={session.upcomingCount}
         correct={session.score.correct}
         total={session.score.total}
         best={shownBest(session.score.correct, session.bestPuzzleStreak)}
         onRestart={session.restart}
+        onPracticeAhead={session.practiceAhead}
       />
     );
   }

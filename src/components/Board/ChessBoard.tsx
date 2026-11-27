@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, Platform, Text, View, type ViewStyle } from 'react-native';
-import type { Square } from 'chess.js';
+import { LayoutChangeEvent, Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
+import type { Color, Square } from 'chess.js';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -16,7 +16,7 @@ import { playFeedback, playMoveOutcome, unlockFeedback } from '@/src/feedback/pl
 import { BoardArrows } from '@/src/components/Board/BoardArrows';
 import { BoardCoordinates } from '@/src/components/Board/BoardCoordinates';
 import { BoardSquare } from '@/src/components/Board/BoardSquare';
-import { centerOf } from '@/src/components/Board/boardCoords';
+import { centerOf, squareOrigin } from '@/src/components/Board/boardCoords';
 import { boardStatusLine } from '@/src/components/Board/coordinates';
 import { MoveBadge, type MoveBadgeKind } from '@/src/components/Board/MoveBadge';
 import { chessBoardPropsEqual } from '@/src/components/Board/boardProps';
@@ -36,21 +36,30 @@ import { Piece } from '@/src/components/Board/Piece';
 import { BOARD_BORDER, squareSizeForFrame } from '@/src/components/Board/boardGeometry';
 import { pieceCodeFrom } from '@/src/components/Board/pieceCode';
 import { useReducedMotion } from '@/src/components/Board/useReducedMotion';
+import { controlA11y } from '@/src/components/ui/a11y';
 import { useLayout } from '@/src/components/ui/useLayout';
 import {
   createGame,
   getLegalTargets,
+  isPromotionMove,
   pieceAt,
   snapshot,
   tryMove,
+  type PromotionPiece,
 } from '@/src/logic/game';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, lineHeights, radii } from '@/src/theme';
+import { fonts, fontSizes, lineHeights, radii, shadows } from '@/src/theme';
 
 export type { BoardArrow, BoardMoveEvent };
 
 const EMPTY_ARROWS: BoardArrow[] = [];
+const PROMOTION_CHOICES: readonly { piece: PromotionPiece; label: string }[] = [
+  { piece: 'q', label: 'Promote to queen' },
+  { piece: 'r', label: 'Promote to rook' },
+  { piece: 'b', label: 'Promote to bishop' },
+  { piece: 'n', label: 'Promote to knight' },
+];
 const DRAG_ARM_PX = 8;
 const SNAP_SPRING = { damping: 14, stiffness: 280, mass: 0.55 };
 
@@ -60,7 +69,8 @@ const webBoardTouch: ViewStyle | null =
 type Phase = 'idle' | 'dragging' | 'settling';
 type Placement = { fen: string; from: Square };
 
-type JudgedBadge = { square: Square; kind: MoveBadgeKind };
+type JudgedBadge = { from: Square; square: Square; kind: MoveBadgeKind };
+type PendingPromotion = { from: Square; to: Square; color: Color; source: 'tap' | 'drag' };
 
 function planFlights(before: string, after: string, squareSize: number, reduced: boolean): PieceFlightModel[] {
   if (reduced || squareSize <= 0) return [];
@@ -110,6 +120,7 @@ function ChessBoardView({
   const [flights, setFlights] = useState<PieceFlightModel[]>([]);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [rejectedFrom, setRejectedFrom] = useState<Square | null>(null);
+  const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
 
   const activeFen = fen ?? gameFen;
   const [trackedFen, setTrackedFen] = useState(activeFen);
@@ -132,6 +143,8 @@ function ChessBoardView({
   const dragFrom = useRef<Square | null>(null);
   /** Piece under the pointer when this press began. The pan arms a few pixels later. */
   const pressedPiece = useRef<Square | null>(null);
+  /** Square newly selected on touch-down so the matching press-up does not deselect it. */
+  const freshSelection = useRef<Square | null>(null);
   /** Legal targets for the marked piece. Drag frames read this instead of chess.js. */
   const marks = useRef<ShownMarks | null>(null);
   const suppressPress = useRef(false);
@@ -170,8 +183,10 @@ function ChessBoardView({
     setTrackedFen(activeFen);
     setPlacement(null);
     setRejectedFrom(null);
+    setPendingPromotion(null);
     marks.current = null;
     pressedPiece.current = null;
+    freshSelection.current = null;
     setSelected(null);
     setLegal([]);
     setHoverSquare(null);
@@ -217,6 +232,7 @@ function ChessBoardView({
 
   const clearSelection = useCallback(() => {
     marks.current = null;
+    freshSelection.current = null;
     setSelected(null);
     setLegal([]);
   }, []);
@@ -364,23 +380,45 @@ function ChessBoardView({
   );
 
   const commitMove = useCallback(
-    (from: Square, to: Square, source: 'tap' | 'drag') => {
+    (from: Square, to: Square, source: 'tap' | 'drag', promotion?: PromotionPiece) => {
       const now = latest.current;
       if (!now.interactive) return;
       const beforeFen = now.game.fen();
       const probe = createGame(beforeFen);
-      const moved = tryMove(probe, from, to);
+      if (!promotion && isPromotionMove(probe, from, to)) {
+        const piece = pieceAt(probe, from);
+        if (piece) {
+          if (source === 'drag') {
+            setDragSquare(null);
+            tracking.value = 0;
+            hoverSV.value = null;
+            setHoverSquare(null);
+          }
+          setPendingPromotion({ from, to, color: piece.color, source });
+          return;
+        }
+      }
+      const chosenPromotion: PromotionPiece = promotion ?? 'q';
+      const moved = tryMove(probe, from, to, chosenPromotion);
       if (!moved) {
         if (source === 'drag') beginSnap(from, true);
         else shakePiece(from);
         if (source === 'drag') playFeedback('blunder');
         return;
       }
+      setPendingPromotion(null);
       const afterFen = probe.fen();
       if (source === 'drag') setPlacement({ fen: afterFen, from });
-      const allowed = now.onMove?.({ from, to, beforeFen, afterFen, san: moved.san });
-      if (allowed === false) setBadge({ square: to, kind: 'blunder' });
-      else if (allowed === true) setBadge({ square: to, kind: 'safe' });
+      const allowed = now.onMove?.({
+        from,
+        to,
+        beforeFen,
+        afterFen,
+        san: moved.san,
+        promotion: moved.promotion ? chosenPromotion : undefined,
+      });
+      if (allowed === false) setBadge({ from, square: to, kind: 'blunder' });
+      else if (allowed === true) setBadge({ from, square: to, kind: 'safe' });
       else setBadge(null);
       if (allowed === false) {
         clearSelection();
@@ -392,7 +430,7 @@ function ChessBoardView({
       now.onPositionChange?.(snapshot(probe));
       clearSelection();
     },
-    [beginSnap, clearSelection, shakePiece],
+    [beginSnap, clearSelection, hoverSV, shakePiece, tracking],
   );
 
   const onSquarePress = useCallback(
@@ -402,6 +440,15 @@ function ChessBoardView({
       if (!now.interactive) return;
       const piece = pieceAt(now.game, square);
       if (now.selected) {
+        if (square === now.selected) {
+          if (freshSelection.current === square) {
+            freshSelection.current = null;
+            return;
+          }
+          clearSelection();
+          return;
+        }
+        freshSelection.current = null;
         if (now.legal.includes(square)) {
           commitMove(now.selected, square, 'tap');
           return;
@@ -410,20 +457,22 @@ function ChessBoardView({
           showMarks(square);
           return;
         }
-        shakePiece(now.selected);
+        clearSelection();
         return;
       }
+      freshSelection.current = null;
       if (piece && piece.color === now.snap.turn) {
         showMarks(square);
       }
     },
-    [commitMove, shakePiece, showMarks],
+    [clearSelection, commitMove, showMarks],
   );
 
   const startDrag = useCallback(
     (square: Square, x: number, y: number) => {
       const origin = pressedPiece.current ?? square;
       pressedPiece.current = null;
+      freshSelection.current = null;
       tracking.value = 0;
       const now = latest.current;
       if (phase.current === 'settling' || !now.interactive || now.squareSize <= 0) return;
@@ -448,6 +497,7 @@ function ChessBoardView({
     (square: Square) => {
       const marked = showMarks(square);
       pressedPiece.current = marked === 'ignore' ? null : square;
+      freshSelection.current = marked === 'show' ? square : null;
     },
     [showMarks],
   );
@@ -603,7 +653,15 @@ function ChessBoardView({
   );
 
   useEffect(() => {
-    if (!lastMove) setBadge(null);
+    if (!lastMove) {
+      setBadge(null);
+      return;
+    }
+    setBadge((current) => {
+      if (!current) return null;
+      if (current.from === lastMove.from && current.square === lastMove.to) return current;
+      return null;
+    });
   }, [lastMove]);
 
   useEffect(() => {
@@ -674,6 +732,18 @@ function ChessBoardView({
   // Phone drills keep this row off for the whole puzzle. Desktop always reserves it.
   const reserveTurn = phone ? !hideTurn || flipCue : true;
 
+  const promoOrigin =
+    pendingPromotion && squareSize > 0
+      ? squareOrigin(pendingPromotion.to, orientation, squareSize)
+      : null;
+  const promoAtBottom = promoOrigin ? promoOrigin.y > squareSize * 3.5 : false;
+  const promoTop = promoOrigin
+    ? promoAtBottom
+      ? Math.max(0, promoOrigin.y - squareSize * 3)
+      : promoOrigin.y
+    : 0;
+  const promoChoices = promoAtBottom ? [...PROMOTION_CHOICES].reverse() : PROMOTION_CHOICES;
+
   return (
     <View style={styles.wrap} onPointerDown={unlockFeedback}>
       {reserveTurn ? (
@@ -726,6 +796,55 @@ function ChessBoardView({
               </Animated.View>
             ) : null}
           </View>
+          {pendingPromotion && promoOrigin && squareSize > 0 ? (
+            <View style={styles.promoBackdrop} testID="promotion-picker">
+              <Pressable
+                {...controlA11y('button', 'Cancel promotion')}
+                onPress={() => {
+                  setPendingPromotion(null);
+                  clearSelection();
+                }}
+                style={styles.promoScrim}
+              />
+              <View
+                style={[
+                  styles.promoColumn,
+                  {
+                    left: promoOrigin.x + BOARD_BORDER,
+                    top: promoTop + BOARD_BORDER,
+                    width: squareSize,
+                  },
+                ]}>
+                {promoChoices.map((choice) => (
+                  <Pressable
+                    key={choice.piece}
+                    {...controlA11y('button', choice.label)}
+                    testID={`promote-${choice.piece}`}
+                    onPress={() =>
+                      commitMove(
+                        pendingPromotion.from,
+                        pendingPromotion.to,
+                        pendingPromotion.source,
+                        choice.piece,
+                      )
+                    }
+                    style={(state) => {
+                      const hovered = 'hovered' in state && Boolean(state.hovered);
+                      return [
+                        styles.promoCell,
+                        { width: squareSize, height: squareSize },
+                        (hovered || state.pressed) && styles.promoCellHover,
+                      ];
+                    }}>
+                    <Piece
+                      code={pieceCodeFrom(pendingPromotion.color, choice.piece)}
+                      size={squareSize * 0.9}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
       </GestureDetector>
     </View>
@@ -789,5 +908,39 @@ const styles = themedStyleSheet((colors) => ({
     left: 0,
     top: 0,
     zIndex: 30,
+  },
+  promoBackdrop: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 40,
+  },
+  promoScrim: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.overlay,
+    borderRadius: radii.sm,
+  },
+  promoColumn: {
+    position: 'absolute',
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    overflow: 'hidden',
+    ...shadows.dialog,
+  },
+  promoCell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  promoCellHover: {
+    backgroundColor: colors.accentSoft,
   },
 }));

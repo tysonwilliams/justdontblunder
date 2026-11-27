@@ -19,6 +19,7 @@ import { learnCard } from '@/src/logic/lessons';
 import { roundSpeech } from '@/src/logic/saveFeedback';
 import { roundProgress, trainerBoard, type TrainerPhase } from '@/src/logic/trainerRound';
 import { applyRoundEffects } from '@/src/store/trainerResult';
+import { activeDailyStreak } from '@/src/store/slices/training';
 import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { markColor } from '@/src/theme';
@@ -76,7 +77,9 @@ export function useHomeTrainer() {
   const positionsRef = useRef(session.positions);
   positionsRef.current = session.positions;
 
-  const streak = useProgressStore((s) => s.dailyStreak);
+  const dailyStreak = useProgressStore((s) => s.dailyStreak);
+  const lastDrillDate = useProgressStore((s) => s.lastDrillDate);
+  const streak = activeDailyStreak(dailyStreak, lastDrillDate);
   const completedLessons = useProgressStore((s) => s.completedLessons);
   const learn = hydrated
     ? learnCard(completedLessons)
@@ -118,7 +121,7 @@ export function useHomeTrainer() {
     (event: BoardMoveEvent) => {
       const current = latest.current.drill;
       if (!current || latest.current.round !== 'playing') return false;
-      const ok = isCorrectDrillMove(current, event.from, event.to);
+      const ok = isCorrectDrillMove(current, event.from, event.to, event.promotion);
       const result = dispatch({
         type: 'answer',
         correct: ok,

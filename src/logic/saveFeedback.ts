@@ -208,14 +208,32 @@ export function feedbackForRound(
   }
 }
 
-/** The line under the board. A trap save can add one short watch note. */
+const MAX_SPEECH_CHARS = 110;
+const MAX_TRAP_SPEECH_CHARS = 92;
+
+function fitSpeech(line: string, limit: number): string {
+  if (line.length <= limit) return line;
+  return `${line.slice(0, limit - 1).trimEnd()}…`;
+}
+
+/** The line under the board. Uses rich theme-aware save explanations and appends trap notes when present. */
 export function roundSpeech(
   round: DrillRound,
   drill: DrillPosition,
   move: { from: Square; to: Square } | null,
 ): string {
   const taught = feedbackForRound(round, drill, move) ?? '';
+  if (round === 'correct' && move) {
+    const note = trapWatch(drill, move.from, move.to);
+    if (note) {
+      const base = describeSave(drill, move.from, move.to);
+      const withSafe = /safe/i.test(base) ? base : `${base} Safe.`;
+      const combined = `${withSafe} ${note}`;
+      if (combined.length <= MAX_TRAP_SPEECH_CHARS) return combined;
+      return coachForRound('save', drill.fen, move, taught, note);
+    }
+    if (taught) return fitSpeech(taught, MAX_SPEECH_CHARS);
+  }
   const kind = round === 'correct' ? 'save' : round === 'retry' || round === 'streakEnd' ? 'blunder' : 'idea';
-  const note = round === 'correct' && move ? trapWatch(drill, move.from, move.to) : null;
-  return coachForRound(kind, drill.fen, move, taught, note);
+  return coachForRound(kind, drill.fen, move, taught, null);
 }

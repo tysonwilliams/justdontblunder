@@ -26,7 +26,7 @@ import { spacing } from '@/src/theme';
 
 export function HomeTrainer() {
   const router = useRouter();
-  const { phone } = useLayout();
+  const { phone, topNav } = useLayout();
   const trainer = useHomeTrainer();
   const drill = trainer.drill;
 
@@ -44,7 +44,7 @@ export function HomeTrainer() {
                   <StreakBadge streak={trainer.streak} celebrate compact={phone} />
                 ) : null}
                 <ColorLegend compact={phone} />
-                {phone ? <MenuButton compact /> : null}
+                {!topNav ? <MenuButton compact={phone} /> : null}
               </View>
             </View>
             <LineBox height={phone ? 24 : 32}>

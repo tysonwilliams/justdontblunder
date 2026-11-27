@@ -1,6 +1,6 @@
 import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 
 import { PIECE_CREDIT } from '@/src/components/Board/pieceCredit';
 import { BrandMark } from '@/src/components/ui/BrandMark';
@@ -145,17 +145,21 @@ export function SettingsMenu() {
                 if (next) playFeedback('save');
               }}
             />
-            <View style={styles.divider} />
-            <SettingSwitch
-              plain
-              label="Haptics"
-              value={haptics}
-              testID="setting-haptics"
-              onChange={(next) => {
-                setHaptics(next);
-                if (next) playFeedback('pickup');
-              }}
-            />
+            {Platform.OS !== 'web' ? (
+              <>
+                <View style={styles.divider} />
+                <SettingSwitch
+                  plain
+                  label="Haptics"
+                  value={haptics}
+                  testID="setting-haptics"
+                  onChange={(next) => {
+                    setHaptics(next);
+                    if (next) playFeedback('pickup');
+                  }}
+                />
+              </>
+            ) : null}
           </View>
         </View>
 

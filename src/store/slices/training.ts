@@ -45,6 +45,20 @@ export function initialTraining(): TrainingData {
   };
 }
 
+const XP_PER_LESSON = 25;
+
+/** Displayed daily streak. Returns 0 when the last trained day is older than yesterday. */
+export function activeDailyStreak(
+  dailyStreak: number,
+  lastDrillDate: string | null,
+  now = new Date(),
+): number {
+  if (dailyStreak <= 0 || !lastDrillDate) return 0;
+  const today = localDateKey(now);
+  const yesterday = previousLocalDateKey(now);
+  return lastDrillDate === today || lastDrillDate === yesterday ? dailyStreak : 0;
+}
+
 function bumpStreak(lastDrillDate: string | null, dailyStreak: number, now = new Date()): {
   dailyStreak: number;
   lastDrillDate: string;
@@ -79,15 +93,31 @@ export const createTrainingSlice: StateCreator<ProgressState, [], [], TrainingSl
     }),
   awardXp: (safe) => set((state) => ({ xp: xpAfterAward(state.xp, safe) })),
   completeLesson: (id) =>
-    set((state) => ({ completedLessons: withLessonComplete(state.completedLessons, id) })),
+    set((state) => {
+      const alreadyDone = state.completedLessons.includes(id);
+      const streak = bumpStreak(state.lastDrillDate, state.dailyStreak);
+      return {
+        ...streak,
+        recordStreak: Math.max(state.recordStreak, streak.dailyStreak),
+        completedLessons: withLessonComplete(state.completedLessons, id),
+        xp: alreadyDone ? state.xp : state.xp + XP_PER_LESSON,
+      };
+    }),
   recordPuzzleRun: (length) =>
     set((state) => ({
       bestPuzzleStreak: Math.max(state.bestPuzzleStreak, length),
     })),
   markPracticeMove: (avoidedBlunder, madeBlunder) =>
-    set((state) => ({
-      practiceMoves: state.practiceMoves + 1,
-      blundersAvoided: state.blundersAvoided + (avoidedBlunder ? 1 : 0),
-      blundersMade: state.blundersMade + (madeBlunder ? 1 : 0),
-    })),
+    set((state) => {
+      const streak = !madeBlunder
+        ? bumpStreak(state.lastDrillDate, state.dailyStreak)
+        : { dailyStreak: state.dailyStreak, lastDrillDate: state.lastDrillDate };
+      return {
+        ...streak,
+        recordStreak: Math.max(state.recordStreak, streak.dailyStreak),
+        practiceMoves: state.practiceMoves + 1,
+        blundersAvoided: state.blundersAvoided + (avoidedBlunder ? 1 : 0),
+        blundersMade: state.blundersMade + (madeBlunder ? 1 : 0),
+      };
+    }),
 });

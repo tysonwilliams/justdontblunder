@@ -47,7 +47,7 @@ const MODE_DETAIL: Record<DrillMode, string> = {
 
 export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onStreak }: DrillToolbarProps) {
   const { colors } = useTheme();
-  const { phone } = useLayout();
+  const { phone, topNav } = useLayout();
   const [open, setOpen] = useState(false);
 
   const filtered = mode !== 'play' || theme !== 'all';
@@ -84,7 +84,7 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
             <SettingSwitch compact label="Streak" value={streak} onChange={onStreak} testID="streak-toggle" />
           ) : null}
           <ColorLegend compact={phone} />
-          {phone ? <MenuButton compact /> : null}
+          {!topNav ? <MenuButton compact={phone} /> : null}
         </View>
       </View>
 

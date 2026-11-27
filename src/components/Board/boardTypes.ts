@@ -1,7 +1,7 @@
 import type { Square } from 'chess.js';
 
 import type { HighlightTone } from '@/src/components/Board/highlight';
-import type { GameSnapshot } from '@/src/logic/game';
+import type { GameSnapshot, PromotionPiece } from '@/src/logic/game';
 
 export type BoardArrow = {
   from: Square;
@@ -17,6 +17,7 @@ export type BoardMoveEvent = {
   beforeFen: string;
   afterFen: string;
   san: string;
+  promotion?: PromotionPiece;
 };
 
 export type ChessBoardProps = {

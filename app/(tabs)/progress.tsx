@@ -17,10 +17,11 @@ import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { drillHref } from '@/src/logic/drillLink';
-import { themeLabel, type DrillTheme } from '@/src/logic/drills';
+import { themeLabel, weakestTheme, type DrillTheme } from '@/src/logic/drills';
 import { dueTodayCount, dueTodayLabel } from '@/src/logic/reviewSchedule';
 import { LESSONS } from '@/src/logic/lessons';
 import { drillsDoneCount } from '@/src/store/drillStats';
+import { activeDailyStreak } from '@/src/store/slices/training';
 import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
@@ -37,7 +38,7 @@ const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
 export default function ProgressScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { phone } = useLayout();
+  const { phone, topNav } = useLayout();
   const wideGrid = width >= 820;
   const { colors } = useTheme();
   const progressReady = useHydrated(useProgressStore.persist) && !forceSkeleton();
@@ -45,6 +46,7 @@ export default function ProgressScreen() {
 
   const {
     dailyStreak,
+    lastDrillDate,
     recordStreak,
     bestPuzzleStreak,
     review,
@@ -58,10 +60,12 @@ export default function ProgressScreen() {
     xp,
   } = useProgressStore();
 
+  const liveStreak = activeDailyStreak(dailyStreak, lastDrillDate);
   const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
   const dueCount = dueTodayCount(review);
   const reviewWaiting = review.length > 0;
-  const badges = badgeList(dailyStreak, recordStreak, bestPuzzleStreak, blundersAvoided);
+  const weak = weakestTheme(themeStats);
+  const badges = badgeList(liveStreak, recordStreak, bestPuzzleStreak, blundersAvoided);
   const earnedCount = badges.filter((badge) => badge.earned).length;
 
   return (
@@ -82,7 +86,7 @@ export default function ProgressScreen() {
                 onPress={() => router.push(drillHref('review') as Href)}
               />
             ) : null}
-            {phone ? <MenuButton /> : null}
+            {!topNav ? <MenuButton compact={phone} /> : null}
           </View>
         </View>
 
@@ -92,7 +96,7 @@ export default function ProgressScreen() {
           {progressReady ? (
             <>
               <View style={styles.heroRow}>
-                <HeroStat label="Day streak" value={String(dailyStreak)} highlight={dailyStreak > 0} />
+                <HeroStat label="Day streak" value={String(liveStreak)} highlight={liveStreak > 0} />
                 <HeroStat label="XP" value={String(xp)} />
                 <HeroStat label="Accuracy" value={drillsCompleted > 0 ? `${accuracy}%` : '—'} />
                 <HeroStat label="Best run" value={String(bestPuzzleStreak)} />
@@ -134,11 +138,20 @@ export default function ProgressScreen() {
         <View style={[styles.columns, wideGrid && styles.columnsWide]}>
           <View style={styles.col}>
             <View style={styles.card}>
-              <Text style={text.section}>Themes</Text>
+              <View style={styles.cardHead}>
+                <Text style={text.section}>Themes</Text>
+                <Text style={text.muted}>Tap to drill</Text>
+              </View>
               {progressReady ? (
                 <View style={styles.themeList}>
                   {THEMES.map((theme) => (
-                    <ThemeRow key={theme} theme={theme} tally={themeStats[theme]} />
+                    <ThemeRow
+                      key={theme}
+                      theme={theme}
+                      tally={themeStats[theme]}
+                      focus={weak === theme}
+                      onPress={() => router.push(drillHref('play', theme) as Href)}
+                    />
                   ))}
                 </View>
               ) : (
@@ -233,24 +246,39 @@ function ExtraStat({ label, value }: { label: string; value: string }) {
 function ThemeRow({
   theme,
   tally,
+  focus = false,
+  onPress,
 }: {
   theme: DrillTheme;
   tally: { attempts: number; correct: number } | undefined;
+  focus?: boolean;
+  onPress: () => void;
 }) {
   const attempts = tally?.attempts ?? 0;
   const correct = tally?.correct ?? 0;
   const ratio = attempts > 0 ? correct / attempts : 0;
   const pct = attempts > 0 ? `${Math.round(ratio * 100)}%` : '—';
+  const name = themeLabel(theme);
   return (
-    <View style={styles.themeRow}>
+    <Pressable
+      {...controlA11y('button', `Drill ${name}`)}
+      testID={`progress-theme-${theme}`}
+      onPress={onPress}
+      style={(state) => {
+        const hovered = 'hovered' in state && Boolean(state.hovered);
+        return [styles.themeRow, (hovered || state.pressed) && styles.themeRowHover];
+      }}>
       <View style={styles.themeTop}>
-        <Text style={styles.themeName}>{themeLabel(theme)}</Text>
+        <View style={styles.themeTitleRow}>
+          <Text style={styles.themeName}>{name}</Text>
+          {focus ? <Text style={styles.themeFocus}>Focus</Text> : null}
+        </View>
         <Text style={styles.themeMeta}>
           {attempts === 0 ? 'Not started' : `${pct} · ${correct}/${attempts}`}
         </Text>
       </View>
       <ProgressTrack progress={ratio} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -380,16 +408,41 @@ const styles = themedStyleSheet((colors) => ({
     gap: spacing.sm,
   },
   themeList: {
-    gap: spacing[12],
+    gap: spacing[6],
   },
   themeRow: {
     gap: spacing[6],
+    paddingVertical: spacing[6],
+    paddingHorizontal: spacing.sm,
+    marginHorizontal: -spacing.sm,
+    borderRadius: radii.md,
+    cursor: 'pointer',
+  },
+  themeRowHover: {
+    backgroundColor: colors.hover,
   },
   themeTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  themeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+    flexShrink: 1,
+  },
+  themeFocus: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.accent,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[1],
+    borderRadius: radii.pill,
+    overflow: 'hidden',
   },
   themeName: {
     fontFamily: fonts.bodyBold,

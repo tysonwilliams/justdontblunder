@@ -75,6 +75,26 @@ export function dueTodayLabel(count: number): string {
   return `${count} due today`;
 }
 
+export function formatReviewGap(days: number): string {
+  if (days <= 0) return 'today';
+  if (days === 1) return '1 day';
+  return `${days} days`;
+}
+
+export function nextReviewGapDays(
+  entry: { saves?: number; intervalDays?: number } | undefined,
+): number {
+  const base = Math.max(entry?.saves ?? 0, savesForInterval(entry?.intervalDays ?? 0));
+  return intervalForSaves(Math.min(base + 1, MAX_SAVES));
+}
+
+export function filterDueEntries<T extends { dueOn?: string; intervalDays?: number }>(
+  entries: readonly T[],
+  today = localDateKey(),
+): T[] {
+  return entries.filter((entry) => isDue(entry, today));
+}
+
 /** Due cards first (oldest first), then later cards (soonest first). */
 export function orderForReview<T extends { dueOn?: string }>(entries: readonly T[], today: string): T[] {
   return entries
