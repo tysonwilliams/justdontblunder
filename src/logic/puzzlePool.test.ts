@@ -11,6 +11,7 @@ import {
 } from '@/src/logic/drills';
 import { fenKey } from '@/src/logic/reviewPile';
 import {
+  buildPoolForTheme,
   buildPuzzlePool,
   keepOwnDrills,
   mergeScannedDrills,
@@ -105,5 +106,16 @@ describe('puzzle pool', () => {
     expect(poolSummary(1)).toMatch(/1 from your games/);
     expect(poolSummary(100)).toBe('100 from your games.');
     expect(keepOwnDrills([own(1), own(1), own(2)])).toHaveLength(2);
+  });
+
+  it('keeps every starter puzzle of a filtered theme instead of slicing at 100', () => {
+    const allBackRank = getAllDrills().filter((drill) => drill.theme === 'back_rank');
+    expect(allBackRank.length).toBeGreaterThan(20);
+    const pool = buildPoolForTheme([], 'back_rank');
+    expect(pool).toHaveLength(allBackRank.length);
+    const personalBack: DrillPosition = { ...allBackRank[0]!, id: 'own-back-1', fen: '6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1' };
+    const withPersonal = buildPoolForTheme([personalBack], 'back_rank');
+    expect(withPersonal[0]?.id).toBe('own-back-1');
+    expect(withPersonal).toHaveLength(allBackRank.length + 1);
   });
 });

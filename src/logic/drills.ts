@@ -275,8 +275,13 @@ export function drillTrap(drill: DrillPosition, from: Square, to: Square): Drill
  * Equal trades pass. Checkmate always passes. Mate in 2 or more does not fail a move.
  * A two-move trap is still a save. The engine window never turns a pass into a fail.
  */
-export function isCorrectDrillMove(drill: DrillPosition, from: Square, to: Square): boolean {
-  return moveRemovesDanger(drill, from, to);
+export function isCorrectDrillMove(
+  drill: DrillPosition,
+  from: Square,
+  to: Square,
+  promotion: 'q' | 'r' | 'b' | 'n' = 'q',
+): boolean {
+  return moveRemovesDanger(drill, from, to, promotion);
 }
 
 export const HABIT_PROMPT = 'Before you move: is anything of yours hanging?';

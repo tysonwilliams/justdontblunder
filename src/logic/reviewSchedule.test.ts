@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { reviewForEntries, upcomingReviewCount } from '@/src/logic/drillLink';
 import { addLocalDays } from '@/src/logic/localDate';
 import {
   INTERVAL_PACK,
@@ -8,8 +9,11 @@ import {
   dueNow,
   dueTodayCount,
   dueTodayLabel,
+  filterDueEntries,
+  formatReviewGap,
   lapseSchedule,
   moreConservative,
+  nextReviewGapDays,
   orderForReview,
   packIntervalDays,
   scheduleFromSaved,
@@ -125,5 +129,22 @@ describe('review schedule', () => {
     expect(capped.saves).toBe(MAX_SAVES);
     expect(capped.intervalDays).toBe(35);
     expect(packIntervalDays(capped)).toBeLessThanOrEqual(3650);
+  });
+
+  it('filters Review to due cards by default while counting upcoming cards for Practice ahead', () => {
+    const entries = [
+      { id: 'hang-q-01', saves: 0, intervalDays: 0, dueOn: TODAY },
+      { id: 'hang-q-02', saves: 2, intervalDays: 3, dueOn: addLocalDays(TODAY, 3) },
+    ];
+    expect(filterDueEntries(entries, TODAY).map((e) => e.id)).toEqual(['hang-q-01']);
+    expect(reviewForEntries(entries, 'all', TODAY).positions.map((p) => p.id)).toEqual(['hang-q-01']);
+    expect(
+      reviewForEntries(entries, 'all', TODAY, { includeAhead: true }).positions.map((p) => p.id),
+    ).toEqual(['hang-q-01', 'hang-q-02']);
+    expect(upcomingReviewCount(entries, 'all', TODAY)).toBe(1);
+    expect(nextReviewGapDays(entries[0])).toBe(1);
+    expect(nextReviewGapDays(entries[1])).toBe(7);
+    expect(formatReviewGap(1)).toBe('1 day');
+    expect(formatReviewGap(7)).toBe('7 days');
   });
 });

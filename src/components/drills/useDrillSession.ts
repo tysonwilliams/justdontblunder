@@ -10,6 +10,7 @@ import { openStreakRun, publishStreakScore } from '@/src/data/leaderboard';
 import {
   reviewForEntries,
   sessionForTheme,
+  upcomingReviewCount,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
 import {
@@ -20,7 +21,8 @@ import {
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
 import { missFeedback, roundSpeech } from '@/src/logic/saveFeedback';
-import { buildPuzzlePool } from '@/src/logic/puzzlePool';
+import { buildPoolForTheme } from '@/src/logic/puzzlePool';
+import { formatReviewGap, nextReviewGapDays } from '@/src/logic/reviewSchedule';
 import { shownBest, streakScoreInRange } from '@/src/logic/streak';
 import { roundProgress, trainerBoard, type TrainerMove } from '@/src/logic/trainerRound';
 import { applyRoundEffects } from '@/src/store/trainerResult';
@@ -58,12 +60,12 @@ function solutionMove(drill: DrillPosition): { from: Square; to: Square; fen: st
   return { from: moved.from, to: moved.to, fen: game.fen() };
 }
 
-function playingPool() {
-  return buildPuzzlePool(useProgressStore.getState().ownDrills);
+function playingPool(theme: ThemeFilter) {
+  return buildPoolForTheme(useProgressStore.getState().ownDrills, theme);
 }
 
-function reviewSession(theme: ThemeFilter) {
-  return reviewForEntries(useProgressStore.getState().review, theme);
+function reviewSession(theme: ThemeFilter, includeAhead = false) {
+  return reviewForEntries(useProgressStore.getState().review, theme, undefined, { includeAhead });
 }
 
 export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak: boolean) {
@@ -74,15 +76,19 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const { state, dispatch } = useTrainerRound();
 
   const bestPuzzleStreak = useProgressStore((s) => s.bestPuzzleStreak);
+  const reviewEntries = useProgressStore((s) => s.review);
   const hydrated = useHydrated(useProgressStore.persist);
 
+  const [practicingAhead, setPracticingAhead] = useState(false);
+  const [nextGapLabel, setNextGapLabel] = useState<string | null>(null);
   const [session, setSession] = useState<DrillSessionData>(() =>
-    reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()),
+    reviewing ? reviewSession(theme, false) : sessionForTheme(theme, playingPool(theme)),
   );
   const [runSummary, setRunSummary] = useState<DrillRunSummary | null>(null);
   const reviewStarted = useRef(false);
   const started = useRef(false);
   const postedRun = useRef<string | null>(null);
+  const requeuedIds = useRef<Set<string>>(new Set());
   const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
   positionsRef.current = session.positions;
 
@@ -94,16 +100,24 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const done = index >= session.positions.length;
   const place = useRef({ index, round });
   place.current = { index, round };
-  const latest = useRef({ drill, sudden, reviewing });
-  latest.current = { drill, sudden, reviewing };
+  const latest = useRef({ drill, sudden, reviewing, practicingAhead });
+  latest.current = { drill, sudden, reviewing, practicingAhead };
+
+  const upcomingCount = useMemo(
+    () => (reviewing ? upcomingReviewCount(reviewEntries, theme) : 0),
+    [reviewing, reviewEntries, theme],
+  );
 
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
     [drill?.sideToMove],
   );
 
-  const begin = (nextSession: DrillSessionData) => {
+  const begin = (nextSession: DrillSessionData, ahead = false) => {
     started.current = true;
+    requeuedIds.current = new Set();
+    setPracticingAhead(ahead);
+    setNextGapLabel(null);
     dispatch({ type: 'begin' });
     setRunSummary(null);
     setSession(nextSession);
@@ -116,7 +130,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     }
     if (!hydrated || reviewStarted.current) return;
     reviewStarted.current = true;
-    begin(reviewSession(theme));
+    begin(reviewSession(theme, false), false);
     // The screen remounts when the filter changes. begin reads the latest setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewing, hydrated, theme]);
@@ -132,7 +146,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
       const personal = theme === 'all' ? own : own.filter((item) => item.theme === theme);
       return {
         personal,
-        rebuilt: sessionForTheme(theme, buildPuzzlePool(own)).positions,
+        rebuilt: sessionForTheme(theme, buildPoolForTheme(own, theme)).positions,
       };
     },
     (positions) => {
@@ -142,6 +156,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
 
   useEffect(() => {
     if (!puzzleId || !puzzleFen) return;
+    setNextGapLabel(null);
     dispatch({ type: 'loadPuzzle', fen: puzzleFen });
   }, [puzzleId, puzzleFen, dispatch]);
 
@@ -166,17 +181,23 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   }, [sudden, state.runRecorded, state.score.correct, session.startedAt]);
 
   const restart = () => {
-    begin(reviewing ? reviewSession(theme) : sessionForTheme(theme, playingPool()));
+    begin(reviewing ? reviewSession(theme, false) : sessionForTheme(theme, playingPool(theme)), false);
+  };
+
+  const practiceAhead = () => {
+    begin(reviewSession(theme, true), true);
   };
 
   const next = () => {
     started.current = true;
+    setNextGapLabel(null);
     dispatch({ type: 'advance', length: session.positions.length, wrap: false });
   };
 
   const tryAgain = () => {
     const current = latest.current.drill;
     if (!current) return;
+    setNextGapLabel(null);
     dispatch({ type: 'tryAgain', fen: current.fen });
   };
 
@@ -190,7 +211,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     });
     if (!result.accepted) return;
     started.current = true;
-    applyRoundEffects(result.effects, current, latest.current.reviewing);
+    applyRoundEffects(result.effects, current, latest.current.reviewing && !latest.current.practicingAhead);
   };
 
   const onMove = useCallback(
@@ -198,7 +219,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
       const now = latest.current;
       const current = now.drill;
       if (!current) return false;
-      const ok = isCorrectDrillMove(current, event.from, event.to);
+      const ok = isCorrectDrillMove(current, event.from, event.to, event.promotion);
       const result = dispatch({
         type: 'answer',
         correct: ok,
@@ -211,7 +232,18 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
       });
       if (!result.accepted) return false;
       started.current = true;
-      applyRoundEffects(result.effects, current, now.reviewing);
+      const scheduledReview = now.reviewing && !now.practicingAhead;
+      if (scheduledReview && ok) {
+        const entry = useProgressStore.getState().review.find((item) => item.id === current.id);
+        setNextGapLabel(`Next review in ${formatReviewGap(nextReviewGapDays(entry))}.`);
+      } else {
+        setNextGapLabel(null);
+      }
+      if (now.reviewing && !ok && !requeuedIds.current.has(current.id)) {
+        requeuedIds.current.add(current.id);
+        setSession((prev) => ({ ...prev, positions: [...prev.positions, current] }));
+      }
+      applyRoundEffects(result.effects, current, scheduledReview);
       return ok;
     },
     [dispatch],
@@ -252,7 +284,13 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
         : { squares: [] as Square[], tone: 'danger' as const },
     [drill, round, state.lastMove],
   );
-  const roundCopy = drill ? roundSpeech(round, drill, state.shownIdea ? null : state.lastMove) : '';
+  const baseSpeech = drill ? roundSpeech(round, drill, state.shownIdea ? null : state.lastMove) : '';
+  const roundCopy =
+    round === 'correct' && nextGapLabel
+      ? baseSpeech
+        ? `${baseSpeech} ${nextGapLabel}`
+        : nextGapLabel
+      : baseSpeech;
   const threatFrom = !state.shownIdea ? playback.arrow?.from : undefined;
   const threatTo = !state.shownIdea ? playback.arrow?.to : undefined;
   const threatArrow = useMemo<BoardArrow[]>(() => {
@@ -268,6 +306,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     guided,
     streak: sudden,
     reviewing,
+    practicingAhead,
+    upcomingCount,
     hydrated,
     runSummary,
     done,
@@ -294,6 +334,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     tryAgain,
     next,
     restart,
+    practiceAhead,
     showRunSummary,
     begin,
     theme,

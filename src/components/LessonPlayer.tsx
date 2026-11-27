@@ -70,13 +70,23 @@ export function LessonPlayer({ lessonId, onBack, onPractice }: Props) {
             <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : 3}>
               {doneCopy(lesson.id)}
             </Text>
-            <Button
-              compact={phone}
-              label="Practice this in Drills"
-              testID="lesson-practice"
-              onPress={() => onPractice(practiceHref(lesson))}
-            />
-            <Button compact={phone} label="All lessons" variant="secondary" testID="lesson-back" onPress={onBack} />
+            <View style={phone ? lessonStyles.doneActionsPhone : lessonStyles.doneActions}>
+              <Button
+                compact={phone}
+                label={phone ? 'Drill this' : 'Practice this in Drills'}
+                testID="lesson-practice"
+                onPress={() => onPractice(practiceHref(lesson))}
+                style={phone ? lessonStyles.doneActionPhone : undefined}
+              />
+              <Button
+                compact={phone}
+                label="All lessons"
+                variant="secondary"
+                testID="lesson-back"
+                onPress={onBack}
+                style={phone ? lessonStyles.doneActionPhone : undefined}
+              />
+            </View>
           </View>
         }
       />

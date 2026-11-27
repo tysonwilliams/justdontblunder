@@ -24,7 +24,7 @@ import { useProgressStore } from '@/src/store/progress';
 import { spacing } from '@/src/theme';
 
 export function PracticeScreen() {
-  const { phone } = useLayout();
+  const { phone, topNav } = useLayout();
   const game = usePracticeGame();
   const savePersonalDrill = useProgressStore((state) => state.savePersonalDrill);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export function PracticeScreen() {
             <DueTodayLink variant="line" />
             <View style={styles.topRight}>
               <ColorLegend compact={phone} />
-              {phone ? <MenuButton compact /> : null}
+              {!topNav ? <MenuButton compact={phone} /> : null}
             </View>
           </View>
           <LineBox height={phone ? 24 : 32}>

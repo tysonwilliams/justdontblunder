@@ -43,8 +43,9 @@ export function judgePracticeMove(
   from: Square,
   to: Square,
   mover: Color,
+  promotion: 'q' | 'r' | 'b' | 'n' = 'q',
 ): MoveFeedback {
-  const outcome = moveOutcome(beforeFen, from, to, mover);
+  const outcome = moveOutcome(beforeFen, from, to, mover, promotion);
   if (outcome === null) {
     return {
       ok: false,
@@ -55,7 +56,7 @@ export function judgePracticeMove(
     };
   }
   const after = new Chess(beforeFen);
-  const played = after.move({ from, to, promotion: 'q' });
+  const played = after.move({ from, to, promotion });
   if (!played) {
     return {
       ok: false,

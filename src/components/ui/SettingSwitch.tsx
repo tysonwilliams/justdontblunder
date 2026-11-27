@@ -27,15 +27,19 @@ export function SettingSwitch({ label, value, onChange, testID, compact = false,
       testID={testID}
       hitSlop={compact ? spacing.xs : 0}
       onPress={() => onChange(!value)}
-      style={[
-        styles.row,
-        plain && styles.rowPlain,
-        !compact && !plain && styles.rowGrow,
-        phone && !plain && styles.rowPhone,
-        compact && styles.rowCompact,
-        phone && compact && styles.rowCompactPhone,
-        compact && value && styles.rowCompactOn,
-      ]}>
+      style={(state) => {
+        const hovered = 'hovered' in state && Boolean(state.hovered);
+        return [
+          styles.row,
+          plain && styles.rowPlain,
+          !compact && !plain && styles.rowGrow,
+          phone && !plain && styles.rowPhone,
+          compact && styles.rowCompact,
+          phone && compact && styles.rowCompactPhone,
+          compact && value && styles.rowCompactOn,
+          hovered && !plain && !value && styles.rowHover,
+        ];
+      }}>
       <Text
         style={[
           styles.label,
@@ -48,7 +52,7 @@ export function SettingSwitch({ label, value, onChange, testID, compact = false,
         {label}
       </Text>
       <View style={[styles.track, compact && !phone && styles.trackDesk, value && styles.trackOn]}>
-        <View style={[styles.knob, compact && !phone && styles.knobDesk]} />
+        <View style={[styles.knob, compact && !phone && styles.knobDesk, value && styles.knobOn]} />
       </View>
     </Pressable>
   );
@@ -68,6 +72,9 @@ const styles = themedStyleSheet((colors) => ({
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
     cursor: 'pointer',
+  },
+  rowHover: {
+    backgroundColor: colors.surfaceRaised,
   },
   rowPlain: {
     width: '100%',
@@ -152,5 +159,8 @@ const styles = themedStyleSheet((colors) => ({
     height: 18,
     borderRadius: radii.pill,
     backgroundColor: colors.text,
+  },
+  knobOn: {
+    backgroundColor: colors.accentText,
   },
 }));

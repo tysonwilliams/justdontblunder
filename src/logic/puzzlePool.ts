@@ -1,4 +1,4 @@
-import { getAllDrills, type DrillPosition } from '@/src/logic/drills';
+import { getAllDrills, type DrillPosition, type DrillTheme } from '@/src/logic/drills';
 import { fenKey } from '@/src/logic/reviewPile';
 
 /** Home and Drills draw from this many puzzles. */
@@ -58,6 +58,35 @@ export function buildPuzzlePool(
     }
     if (added === 0) break;
     cycle += 1;
+  }
+  return pool;
+}
+
+/**
+ * Full pool for a specific theme: every personal blunder of that theme first,
+ * followed by every unique starter puzzle of that theme (never sliced by PUZZLE_POOL_SIZE).
+ */
+export function buildPoolForTheme(
+  own: readonly DrillPosition[],
+  theme: 'all' | DrillTheme,
+  starter: readonly DrillPosition[] = getAllDrills(),
+): DrillPosition[] {
+  if (theme === 'all') return buildPuzzlePool(own, starter);
+  const pool: DrillPosition[] = [];
+  const seen = new Set<string>();
+  for (const drill of own) {
+    if (drill.theme !== theme) continue;
+    const key = fenKey(drill.fen);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pool.push(drill);
+  }
+  for (const drill of starter) {
+    if (drill.theme !== theme) continue;
+    const key = fenKey(drill.fen);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pool.push(drill);
   }
   return pool;
 }

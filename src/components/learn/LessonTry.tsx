@@ -60,7 +60,7 @@ export function LessonTry({
     if (!current || latest.current.round !== 'playing') return false;
     setDisplayFen(event.afterFen);
     setLastMove({ from: event.from, to: event.to });
-    const ok = isCorrectDrillMove(current, event.from, event.to);
+    const ok = isCorrectDrillMove(current, event.from, event.to, event.promotion);
     if (ok) {
       setReplayLine([]);
       setRound('correct');

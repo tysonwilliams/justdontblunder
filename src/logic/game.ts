@@ -26,15 +26,30 @@ export function snapshot(game: Chess): GameSnapshot {
   };
 }
 
+export type PromotionPiece = 'q' | 'r' | 'b' | 'n';
+
 export function getLegalTargets(game: Chess, from: Square): Square[] {
-  return game.moves({ square: from, verbose: true }).map((move) => move.to);
+  const seen = new Set<Square>();
+  const targets: Square[] = [];
+  for (const move of game.moves({ square: from, verbose: true })) {
+    if (seen.has(move.to)) continue;
+    seen.add(move.to);
+    targets.push(move.to);
+  }
+  return targets;
+}
+
+export function isPromotionMove(game: Chess, from: Square, to: Square): boolean {
+  return game
+    .moves({ square: from, verbose: true })
+    .some((move) => move.to === to && Boolean(move.promotion));
 }
 
 export function tryMove(
   game: Chess,
   from: Square,
   to: Square,
-  promotion: 'q' | 'r' | 'b' | 'n' = 'q',
+  promotion: PromotionPiece = 'q',
 ): Move | null {
   try {
     return game.move({ from, to, promotion });

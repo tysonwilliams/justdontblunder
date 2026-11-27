@@ -220,13 +220,19 @@ export function bestPunishment(fen: string): Punishment | null {
  * Checkmate is largely positive. Allowing mate in 1 is largely negative.
  * 0 means an even trade or a quiet move that drops nothing.
  */
-export function moveOutcome(fen: string, from: Square, to: Square, side: Color): number | null {
+export function moveOutcome(
+  fen: string,
+  from: Square,
+  to: Square,
+  side: Color,
+  promotion: 'q' | 'r' | 'b' | 'n' = 'q',
+): number | null {
   const before = new Chess(fen);
   const start = balance(before, side);
   const after = new Chess(fen);
   let played;
   try {
-    played = after.move({ from, to, promotion: 'q' });
+    played = after.move({ from, to, promotion });
   } catch {
     return null;
   }

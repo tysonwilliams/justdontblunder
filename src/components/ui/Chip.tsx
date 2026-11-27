@@ -114,26 +114,47 @@ export function StatusPill({
   onPress,
   testID,
   label,
+  active = true,
   shrink = false,
 }: {
   children: ReactNode;
   onPress?: () => void;
   testID?: string;
   label?: string;
+  active?: boolean;
   shrink?: boolean;
 }) {
   useTheme();
   const { phone } = useLayout();
   const spoken = label ?? (typeof children === 'string' ? children : 'Status');
-  const style = [styles.pill, phone && styles.pillPhone, shrink && styles.pillShrink];
+  const baseStyle = [
+    styles.pill,
+    !active && styles.pillMuted,
+    phone && styles.pillPhone,
+    shrink && styles.pillShrink,
+  ];
   const body = (
-    <Text style={[styles.pillText, phone && styles.pillTextPhone]} numberOfLines={1}>
+    <Text
+      style={[styles.pillText, !active && styles.pillTextMuted, phone && styles.pillTextPhone]}
+      numberOfLines={1}>
       {children}
     </Text>
   );
-  if (!onPress) return <View style={style}>{body}</View>;
+  if (!onPress) return <View style={baseStyle}>{body}</View>;
   return (
-    <Pressable {...controlA11y('button', spoken)} testID={testID} onPress={onPress} style={style}>
+    <Pressable
+      {...controlA11y('button', spoken)}
+      testID={testID}
+      onPress={onPress}
+      style={(state) => {
+        const hovered = 'hovered' in state && Boolean(state.hovered);
+        return [
+          ...baseStyle,
+          styles.pillPressable,
+          (hovered || state.pressed) && styles.pillHover,
+          state.pressed && styles.pressed,
+        ];
+      }}>
       {body}
     </Pressable>
   );
@@ -255,6 +276,20 @@ const styles = themedStyleSheet((colors) => ({
     justifyContent: 'center',
     flexShrink: 1,
   },
+  pillMuted: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pillPressable: {
+    cursor: 'pointer',
+  },
+  pillHover: {
+    backgroundColor: colors.surfaceRaised,
+  },
+  pressed: {
+    opacity: 0.82,
+  },
   pillPhone: {
     minHeight: 22,
     paddingHorizontal: spacing.sm,
@@ -267,6 +302,9 @@ const styles = themedStyleSheet((colors) => ({
     lineHeight: lineHeights[16],
     letterSpacing: letterSpacing.pill,
     textTransform: 'uppercase',
+  },
+  pillTextMuted: {
+    color: colors.textMuted,
   },
   pillTextPhone: {
     fontSize: fontSizes[10],

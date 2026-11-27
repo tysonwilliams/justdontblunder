@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 
+import { MenuButton } from '@/src/components/SettingsMenu';
 import { LESSON_INDEX } from '@/src/components/learn/lessonPhase';
 import { lessonStyles } from '@/src/components/learn/lessonStyles';
 import { controlA11y } from '@/src/components/ui/a11y';
@@ -25,24 +26,27 @@ export function LessonLead({
   progress: number;
   onBack: () => void;
 }) {
-  const { phone } = useLayout();
+  const { phone, topNav } = useLayout();
   const place = LESSON_INDEX[lesson.id];
   return (
-    <BoardLead>
+    <BoardLead gap={phone ? spacing[6] : spacing[10]}>
       <View style={[play.metaRow, phone && lessonStyles.metaPhone]}>
         <Text style={[text.eyebrow, phone && lessonStyles.eyebrowPhone, lessonStyles.kicker]} numberOfLines={1}>
           Lesson {place} of 6 · {kicker}
         </Text>
-        <Pressable
-          {...controlA11y('button', 'All lessons', false)}
-          testID="lesson-all"
-          onPress={onBack}
-          hitSlop={spacing.sm}
-          style={({ pressed }) => [lessonStyles.back, pressed && lessonStyles.backPressed]}>
-          <Text style={[text.meta, phone && text.metaPhone]} numberOfLines={1}>
-            All lessons
-          </Text>
-        </Pressable>
+        <View style={lessonStyles.metaActions}>
+          <Pressable
+            {...controlA11y('button', 'All lessons', false)}
+            testID="lesson-all"
+            onPress={onBack}
+            hitSlop={spacing.sm}
+            style={(state) => [lessonStyles.back, state.pressed && lessonStyles.backPressed]}>
+            <Text style={[text.meta, phone && text.metaPhone]} numberOfLines={1}>
+              All lessons
+            </Text>
+          </Pressable>
+          {!topNav ? <MenuButton compact={phone} /> : null}
+        </View>
       </View>
       <LineBox height={phone ? 22 : 32}>
         <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>

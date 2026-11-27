@@ -33,11 +33,17 @@ export const BoardSquare = memo(function BoardSquare({
   const ring = Math.round(squareSize * 0.86);
   const ringWidth = Math.max(3, Math.round(squareSize * 0.075));
 
+  const clickable = isLegal || Boolean(pieceCode);
+
   return (
     <Pressable
       {...squareA11y(label, selected)}
       onPress={() => onPress(square)}
-      style={[styles.square, { width: squareSize, height: squareSize, backgroundColor }]}>
+      style={[
+        styles.square,
+        clickable && styles.clickable,
+        { width: squareSize, height: squareSize, backgroundColor },
+      ]}>
       {isLegal && !pieceCode ? (
         <View
           pointerEvents="none"
@@ -115,5 +121,8 @@ const styles = StyleSheet.create({
   square: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  clickable: {
+    cursor: 'pointer',
   },
 });

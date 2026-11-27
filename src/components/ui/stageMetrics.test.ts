@@ -80,4 +80,10 @@ describe('stageMetrics', () => {
     expect(metrics.boardWidth).toBe(metrics.contentW);
     expect(metrics.boardWidth).toBeLessThanOrEqual(390);
   });
+
+  it('shrinks the board on compact Safari viewports so the 120px lead and 92px foot never clip', () => {
+    const safariSE = stageMetrics(375, 553);
+    expect(safariSE.phone).toBe(true);
+    expect(safariSE.contentHeight - safariSE.boardWidth - safariSE.turnRow).toBeGreaterThanOrEqual(212);
+  });
 });

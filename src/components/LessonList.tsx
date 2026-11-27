@@ -24,7 +24,7 @@ export function LessonList({ onOpen }: Props) {
   const { colors } = useTheme();
   const completed = useProgressStore((s) => s.completedLessons);
   const ready = useHydrated(useProgressStore.persist) && !forceSkeleton();
-  const { split, phone } = useLayout();
+  const { split, phone, topNav } = useLayout();
   const done = new Set(completed);
 
   return (
@@ -34,7 +34,7 @@ export function LessonList({ onOpen }: Props) {
           <View style={[styles.intro, split && styles.introSide]}>
             <View style={styles.introTop}>
               <Text style={text.eyebrow}>Course</Text>
-              {phone ? <MenuButton compact /> : null}
+              {!topNav ? <MenuButton compact={phone} /> : null}
             </View>
             <Text style={split ? text.display : text.title}>Learn</Text>
             <Text style={text.muted}>
@@ -54,7 +54,10 @@ export function LessonList({ onOpen }: Props) {
                       aria-checked={complete}
                       testID={`lesson-open-${lesson.id}`}
                       onPress={() => onOpen(lesson.id)}
-                      style={({ pressed }) => [styles.row, pressed && styles.rowOn]}>
+                      style={(state) => {
+                        const hovered = 'hovered' in state && Boolean(state.hovered);
+                        return [styles.row, (hovered || state.pressed) && styles.rowOn];
+                      }}>
                       <View style={styles.index}>
                         <Text style={styles.indexText}>{index + 1}</Text>
                       </View>
