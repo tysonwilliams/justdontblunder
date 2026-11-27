@@ -1,17 +1,30 @@
 /**
  * Phone board must stay at the same y after a move.
  *
- * Requires the web app (npm run web) and puppeteer-core, and uses the system Chrome.
+ * Point BOARD_URL at the dev server or at `npm run preview:web` after `npm run export:web`.
  *   BOARD_URL=http://127.0.0.1:43127 node scripts/board-stability.mjs
  *
  * The username sheet sits over the board, so the fixture skips it. Otherwise the
  * script cannot play the move it measures.
  */
+import { existsSync, mkdirSync } from 'node:fs';
+
 import puppeteer from 'puppeteer-core';
 
-const chrome = process.env.CHROME_PATH ?? '/usr/local/bin/google-chrome';
+const chromeCandidates = [
+  process.env.CHROME_PATH,
+  '/usr/local/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/google-chrome',
+].filter(Boolean);
+const chrome = chromeCandidates.find((candidate) => existsSync(candidate));
+if (!chrome) {
+  console.error(`Chrome not found. Set CHROME_PATH. Looked in ${chromeCandidates.join(', ')}`);
+  process.exit(1);
+}
 const base = process.env.BOARD_URL ?? 'http://127.0.0.1:43127';
 const shotDir = process.env.BOARD_SHOTS ?? '/opt/cursor/artifacts';
+mkdirSync(shotDir, { recursive: true });
 
 const viewports = [
   { width: 390, height: 844 },

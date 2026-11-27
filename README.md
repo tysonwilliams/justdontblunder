@@ -32,7 +32,9 @@ Expo web serves at http://localhost:43127. `npm run start` opens the Expo dev se
 | `npm run lint` | ESLint (`expo lint` on `app/` and `src/`) |
 | `npm test` | Unit tests |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
-| `node scripts/board-stability.mjs` | Checks that the phone board stays put after a move. Needs the web app running. |
+| `npm run export:web` | Static web export, then copies the not-found page to `404.html`. |
+| `npm run preview:web` | Serves `dist` with clean URLs. Unknown paths return 404. |
+| `node scripts/board-stability.mjs` | Checks that the phone board stays at y=128. Point `BOARD_URL` at `npm run web` or the preview. |
 | `npm run seed:puzzles` | Writes `supabase/seeds/puzzles.sql` from the starter bank. |
 
 `scripts/refresh-acceptable.mts` rebuilds the offline teaching window with the Stockfish CLI. That CLI is the `stockfish` devDependency. The running app does not load Stockfish.
@@ -50,7 +52,7 @@ npm run grow-bank
 - Expo SDK 58 and Expo Router. Screens live in `app/`.
 - TypeScript, chess.js, Zustand, and AsyncStorage.
 - Blunders are judged in the app with chess.js. No chess engine is bundled into the web or native build.
-- Web export is configured for Vercel (`expo export -p web`).
+- Web export is static HTML per route (`npm run export:web`). Vercel serves those files. Unknown paths use `404.html`. `robots.txt`, `sitemap.xml`, and the manifest are real files.
 
 `ios/` and `android/` are not in this repo. Expo generates them for a native build. There is no EAS config and no store build here. Optional Supabase sync runs when someone is signed in, unless `EXPO_PUBLIC_SYNC_ENABLED` is the string `false`. See `docs/supabase.md`.
 
@@ -66,6 +68,6 @@ src/store/           local progress
 supabase/            schema, local config, and the puzzle seed
 docs/supabase.md     how to apply the schema and turn sync on
 src/theme/           color and type tokens
-public/              web shell (index.html)
+public/              robots.txt, sitemap, manifest, icons, share image
 .github/workflows/   lint, test, and typecheck on pull requests and on main
 ```

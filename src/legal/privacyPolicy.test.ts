@@ -68,6 +68,12 @@ describe('privacy policy', () => {
     expect(policy).toContain('does not include an analytics product');
     expect(policy).toContain('There are no ads. We do not sell your data.');
     expect(policy).toContain('IP address');
+    expect(policy).toContain('client_errors');
+    expect(policy).toContain('does not include an account id');
+    expect(policy).toContain('EXPO_PUBLIC_ERROR_REPORTING is the string true');
+    expect(policy).toContain('jdb-error-reports-v1');
+    expect(policy).toContain('jdb-onboarding-prompt');
+    expect(policy).toContain('not copied into the client_errors row');
   });
 
   it('covers retention, deletion, children, rights, security, and changes', () => {

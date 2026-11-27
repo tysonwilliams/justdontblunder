@@ -5,6 +5,7 @@ import { Button } from '@/src/components/ui/Button';
 import { FilterChips } from '@/src/components/ui/Chip';
 import { text } from '@/src/components/ui/text';
 import { playUnlocked } from '@/src/logic/earlyPlay';
+import { claimOnboarding, shouldOfferUsernameSheet } from '@/src/logic/onboardingPrompt';
 import { cleanUsername, type GameSite } from '@/src/logic/gameImport';
 import { cancelOwnScan, runOwnScan } from '@/src/store/ownGames';
 import { useProgressStore, type ScanProgress } from '@/src/store/progress';
@@ -38,11 +39,16 @@ function statusCopy(phase: Phase, scan: ScanProgress): string {
   return scan.message;
 }
 
-/** Asks for a public username. Sits over Drills and leaves the board where it is. */
+/**
+ * Asks for a public username. Sits over Drills and leaves the board where it is.
+ * It waits until a drill is finished, and it stays hidden when this tab already
+ * showed the welcome card.
+ */
 export function DrillsPrompt() {
   const { colors } = useTheme();
   const hydrated = useHydrated(useProgressStore.persist);
   const profile = useProgressStore((state) => state.gameProfile);
+  const drillsCompleted = useProgressStore((state) => state.drillsCompleted);
   const skipped = useProgressStore((state) => state.drillsPromptSkipped);
   const scan = useProgressStore((state) => state.scan);
   const skipDrillsPrompt = useProgressStore((state) => state.skipDrillsPrompt);
@@ -62,8 +68,21 @@ export function DrillsPrompt() {
     if (scan.phase === 'scanning') setPhase('scanning');
   }, [scan.phase]);
 
-  if (!hydrated || skipped || closed || scanPromptDismissed) return null;
-  if (profile && phase === 'ask' && !showingResult.current) return null;
+  if (
+    !shouldOfferUsernameSheet({
+      hydrated,
+      skipped,
+      closed,
+      scanPromptDismissed,
+      hasProfile: profile != null,
+      phase,
+      showingResult: showingResult.current,
+      drillsCompleted,
+    })
+  ) {
+    return null;
+  }
+  if (!claimOnboarding('username')) return null;
 
   const stop = () => {
     cancelOwnScan();

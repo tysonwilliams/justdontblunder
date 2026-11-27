@@ -21,8 +21,16 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static",
+      "favicon": "./assets/images/favicon.png",
+      "name": "Just Don't Blunder",
+      "shortName": "Don't Blunder",
+      "lang": "en",
+      "description": "A chess trainer that marks a blunder in red and a save in green. Play, learn, and drill with no account.",
+      "themeColor": "#1C1B19",
+      "backgroundColor": "#1C1B19",
+      "display": "standalone",
+      "startUrl": "/"
     },
     "plugins": [
       "expo-router",
