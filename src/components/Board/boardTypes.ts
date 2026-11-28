@@ -43,6 +43,10 @@ export type ChessBoardProps = {
    * the slot, so the squares match the frame before onLayout runs.
    */
   size?: number;
+  /** Optional custom status line above the board (e.g. demo cards instead of "White to move"). */
+  statusText?: string;
+  /** Called when tapping a non-interactive board (e.g. stepping a lesson example forward). */
+  onBoardPress?: () => void;
   /**
    * `false` is a blunder. `true` is a safe move. Omit the return for an
    * ordinary move that is not judged.

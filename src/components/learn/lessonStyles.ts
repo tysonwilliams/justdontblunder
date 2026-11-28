@@ -38,9 +38,8 @@ export const lessonStyles = StyleSheet.create({
   },
   cardAside: {
     paddingHorizontal: spacing[10],
-    paddingVertical: spacing[6],
-    gap: spacing.xs,
-    overflow: 'hidden',
+    paddingVertical: spacing[8],
+    gap: spacing[6],
   },
   doneActions: {
     gap: spacing.sm,

@@ -43,6 +43,8 @@ export function chessBoardPropsEqual(prev: ChessBoardProps, next: ChessBoardProp
     (prev.flipCue ?? false) === (next.flipCue ?? false) &&
     (prev.hideTurn ?? false) === (next.hideTurn ?? false) &&
     prev.size === next.size &&
+    prev.statusText === next.statusText &&
+    prev.onBoardPress === next.onBoardPress &&
     prev.onMove === next.onMove &&
     prev.onPositionChange === next.onPositionChange &&
     sameSquares(prev.highlightSquares, next.highlightSquares) &&

@@ -6,7 +6,7 @@ import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard, type BoardArrow, type BoardMoveEvent } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
 import { LessonLead } from '@/src/components/learn/LessonLead';
-import { roundKind } from '@/src/components/learn/lessonPhase';
+import { lessonProgress, roundKind, type LessonPhase } from '@/src/components/learn/lessonPhase';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { Button } from '@/src/components/ui/Button';
 import { PhoneTray } from '@/src/components/ui/PhoneTray';
@@ -15,37 +15,48 @@ import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
 import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
+import { threatAttackerArrow } from '@/src/logic/difficulty';
 import { isCorrectDrillMove } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
 import type { Lesson } from '@/src/logic/lessons';
 import { punishmentLine, type PunishmentStep } from '@/src/logic/punishment';
 import { roundSpeech } from '@/src/logic/saveFeedback';
-import { markColor } from '@/src/theme';
+import { markColor, spacing } from '@/src/theme';
+import { themedStyleSheet } from '@/src/theme/themed';
 import { useTheme } from '@/src/theme/useTheme';
 
 type TryRound = 'playing' | 'correct' | 'retry' | 'revealed';
 
+const LESSON_PUNISHMENT_MS = 950;
+
 export function LessonTry({
   lesson,
   index,
-  progress,
+  maxSlot,
+  onSelectPhase,
+  onOutcome,
+  onPrev,
   onBack,
   onNext,
 }: {
   lesson: Lesson;
   index: number;
-  progress: number;
+  maxSlot?: number;
+  onSelectPhase?: (target: LessonPhase) => void;
+  onOutcome?: (firstTrySaved: boolean) => void;
+  onPrev?: () => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const task = lesson.tries[index];
   const drill = task?.drill;
   const [round, setRound] = useState<TryRound>('playing');
+  const [hintStep, setHintStep] = useState(0);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [displayFen, setDisplayFen] = useState<string | null>(drill?.fen ?? null);
   const [replayLine, setReplayLine] = useState<PunishmentStep[]>([]);
   const replayActive = round === 'retry';
-  const playback = usePunishmentPlayback(replayActive, replayLine);
+  const playback = usePunishmentPlayback(replayActive, replayLine, LESSON_PUNISHMENT_MS);
   const replyReady = !replayActive || playback.done;
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
@@ -53,8 +64,15 @@ export function LessonTry({
   );
   const { colors, scheme } = useTheme();
   const { phone } = useLayout();
-  const latest = useRef({ drill, round });
-  latest.current = { drill, round };
+  const recordedOutcome = useRef(false);
+  const latest = useRef({ drill, round, onOutcome });
+  latest.current = { drill, round, onOutcome };
+
+  const hintArrow = useMemo(() => (drill ? threatAttackerArrow(drill) : null), [drill]);
+  const hintOriginSquare = useMemo(() => {
+    const uci = drill?.solution[0];
+    return uci && uci.length >= 2 ? (uci.slice(0, 2) as Square) : null;
+  }, [drill]);
 
   const onMove = useCallback((event: BoardMoveEvent) => {
     const current = latest.current.drill;
@@ -62,6 +80,10 @@ export function LessonTry({
     setDisplayFen(event.afterFen);
     setLastMove({ from: event.from, to: event.to });
     const ok = isCorrectDrillMove(current, event.from, event.to, event.promotion);
+    if (!recordedOutcome.current) {
+      recordedOutcome.current = true;
+      latest.current.onOutcome?.(ok);
+    }
     if (ok) {
       setReplayLine([]);
       setRound('correct');
@@ -92,14 +114,28 @@ export function LessonTry({
     const game = createGame(current.fen);
     const moved = tryMove(game, from, to, promo);
     if (!moved) return;
+    if (!recordedOutcome.current) {
+      recordedOutcome.current = true;
+      latest.current.onOutcome?.(false);
+    }
     setDisplayFen(game.fen());
     setLastMove({ from: moved.from, to: moved.to });
     setReplayLine([]);
     setRound('revealed');
   }, []);
 
+  const stepHint = useCallback(() => {
+    if (latest.current.round !== 'playing') return;
+    if (hintStep === 0) {
+      setHintStep(1);
+      return;
+    }
+    reveal();
+  }, [hintStep, reveal]);
+
   useKeyboardShortcuts(
     {
+      ArrowLeft: round === 'playing' && onPrev ? onPrev : undefined,
       Enter: () => {
         if (round === 'correct' || round === 'revealed') {
           onNext();
@@ -124,10 +160,14 @@ export function LessonTry({
       },
       h: () => {
         if (round !== 'playing') return false;
-        reveal();
+        stepHint();
         return true;
       },
       r: () => {
+        if (round === 'revealed') {
+          tryAgain();
+          return true;
+        }
         if (round !== 'retry' || !replyReady) return false;
         tryAgain();
         return true;
@@ -148,18 +188,41 @@ export function LessonTry({
   const marks = highlightsForRound(roundKind(round), lastMove, drill.atRiskSquare);
   const threatFrom = playback.arrow?.from;
   const threatTo = playback.arrow?.to;
-  const threatArrow: BoardArrow[] =
-    threatFrom && threatTo ? [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }] : [];
+  const boardArrows: BoardArrow[] =
+    threatFrom && threatTo
+      ? [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }]
+      : round === 'playing' && hintStep >= 1 && hintArrow
+        ? [{ from: hintArrow.from, to: hintArrow.to, color: markColor('warning', scheme, colors) }]
+        : [];
+
+  const attentionSquares: Square[] =
+    round !== 'playing'
+      ? []
+      : hintStep >= 1 && !hintArrow && hintOriginSquare && hintOriginSquare !== drill.atRiskSquare
+        ? [drill.atRiskSquare, hintOriginSquare]
+        : [drill.atRiskSquare];
+
   const copy = roundSpeech(roundKind(round), drill, lastMove);
+  const phase: LessonPhase = { kind: 'try', index };
+  const progress = lessonProgress(lesson, phase, round === 'correct' || round === 'revealed' ? 1 : 0.35);
+  const coachLine =
+    hintStep >= 1
+      ? hintArrow
+        ? `Watch the amber arrow from ${hintArrow.from} to ${hintArrow.to} — stop that threat.`
+        : 'Look closely at the highlighted piece — it has a safe answer.'
+      : task.coach;
 
   return (
     <PlayFrame
       intro={
         <LessonLead
           lesson={lesson}
-          kicker={`Try ${index + 1} of ${lesson.tries.length}`}
+          kicker={`Try ${index + 1}/${lesson.tries.length}`}
           detail={drill.prompt}
           progress={progress}
+          phase={phase}
+          maxSlot={maxSlot}
+          onSelectPhase={onSelectPhase}
           onBack={onBack}
         />
       }
@@ -171,8 +234,8 @@ export function LessonTry({
           interactive={round === 'playing'}
           hideTurn
           lastMove={boardLastMove}
-          arrows={threatArrow}
-          attentionSquares={round === 'playing' ? [drill.atRiskSquare] : []}
+          arrows={boardArrows}
+          attentionSquares={attentionSquares}
           highlightSquares={marks.squares}
           highlightTone={marks.tone}
           onMove={onMove}
@@ -182,18 +245,34 @@ export function LessonTry({
         <PhoneTray
           banner={
             round === 'playing' ? (
-              <View style={[play.guide, phone && play.phoneCard]}>
-                <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : 3}>
-                  {task.coach}
+              <View style={[play.guide, phone && play.phoneCard, phone && styles.phoneCoach]}>
+                <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : 4}>
+                  {coachLine}
                 </Text>
-                {phone ? null : <Text style={text.muted}>The amber square is the piece to watch.</Text>}
-                <Button
-                  compact={phone}
-                  label="Show the idea"
-                  variant="secondary"
-                  testID="lesson-idea"
-                  onPress={reveal}
-                />
+                {phone ? null : (
+                  <Text style={text.muted}>
+                    {hintStep >= 1 ? 'Still stuck? Show the idea to see one safe move.' : 'The amber square is the piece to watch.'}
+                  </Text>
+                )}
+                <View style={styles.coachActions}>
+                  {onPrev && !phone ? (
+                    <Button
+                      variant="ghost"
+                      label={index === 0 ? 'Examples' : 'Back'}
+                      fullWidth={false}
+                      testID="lesson-try-back"
+                      onPress={onPrev}
+                    />
+                  ) : null}
+                  <Button
+                    compact={phone}
+                    label={hintStep === 0 ? 'Hint' : 'Show the idea'}
+                    variant="secondary"
+                    testID={hintStep === 0 ? 'lesson-hint' : 'lesson-idea'}
+                    onPress={stepHint}
+                    style={styles.grow}
+                  />
+                </View>
               </View>
             ) : (
               <TryResult
@@ -256,6 +335,9 @@ function TryResult({
           actionLabel="Next"
           onDismiss={onNext}
           actionTestID="lesson-next"
+          secondaryLabel="Try it"
+          onSecondary={onAgain}
+          secondaryTestID="lesson-try-again"
         />
       );
     case 'retry':
@@ -281,3 +363,20 @@ function TryResult({
     }
   }
 }
+
+const styles = themedStyleSheet(() => ({
+  phoneCoach: {
+    paddingVertical: spacing[4],
+    gap: spacing[4],
+    justifyContent: 'center',
+  },
+  coachActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+  },
+  grow: {
+    flex: 1,
+    flexBasis: 0,
+  },
+}));
