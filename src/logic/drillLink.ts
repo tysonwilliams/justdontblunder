@@ -66,11 +66,18 @@ export function themeFilterLabel(theme: ThemeFilter): string {
   return match ? match.label : 'All';
 }
 
+export type DrillSourceFilter = 'all' | 'own';
+
+export function parseSourceFilter(value: string | undefined): DrillSourceFilter {
+  return value === 'own' ? 'own' : 'all';
+}
+
 export type DrillQuery = {
   mode?: string;
   theme?: string;
   streak?: string;
   pick?: string;
+  source?: string;
 };
 
 /**
@@ -78,26 +85,34 @@ export type DrillQuery = {
  * Play and All stay off the query, so the default link is /drills.
  * Sudden-death is a Play option: `streak=1`, not a mode.
  */
-export function drillHref(mode: DrillMode = 'play', theme: ThemeFilter = 'all', streak = false): string {
+export function drillHref(
+  mode: DrillMode = 'play',
+  theme: ThemeFilter = 'all',
+  streak = false,
+  source: DrillSourceFilter = 'all',
+): string {
   const params = new URLSearchParams();
   if (mode !== 'play') params.set('mode', mode);
   if (mode === 'play' && streak) params.set('streak', '1');
   if (theme !== 'all') params.set('theme', theme === 'missed_mate' ? 'missed_mate' : theme);
+  if (mode !== 'review' && source === 'own') params.set('source', 'own');
   const query = params.toString();
   return query ? `/drills?${query}` : '/drills';
 }
 
-/** Mode, theme, and whether Play is using sudden-death rules. */
+/** Mode, theme, source, and whether Play is using sudden-death rules. */
 export function resolveDrillQuery(query: DrillQuery): {
   mode: DrillMode;
   theme: ThemeFilter;
   streak: boolean;
+  source: DrillSourceFilter;
   href: string;
 } {
   const mode = parseDrillMode(query.pick === '1' ? 'pick' : query.mode);
   const theme = parseThemeFilter(query.theme);
   const streak = mode === 'play' && (query.mode === 'streak' || query.streak === '1');
-  return { mode, theme, streak, href: drillHref(mode, theme, streak) };
+  const source: DrillSourceFilter = mode === 'review' ? 'all' : parseSourceFilter(query.source);
+  return { mode, theme, streak, source, href: drillHref(mode, theme, streak, source) };
 }
 
 /** Canonical drills URL for a raw query, including old `mode=streak` links. */
@@ -112,6 +127,7 @@ export function observedDrillHref(query: DrillQuery): string {
   if (query.streak) params.set('streak', query.streak);
   if (query.theme) params.set('theme', query.theme);
   if (query.pick) params.set('pick', query.pick);
+  if (query.source) params.set('source', query.source);
   const search = params.toString();
   return search ? `/drills?${search}` : '/drills';
 }

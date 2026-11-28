@@ -12,18 +12,21 @@ import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { lessonById, practiceHref, resolveBeats, type LessonId } from '@/src/logic/lessons';
+import { ALL_LESSONS, lessonById, practiceHref, resolveBeats, type LessonId } from '@/src/logic/lessons';
 import { useProgressStore } from '@/src/store/progress';
 
 type Props = {
   lessonId: LessonId;
   onBack: () => void;
   onPractice: (href: string) => void;
+  onOpenLesson?: (id: LessonId) => void;
 };
 
-export function LessonPlayer({ lessonId, onBack, onPractice }: Props) {
+export function LessonPlayer({ lessonId, onBack, onPractice, onOpenLesson }: Props) {
   const { phone } = useLayout();
   const lesson = lessonById(lessonId);
+  const currentIdx = ALL_LESSONS.findIndex((item) => item.id === lessonId);
+  const nextLesson = currentIdx >= 0 ? (ALL_LESSONS[currentIdx + 1] ?? null) : null;
   const completeLesson = useProgressStore((s) => s.completeLesson);
   const [phase, setPhase] = useState<LessonPhase>({ kind: 'card', index: 0 });
   const phaseKey = phase.kind === 'done' ? 'done' : `${phase.kind}:${phase.index}`;
@@ -67,7 +70,7 @@ export function LessonPlayer({ lessonId, onBack, onPractice }: Props) {
         }
         aside={
           <View style={[play.guide, phone && lessonStyles.cardAside]}>
-            <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 2 : 3}>
+            <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 3 : 4}>
               {doneCopy(lesson.id)}
             </Text>
             <View style={phone ? lessonStyles.doneActionsPhone : lessonStyles.doneActions}>
@@ -78,14 +81,33 @@ export function LessonPlayer({ lessonId, onBack, onPractice }: Props) {
                 onPress={() => onPractice(practiceHref(lesson))}
                 style={phone ? lessonStyles.doneActionPhone : undefined}
               />
-              <Button
-                compact={phone}
-                label="All lessons"
-                variant="secondary"
-                testID="lesson-back"
-                onPress={onBack}
-                style={phone ? lessonStyles.doneActionPhone : undefined}
-              />
+              {nextLesson && onOpenLesson ? (
+                <Button
+                  compact={phone}
+                  label={phone ? 'Next lesson' : `Next: ${nextLesson.title}`}
+                  variant="secondary"
+                  testID="lesson-next-course"
+                  onPress={() => onOpenLesson(nextLesson.id)}
+                  style={phone ? lessonStyles.doneActionPhone : undefined}
+                />
+              ) : (
+                <Button
+                  compact={phone}
+                  label="All lessons"
+                  variant="secondary"
+                  testID="lesson-back"
+                  onPress={onBack}
+                  style={phone ? lessonStyles.doneActionPhone : undefined}
+                />
+              )}
+              {!phone && nextLesson && onOpenLesson ? (
+                <Button
+                  label="All lessons"
+                  variant="ghost"
+                  testID="lesson-back"
+                  onPress={onBack}
+                />
+              ) : null}
             </View>
           </View>
         }

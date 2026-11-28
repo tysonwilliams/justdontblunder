@@ -70,6 +70,7 @@ export function DrillDone({
   reviewing,
   streak,
   emptyReview,
+  emptyOwn = false,
   upcomingCount = 0,
   correct,
   total,
@@ -81,6 +82,7 @@ export function DrillDone({
   reviewing: boolean;
   streak: boolean;
   emptyReview: boolean;
+  emptyOwn?: boolean;
   upcomingCount?: number;
   correct: number;
   total: number;
@@ -96,15 +98,23 @@ export function DrillDone({
       <View style={play.done}>
         {phone ? null : <Text style={text.eyebrow}>Drills</Text>}
         <Text style={[text.title, phone && text.titlePhone]} numberOfLines={2}>
-          {emptyReview
-            ? 'All caught up'
-            : caughtUp
-              ? 'Reviews complete'
-              : streak
-                ? 'Clean run'
-                : "That's the set"}
+          {emptyOwn
+            ? 'No personal blunders here'
+            : emptyReview
+              ? 'All caught up'
+              : caughtUp
+                ? 'Reviews complete'
+                : streak
+                  ? 'Clean run'
+                  : "That's the set"}
         </Text>
-        {emptyReview ? (
+        {emptyOwn ? (
+          <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={phone ? 3 : undefined}>
+            {toolbar.theme === 'all'
+              ? 'Import your Chess.com or Lichess games to build your own blunder set.'
+              : `None of your imported blunders are ${themeFilterLabel(toolbar.theme).toLowerCase()} yet.`}
+          </Text>
+        ) : emptyReview ? (
           <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={phone ? 3 : undefined}>
             {toolbar.theme === 'all'
               ? upcomingCount > 0
@@ -124,7 +134,14 @@ export function DrillDone({
             </Text>
           </>
         )}
-        {emptyReview || caughtUp ? (
+        {emptyOwn ? (
+          <Button
+            compact={phone}
+            label="Show all puzzles"
+            testID="own-show-all"
+            onPress={() => toolbar.onSource?.('all')}
+          />
+        ) : emptyReview || caughtUp ? (
           <>
             <Button
               compact={phone}

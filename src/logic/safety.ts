@@ -322,19 +322,32 @@ export function clubTacticalWarning(
   const opp = opposite(side);
   const replies = after.moves({ verbose: true });
   for (const reply of replies) {
-    if (reply.captured) continue;
-    if (reply.piece !== 'n' && reply.piece !== 'q' && reply.piece !== 'p') continue;
-    const next = new Chess(after.fen());
-    const moved = next.move(reply);
+    if (reply.piece === 'k') continue;
+    const moved = after.move(reply);
     if (!moved) continue;
-    // Skip if the forking piece simply hangs to capture right away.
-    if (see(next.fen(), moved.to, side) > 0) continue;
-    const targets = attackedFriendlyTargets(next, moved.to, side);
-    if (targets.length < 2) continue;
-    const hasKing = targets.some((t) => t.type === 'k');
-    const heavyCount = targets.filter((t) => t.type === 'q' || t.type === 'r').length;
+    const captureValue = moved.captured ? VAL[moved.captured] : 0;
+    // Skip if the forking piece loses material right away when captured.
+    const lossIfCaptured = seeOnGame(after, moved.to);
+    if (lossIfCaptured > captureValue) {
+      after.undo();
+      continue;
+    }
+    const rawTargets = attackedFriendlyTargets(after, moved.to, side);
+    if (rawTargets.length < 2) {
+      after.undo();
+      continue;
+    }
+    const nextFen = after.fen();
+    const realTargets = rawTargets.filter((target) => {
+      if (target.type === 'k') return true;
+      return VAL[target.type] > VAL[reply.piece] || hangingGain(nextFen, target.square, side) > 0;
+    });
+    after.undo();
+    if (realTargets.length < 2) continue;
+    const hasKing = realTargets.some((t) => t.type === 'k');
+    const heavyCount = realTargets.filter((t) => t.type === 'q' || t.type === 'r').length;
     if (!hasKing && heavyCount < 2) continue;
-    const sorted = [...targets].sort((a, b) => VAL[b.type] - VAL[a.type]);
+    const sorted = [...realTargets].sort((a, b) => VAL[b.type] - VAL[a.type]);
     const first = pieceName(sorted[0]!.type);
     const second = pieceName(sorted[1]!.type);
     const who = opp === 'w' ? 'White' : 'Black';

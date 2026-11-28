@@ -63,32 +63,61 @@ export function buildPuzzlePool(
 }
 
 /**
- * Full pool for a specific theme: every personal blunder of that theme first,
- * followed by every unique starter puzzle of that theme (never sliced by PUZZLE_POOL_SIZE).
+ * Full pool for a filter: every personal blunder matching the theme first,
+ * followed by every unique starter puzzle (unless `ownOnly` is true).
+ * Never slices off unique starters beyond PUZZLE_POOL_SIZE.
  */
 export function buildPoolForTheme(
   own: readonly DrillPosition[],
   theme: 'all' | DrillTheme,
   starter: readonly DrillPosition[] = getAllDrills(),
+  options: { ownOnly?: boolean } = {},
 ): DrillPosition[] {
-  if (theme === 'all') return buildPuzzlePool(own, starter);
   const pool: DrillPosition[] = [];
   const seen = new Set<string>();
   for (const drill of own) {
-    if (drill.theme !== theme) continue;
+    if (theme !== 'all' && drill.theme !== theme) continue;
     const key = fenKey(drill.fen);
     if (seen.has(key)) continue;
     seen.add(key);
     pool.push(drill);
   }
+  if (options.ownOnly) return pool;
   for (const drill of starter) {
-    if (drill.theme !== theme) continue;
+    if (theme !== 'all' && drill.theme !== theme) continue;
     const key = fenKey(drill.fen);
     if (seen.has(key)) continue;
     seen.add(key);
     pool.push(drill);
   }
   return pool;
+}
+
+/** Deterministic Fisher-Yates shuffle for Streak runs and fresh sets. */
+export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
+  const copy = [...items];
+  let state = (seed >>> 0) || 1;
+  const nextRand = () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(nextRand() * (i + 1));
+    const tmp = copy[i]!;
+    copy[i] = copy[j]!;
+    copy[j] = tmp;
+  }
+  return copy;
+}
+
+/** Rotate a list forward by `offset` items so returning players start on fresh puzzles. */
+export function rotateList<T>(items: readonly T[], offset: number): T[] {
+  if (items.length <= 1) return [...items];
+  const shift = ((Math.floor(offset) % items.length) + items.length) % items.length;
+  if (shift === 0) return [...items];
+  return [...items.slice(shift), ...items.slice(0, shift)];
 }
 
 /** Newest first, one per position, at most `limit`. */

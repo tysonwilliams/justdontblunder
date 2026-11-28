@@ -3,13 +3,15 @@ import { Pressable, Text, View } from 'react-native';
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
 import { MenuButton } from '@/src/components/SettingsMenu';
 import { controlA11y } from '@/src/components/ui/a11y';
+import { Button } from '@/src/components/ui/Button';
 import { IconCheck } from '@/src/components/ui/icons';
+import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { Bone } from '@/src/components/ui/Skeleton';
 import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { CLUB_LESSONS, LESSONS, type Lesson, type LessonId } from '@/src/logic/lessons';
+import { ALL_LESSONS, CLUB_LESSONS, LESSONS, type Lesson, type LessonId } from '@/src/logic/lessons';
 import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
@@ -26,6 +28,8 @@ export function LessonList({ onOpen }: Props) {
   const ready = useHydrated(useProgressStore.persist) && !forceSkeleton();
   const { split, phone, topNav } = useLayout();
   const done = new Set(completed);
+  const completedCount = ALL_LESSONS.filter((lesson) => done.has(lesson.id)).length;
+  const nextLesson = ALL_LESSONS.find((lesson) => !done.has(lesson.id)) ?? null;
 
   const renderSection = (lessons: readonly Lesson[], club = false) =>
     ready
@@ -51,7 +55,7 @@ export function LessonList({ onOpen }: Props) {
                 <Text style={styles.title} numberOfLines={1}>
                   {lesson.title}
                 </Text>
-                <Text style={text.muted} numberOfLines={1}>
+                <Text style={text.muted} numberOfLines={2}>
                   {lesson.summary}
                 </Text>
               </View>
@@ -89,6 +93,24 @@ export function LessonList({ onOpen }: Props) {
             <Text style={text.muted}>
               Six core lessons plus four club tactics. About two minutes each. Any lesson is open.
             </Text>
+            {ready ? (
+              <View style={styles.courseProgress}>
+                <View style={styles.progressHead}>
+                  <Text style={styles.progressLabel}>
+                    {completedCount}/{ALL_LESSONS.length} completed
+                  </Text>
+                </View>
+                <ProgressTrack progress={completedCount / ALL_LESSONS.length} />
+                {nextLesson ? (
+                  <Button
+                    compact
+                    label={completedCount > 0 ? `Continue: ${nextLesson.title}` : `Start: ${nextLesson.title}`}
+                    testID="lesson-continue"
+                    onPress={() => onOpen(nextLesson.id)}
+                  />
+                ) : null}
+              </View>
+            ) : null}
           </View>
           <View style={styles.tracks}>
             <View style={styles.list}>
@@ -125,7 +147,22 @@ const styles = themedStyleSheet((colors) => ({
     gap: spacing.lg,
   },
   intro: {
-    gap: spacing[6],
+    gap: spacing[8],
+  },
+  courseProgress: {
+    gap: spacing[8],
+    marginTop: spacing[4],
+  },
+  progressHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  progressLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
   },
   introTop: {
     flexDirection: 'row',

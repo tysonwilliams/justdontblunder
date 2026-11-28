@@ -12,6 +12,7 @@ import {
   reviewForEntries,
   sessionForTheme,
   upcomingReviewCount,
+  type DrillSourceFilter,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
 import { difficultyLabel, drillDifficulty, threatAttackerArrow } from '@/src/logic/difficulty';
@@ -25,10 +26,11 @@ import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
 import { clubTacticalWarning } from '@/src/logic/safety';
 import { missFeedback, roundSpeech } from '@/src/logic/saveFeedback';
-import { buildPoolForTheme } from '@/src/logic/puzzlePool';
+import { buildPoolForTheme, rotateList, shuffleWithSeed } from '@/src/logic/puzzlePool';
 import { formatReviewGap, nextReviewGapDays } from '@/src/logic/reviewSchedule';
 import { shownBest, streakScoreInRange } from '@/src/logic/streak';
 import { roundProgress, trainerBoard, type TrainerMove } from '@/src/logic/trainerRound';
+import { useDrillPrefs } from '@/src/store/drillPrefs';
 import { applyRoundEffects } from '@/src/store/trainerResult';
 import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
@@ -59,28 +61,55 @@ function solutionMove(drill: DrillPosition): { from: Square; to: Square; fen: st
   if (!uci || uci.length < 4) return null;
   const from = uci.slice(0, 2) as Square;
   const to = uci.slice(2, 4) as Square;
+  const promo = uci.length >= 5 ? (uci[4] as 'q' | 'r' | 'b' | 'n') : undefined;
   const game = createGame(drill.fen);
-  const moved = tryMove(game, from, to);
+  const moved = tryMove(game, from, to, promo);
   if (!moved) return null;
   return { from: moved.from, to: moved.to, fen: game.fen() };
 }
 
-function playingPool(theme: ThemeFilter) {
-  return buildPoolForTheme(useProgressStore.getState().ownDrills, theme);
+function playingPool(
+  theme: ThemeFilter,
+  source: DrillSourceFilter,
+  sudden: boolean,
+  restartCount: number,
+): DrillPosition[] {
+  const { ownDrills, drillsCompleted } = useProgressStore.getState();
+  const base = buildPoolForTheme(ownDrills, theme, undefined, { ownOnly: source === 'own' });
+  if (sudden) {
+    const seed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff) ^ (restartCount * 2654435761)) >>> 0;
+    return shuffleWithSeed(base, seed);
+  }
+  if (restartCount > 0) {
+    return rotateList(base, restartCount * 11);
+  }
+  // Keep drillsCompleted === 0 in canonical order so first-visit Play starts on hang-q-01.
+  if (source === 'all' && ownDrills.length === 0 && drillsCompleted > 0) {
+    return rotateList(base, drillsCompleted);
+  }
+  return base;
 }
 
 function reviewSession(theme: ThemeFilter, includeAhead = false) {
   return reviewForEntries(useProgressStore.getState().review, theme, undefined, { includeAhead });
 }
 
-export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak: boolean) {
+export function useDrillSession(
+  mode: DrillPlayMode,
+  theme: ThemeFilter,
+  streak: boolean,
+  source: DrillSourceFilter = 'all',
+) {
   const { colors, scheme } = useTheme();
   const experience = useProgressStore((s) => s.experience);
   const sudden = mode === 'play' && streak;
-  const [unpromptedOverride, setUnpromptedOverride] = useState<boolean | null>(null);
-  const [blitzTimer, setBlitzTimer] = useState(false);
+  const unpromptedOverride = useDrillPrefs((s) => s.unprompted);
+  const setUnpromptedOverride = useDrillPrefs((s) => s.setUnprompted);
+  const blitzTimer = useDrillPrefs((s) => s.blitzTimer);
+  const setBlitzTimer = useDrillPrefs((s) => s.setBlitzTimer);
   const [secondsLeft, setSecondsLeft] = useState(BLITZ_SECONDS);
   const [hintStep, setHintStep] = useState(0);
+  const restartCount = useRef(0);
 
   const unprompted = unpromptedOverride ?? experience === 'intermediate';
   const guided = !sudden && !unprompted;
@@ -93,14 +122,16 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
 
   const [practicingAhead, setPracticingAhead] = useState(false);
   const [nextGapLabel, setNextGapLabel] = useState<string | null>(null);
+  const [nextGapShort, setNextGapShort] = useState<string | null>(null);
   const [session, setSession] = useState<DrillSessionData>(() =>
-    reviewing ? reviewSession(theme, false) : sessionForTheme(theme, playingPool(theme)),
+    reviewing ? reviewSession(theme, false) : sessionForTheme(theme, playingPool(theme, source, sudden, 0)),
   );
   const [runSummary, setRunSummary] = useState<DrillRunSummary | null>(null);
   const reviewStarted = useRef(false);
   const started = useRef(false);
   const postedRun = useRef<string | null>(null);
   const requeuedIds = useRef<Set<string>>(new Set());
+  const requeuedSlots = useRef<Set<number>>(new Set());
   const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
   positionsRef.current = session.positions;
 
@@ -112,8 +143,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const done = index >= session.positions.length;
   const place = useRef({ index, round });
   place.current = { index, round };
-  const latest = useRef({ drill, sudden, reviewing, practicingAhead });
-  latest.current = { drill, sudden, reviewing, practicingAhead };
+  const latest = useRef({ drill, sudden, reviewing, practicingAhead, index });
+  latest.current = { drill, sudden, reviewing, practicingAhead, index };
 
   const upcomingCount = useMemo(
     () => (reviewing ? upcomingReviewCount(reviewEntries, theme) : 0),
@@ -124,6 +155,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     [reviewing, drill, reviewEntries],
   );
   const sourceLabel = useMemo(() => (drill ? personalSourceLabel(drill) : null), [drill]);
+  const sourceUrl = drill?.source?.url ?? null;
   const difficulty = useMemo(() => (drill ? difficultyLabel(drillDifficulty(drill)) : null), [drill]);
 
   const orientation = useMemo(
@@ -134,8 +166,10 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const begin = (nextSession: DrillSessionData, ahead = false) => {
     started.current = true;
     requeuedIds.current = new Set();
+    requeuedSlots.current = new Set();
     setPracticingAhead(ahead);
     setNextGapLabel(null);
+    setNextGapShort(null);
     setHintStep(0);
     setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'begin' });
@@ -156,7 +190,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   }, [reviewing, hydrated, theme]);
 
   usePuzzleGrowth(
-    !reviewing,
+    !reviewing && !sudden,
     hydrated,
     place,
     positionsRef,
@@ -166,7 +200,10 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
       const personal = theme === 'all' ? own : own.filter((item) => item.theme === theme);
       return {
         personal,
-        rebuilt: sessionForTheme(theme, buildPoolForTheme(own, theme)).positions,
+        rebuilt: sessionForTheme(
+          theme,
+          buildPoolForTheme(own, theme, undefined, { ownOnly: source === 'own' }),
+        ).positions,
       };
     },
     (positions) => {
@@ -177,10 +214,11 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   useEffect(() => {
     if (!puzzleId || !puzzleFen) return;
     setNextGapLabel(null);
+    setNextGapShort(null);
     setHintStep(0);
     setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'loadPuzzle', fen: puzzleFen });
-  }, [puzzleId, puzzleFen, dispatch]);
+  }, [puzzleId, puzzleFen, index, dispatch]);
 
   useEffect(() => {
     if (!blitzTimer || done || round !== 'playing') return;
@@ -212,7 +250,13 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   }, [sudden, state.runRecorded, state.score.correct, session.startedAt]);
 
   const restart = () => {
-    begin(reviewing ? reviewSession(theme, false) : sessionForTheme(theme, playingPool(theme)), false);
+    restartCount.current += 1;
+    begin(
+      reviewing
+        ? reviewSession(theme, false)
+        : sessionForTheme(theme, playingPool(theme, source, sudden, restartCount.current)),
+      false,
+    );
   };
 
   const practiceAhead = () => {
@@ -222,6 +266,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const next = () => {
     started.current = true;
     setNextGapLabel(null);
+    setNextGapShort(null);
     setHintStep(0);
     setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'advance', length: session.positions.length, wrap: false });
@@ -231,21 +276,35 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     const current = latest.current.drill;
     if (!current) return;
     setNextGapLabel(null);
+    setNextGapShort(null);
     setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'tryAgain', fen: current.fen });
   };
 
+  const requeueIfNeeded = (current: DrillPosition) => {
+    if (requeuedIds.current.has(current.id)) return;
+    requeuedIds.current.add(current.id);
+    setSession((prev) => {
+      requeuedSlots.current.add(prev.positions.length);
+      return { ...prev, positions: [...prev.positions, current] };
+    });
+  };
+
   const revealIdea = () => {
-    const current = latest.current.drill;
+    const now = latest.current;
+    const current = now.drill;
     if (!current) return;
     const result = dispatch({
       type: 'reveal',
-      sudden: latest.current.sudden,
+      sudden: now.sudden,
       move: solutionMove(current),
     });
     if (!result.accepted) return;
     started.current = true;
-    applyRoundEffects(result.effects, current, latest.current.reviewing && !latest.current.practicingAhead);
+    if (now.reviewing) requeueIfNeeded(current);
+    if (!requeuedSlots.current.has(now.index)) {
+      applyRoundEffects(result.effects, current, now.reviewing && !now.practicingAhead);
+    }
   };
 
   const stepHint = () => {
@@ -269,24 +328,29 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
         afterFen: event.afterFen,
         move: { from: event.from, to: event.to },
         san: event.san,
-        line: ok ? [] : punishmentLine(current, event.from, event.to),
+        line: ok ? [] : punishmentLine(current, event.from, event.to, event.promotion),
         sudden: now.sudden,
         missText: ok ? '' : missFeedback(current, event.from, event.to),
       });
       if (!result.accepted) return false;
       started.current = true;
-      const scheduledReview = now.reviewing && !now.practicingAhead;
+      const isRepeat = requeuedSlots.current.has(now.index);
+      const scheduledReview = now.reviewing && !now.practicingAhead && !isRepeat;
       if (scheduledReview && ok) {
         const entry = useProgressStore.getState().review.find((item) => item.id === current.id);
-        setNextGapLabel(`Next review in ${formatReviewGap(nextReviewGapDays(entry))}.`);
+        const days = nextReviewGapDays(entry);
+        setNextGapLabel(`Next review in ${formatReviewGap(days)}.`);
+        setNextGapShort(`Next: ${formatReviewGap(days)}`);
       } else {
         setNextGapLabel(null);
+        setNextGapShort(null);
       }
-      if (now.reviewing && !ok && !requeuedIds.current.has(current.id)) {
-        requeuedIds.current.add(current.id);
-        setSession((prev) => ({ ...prev, positions: [...prev.positions, current] }));
+      if (now.reviewing && !ok) {
+        requeueIfNeeded(current);
       }
-      applyRoundEffects(result.effects, current, scheduledReview);
+      if (!isRepeat) {
+        applyRoundEffects(result.effects, current, scheduledReview);
+      }
       return ok;
     },
     [dispatch],
@@ -348,6 +412,12 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     (part): part is string => Boolean(part && part.length > 0),
   );
   const roundCopy = parts.join(' ');
+  const compactNote =
+    round === 'correct' && nextGapShort
+      ? nextGapShort
+      : drill?.source?.move && round !== 'playing'
+        ? `Played ${drill.source.move}`
+        : undefined;
 
   const hintArrow = useMemo(
     () => (round === 'playing' && !sudden && hintStep >= 2 && drill ? threatAttackerArrow(drill) : null),
@@ -383,11 +453,13 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     stepHint,
     difficulty,
     streak: sudden,
+    source,
     reviewing,
     practicingAhead,
     upcomingCount,
     reviewSaves: reviewEntry?.saves ?? 0,
     sourceLabel,
+    sourceUrl,
     hydrated,
     runSummary,
     done,
@@ -402,6 +474,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     progress,
     marks,
     roundCopy,
+    compactNote,
     threatArrow,
     attentionSquares,
     watchingReply: board.watchingReply,
@@ -411,6 +484,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     bestPuzzleStreak,
     hasReplay: state.replayLine.length > 0,
     replayReply: playback.replay,
+    skipReply: playback.skip,
     onMove,
     revealIdea,
     tryAgain,

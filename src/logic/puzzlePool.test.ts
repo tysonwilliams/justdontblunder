@@ -108,14 +108,22 @@ describe('puzzle pool', () => {
     expect(keepOwnDrills([own(1), own(1), own(2)])).toHaveLength(2);
   });
 
-  it('keeps every starter puzzle of a filtered theme instead of slicing at 100', () => {
+  it('keeps every starter puzzle on all and supports ownOnly filtering plus deterministic shuffle/rotation', () => {
     const allBackRank = getAllDrills().filter((drill) => drill.theme === 'back_rank');
     expect(allBackRank.length).toBeGreaterThan(20);
     const pool = buildPoolForTheme([], 'back_rank');
     expect(pool).toHaveLength(allBackRank.length);
+    const allPool = buildPoolForTheme([], 'all');
+    expect(allPool.length).toBe(getAllDrills().length);
+
     const personalBack: DrillPosition = { ...allBackRank[0]!, id: 'own-back-1', fen: '6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1' };
     const withPersonal = buildPoolForTheme([personalBack], 'back_rank');
     expect(withPersonal[0]?.id).toBe('own-back-1');
     expect(withPersonal).toHaveLength(allBackRank.length + 1);
+
+    const ownOnlyAll = buildPoolForTheme([personalBack], 'all', undefined, { ownOnly: true });
+    expect(ownOnlyAll.map((d) => d.id)).toEqual(['own-back-1']);
+    const ownOnlyFork = buildPoolForTheme([personalBack], 'fork', undefined, { ownOnly: true });
+    expect(ownOnlyFork).toHaveLength(0);
   });
 });

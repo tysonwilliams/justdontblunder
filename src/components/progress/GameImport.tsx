@@ -1,14 +1,16 @@
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, Text, TextInput, View } from 'react-native';
 import type { Color } from 'chess.js';
 
+import { MiniBoard } from '@/src/components/Board/MiniBoard';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
 import { SegmentedControl } from '@/src/components/ui/Chip';
+import { IconChevronDown } from '@/src/components/ui/icons';
 import { text } from '@/src/components/ui/text';
 import { drillHref, themeFilterLabel } from '@/src/logic/drillLink';
-import type { DrillTheme } from '@/src/logic/drills';
+import { personalSourceLabel, themeLabel, type DrillTheme } from '@/src/logic/drills';
 import { cleanUsername, type GameSite } from '@/src/logic/gameImport';
 import { poolSummary } from '@/src/logic/puzzlePool';
 import { analyzePastedPgn } from '@/src/logic/scanWorkerClient';
@@ -44,6 +46,7 @@ export function GameImport() {
   const ownDrills = useProgressStore((state) => state.ownDrills);
   const scan = useProgressStore((state) => state.scan);
   const mergeImportedDrills = useProgressStore((state) => state.mergeImportedDrills);
+  const clearGameProfile = useProgressStore((state) => state.clearGameProfile);
   const [tab, setTab] = useState<ImportTab>('username');
   const [site, setSite] = useState<GameSite>(profile?.site ?? 'chesscom');
   const [username, setUsername] = useState(profile?.username ?? '');
@@ -51,6 +54,7 @@ export function GameImport() {
   const [userColor, setUserColor] = useState<Color>('w');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showRecent, setShowRecent] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -77,6 +81,7 @@ export function GameImport() {
   }, [ownDrills]);
 
   const perGame = scan.games > 0 ? (ownDrills.length / scan.games).toFixed(1) : null;
+  const recentBlunders = useMemo(() => ownDrills.slice(0, 6), [ownDrills]);
 
   const findGames = async () => {
     if (scanning) {
@@ -98,7 +103,14 @@ export function GameImport() {
     setBusy(false);
   };
 
-  const usePgn = async () => {
+  const disconnect = () => {
+    cancelOwnScan();
+    clearGameProfile();
+    setUsername('');
+    setStatus('Account disconnected.');
+  };
+
+  const applyPgn = async () => {
     if (busy || scanning) return;
     setBusy(true);
     setStatus('Reading that game.');
@@ -143,19 +155,35 @@ export function GameImport() {
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              void findGames();
+            }}
             placeholder="Public username"
             placeholderTextColor={colors.textDim}
             accessibilityLabel="Chess username"
             testID="import-username"
             style={[styles.field, { color: colors.text }]}
           />
-          <Button
-            label={scanning ? 'Stop' : profile ? 'Scan for newer games' : 'Find my blunders'}
-            onPress={() => {
-              void findGames();
-            }}
-            testID="import-find"
-          />
+          <View style={styles.formActions}>
+            <Button
+              label={scanning ? 'Stop' : profile ? 'Scan for newer games' : 'Find my blunders'}
+              onPress={() => {
+                void findGames();
+              }}
+              testID="import-find"
+              style={styles.formActionGrow}
+            />
+            {profile && !scanning ? (
+              <Button
+                variant="ghost"
+                fullWidth={false}
+                label="Disconnect"
+                testID="import-disconnect"
+                onPress={disconnect}
+              />
+            ) : null}
+          </View>
         </View>
       ) : (
         <View style={styles.form}>
@@ -173,7 +201,7 @@ export function GameImport() {
             testID="import-pgn"
             style={[styles.field, styles.pgn, { color: colors.text }]}
           />
-          <Button label="Use this game" variant="secondary" onPress={() => void usePgn()} testID="import-paste" />
+          <Button label="Use this game" variant="secondary" onPress={() => void applyPgn()} testID="import-paste" />
         </View>
       )}
 
@@ -213,7 +241,7 @@ export function GameImport() {
                     key={item.theme}
                     {...controlA11y('button', `Drill ${themeFilterLabel(item.theme)}, ${item.count} personal puzzles`)}
                     testID={`personal-theme-${item.theme}`}
-                    onPress={() => router.push(drillHref('play', item.theme) as Href)}
+                    onPress={() => router.push(drillHref('play', item.theme, false, 'own') as Href)}
                     style={(state) => {
                       const hovered = 'hovered' in state && Boolean(state.hovered);
                       return [
@@ -237,8 +265,69 @@ export function GameImport() {
               variant="secondary"
               label="Drill your blunders"
               testID="drill-own-blunders"
-              onPress={() => router.push('/drills' as Href)}
+              onPress={() => router.push(drillHref('play', 'all', false, 'own') as Href)}
             />
+          ) : null}
+
+          {recentBlunders.length > 0 ? (
+            <View style={styles.recentWrap}>
+              <Pressable
+                {...controlA11y('button', showRecent ? 'Hide recent blunders' : 'Show recent blunders', showRecent)}
+                testID="recent-blunders-toggle"
+                onPress={() => setShowRecent((open) => !open)}
+                style={(state) => {
+                  const hovered = 'hovered' in state && Boolean(state.hovered);
+                  return [styles.recentToggle, (hovered || state.pressed) && styles.recentToggleHover];
+                }}>
+                <Text style={styles.recentToggleText}>
+                  {showRecent ? 'Hide recent blunders' : `Browse recent blunders (${ownDrills.length})`}
+                </Text>
+                <View style={showRecent ? styles.chevronUp : undefined}>
+                  <IconChevronDown color={colors.textMuted} size={14} />
+                </View>
+              </Pressable>
+              {showRecent ? (
+                <View style={styles.recentList} testID="recent-blunders-list">
+                  {recentBlunders.map((drill) => {
+                    const label = personalSourceLabel(drill);
+                    return (
+                      <View key={drill.id} style={styles.recentItem}>
+                        <MiniBoard
+                          fen={drill.fen}
+                          size={56}
+                          orientation={drill.sideToMove === 'b' ? 'black' : 'white'}
+                        />
+                        <View style={styles.recentCopy}>
+                          <Text style={styles.recentTitle} numberOfLines={1}>
+                            {themeLabel(drill.theme)}
+                            {drill.source?.move ? ` · ${drill.source.move}` : ''}
+                          </Text>
+                          <Text style={styles.recentNote} numberOfLines={2}>
+                            {drill.note}
+                          </Text>
+                          <View style={styles.recentLinks}>
+                            {label ? (
+                              <Text style={styles.recentMeta} numberOfLines={1}>
+                                {label}
+                              </Text>
+                            ) : null}
+                            {drill.source?.url ? (
+                              <Pressable
+                                {...controlA11y('link', `Open game ${label ?? ''}`)}
+                                onPress={() => {
+                                  if (drill.source?.url) void Linking.openURL(drill.source.url);
+                                }}>
+                                <Text style={styles.recentLink}>Game ↗</Text>
+                              </Pressable>
+                            ) : null}
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
           ) : null}
         </View>
       ) : null}
@@ -267,6 +356,14 @@ const styles = themedStyleSheet((colors) => ({
   },
   form: {
     gap: spacing[10],
+  },
+  formActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[8],
+  },
+  formActionGrow: {
+    flex: 1,
   },
   field: {
     borderWidth: 1,
@@ -352,6 +449,80 @@ const styles = themedStyleSheet((colors) => ({
     color: colors.text,
   },
   themePillLabelTop: {
+    color: colors.accent,
+  },
+  recentWrap: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing[8],
+    gap: spacing[8],
+  },
+  recentToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[4],
+    cursor: 'pointer',
+  },
+  recentToggleHover: {
+    opacity: 0.8,
+  },
+  recentToggleText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  chevronUp: {
+    transform: [{ rotate: '180deg' }],
+  },
+  recentList: {
+    gap: spacing[8],
+  },
+  recentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[10],
+    padding: spacing[8],
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  recentCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing[2],
+  },
+  recentTitle: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.text,
+  },
+  recentNote: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
+  },
+  recentLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[6],
+  },
+  recentMeta: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.textDim,
+  },
+  recentLink: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
     color: colors.accent,
   },
 }));

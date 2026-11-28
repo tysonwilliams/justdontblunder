@@ -1,3 +1,4 @@
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { Color } from 'chess.js';
@@ -13,6 +14,7 @@ import { BoardLead } from '@/src/components/ui/BoardLead';
 import { Button } from '@/src/components/ui/Button';
 import { SegmentedControl } from '@/src/components/ui/Chip';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
+import { Dialog } from '@/src/components/ui/Dialog';
 import { IconChevronDown, IconSliders } from '@/src/components/ui/icons';
 import { LineBox } from '@/src/components/ui/LineBox';
 import { PhoneTray } from '@/src/components/ui/PhoneTray';
@@ -20,6 +22,7 @@ import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { Sheet } from '@/src/components/ui/Sheet';
 import { text } from '@/src/components/ui/text';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { HABIT_PROMPT } from '@/src/logic/drills';
 import { drillFromBlunder, drillFromHang } from '@/src/logic/personalDrill';
@@ -46,13 +49,71 @@ function materialText(delta: number): string {
   return 'Even';
 }
 
+type PendingReset = { kind: 'new' } | { kind: 'side'; side: Color };
+
 export function PracticeScreen() {
+  const router = useRouter();
   const { colors } = useTheme();
   const { phone, topNav } = useLayout();
   const game = usePracticeGame();
   const savePersonalDrill = useProgressStore((state) => state.savePersonalDrill);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [pendingReset, setPendingReset] = useState<PendingReset | null>(null);
+
+  const activeGame = game.playerMoves > 0 && !game.gameOver;
+
+  const requestNewGame = () => {
+    if (activeGame) {
+      setPendingReset({ kind: 'new' });
+      return;
+    }
+    game.resetBoard();
+  };
+
+  const requestSide = (side: Color) => {
+    if (side === game.playerColor) return;
+    if (activeGame) {
+      setPendingReset({ kind: 'side', side });
+      return;
+    }
+    game.setPlayerColor(side);
+  };
+
+  const confirmReset = () => {
+    const action = pendingReset;
+    setPendingReset(null);
+    if (!action) return;
+    if (action.kind === 'side') game.setPlayerColor(action.side);
+    else game.resetBoard();
+  };
+
+  useKeyboardShortcuts(
+    {
+      u: () => {
+        if (!game.canUndo) return false;
+        game.undoMove();
+        return true;
+      },
+      f: () => {
+        game.toggleFlip();
+        return true;
+      },
+      Enter: () => {
+        if (!game.feedback) return false;
+        if (game.tone === 'danger') game.tryAgain();
+        else game.dismissFeedback();
+        return true;
+      },
+      ' ': () => {
+        if (!game.feedback) return false;
+        if (game.tone === 'danger') game.tryAgain();
+        else game.dismissFeedback();
+        return true;
+      },
+    },
+    !optionsOpen && pendingReset === null,
+  );
 
   const hangingVisible = !game.feedback && !game.status && game.hangingNow[0];
   const offerKey =
@@ -105,6 +166,15 @@ export function PracticeScreen() {
                   <IconChevronDown color={colors.textDim} size={13} />
                 </Pressable>
                 <View style={styles.topRight}>
+                  {game.canUndo ? (
+                    <Pressable
+                      {...controlA11y('button', 'Undo move')}
+                      testID="practice-undo-phone"
+                      onPress={game.undoMove}
+                      style={(state) => [styles.undoChip, state.pressed && styles.pressed]}>
+                      <Text style={styles.undoChipText}>Undo</Text>
+                    </Pressable>
+                  ) : null}
                   <View
                     style={[
                       styles.matPill,
@@ -157,7 +227,7 @@ export function PracticeScreen() {
                       height={32}
                       options={SIDE_OPTIONS}
                       value={game.playerColor}
-                      onChange={game.setPlayerColor}
+                      onChange={requestSide}
                     />
                   </View>
                   <View style={styles.eloWrap}>
@@ -182,9 +252,26 @@ export function PracticeScreen() {
                   <Button
                     compact
                     variant="secondary"
+                    label="Flip"
+                    testID="practice-flip"
+                    onPress={game.toggleFlip}
+                    style={styles.actionBtn}
+                  />
+                  <Button
+                    compact
+                    variant="secondary"
+                    label="Resign"
+                    testID="practice-resign"
+                    disabled={!game.canResign}
+                    onPress={game.resignGame}
+                    style={styles.actionBtn}
+                  />
+                  <Button
+                    compact
+                    variant="secondary"
                     label="New game"
                     testID="practice-new"
-                    onPress={game.resetBoard}
+                    onPress={requestNewGame}
                     style={styles.actionBtn}
                   />
                 </View>
@@ -204,17 +291,15 @@ export function PracticeScreen() {
                 </LineBox>
               </>
             ) : (
-              <Text style={text.habit} numberOfLines={1}>
-                {HABIT_PROMPT}
-              </Text>
+              <Text style={text.habit}>{HABIT_PROMPT}</Text>
             )}
           </BoardLead>
         }
         board={
           <ChessBoard
             fen={game.fen}
-            orientation={game.playerColor === 'w' ? 'white' : 'black'}
-            flipCue={game.playerColor === 'b'}
+            orientation={game.orientation}
+            flipCue={game.orientation === 'black'}
             interactive={!game.thinking && !game.gameOver && game.isPlayerTurn}
             highlightSquares={game.feedback && game.tone === 'danger' ? game.highlights : []}
             attentionSquares={game.tone === 'warn' ? game.highlights : preMoveHang ? preMoveHang.squares : []}
@@ -254,24 +339,28 @@ export function PracticeScreen() {
                   </Text>
                   <View style={styles.reportActions}>
                     {game.sessionBlunders.length > 0 ? (
-                      <Button
-                        compact={phone}
-                        variant="secondary"
-                        label={game.blundersAdded ? 'Added to Review' : 'Add blunders to Review'}
-                        disabled={game.blundersAdded}
-                        testID="practice-add-review"
-                        onPress={game.addBlundersToReview}
-                        style={styles.actionBtn}
-                      />
+                      game.blundersAdded ? (
+                        <Button
+                          compact={phone}
+                          variant="secondary"
+                          label="Review now →"
+                          testID="practice-open-review"
+                          onPress={() => router.push('/drills?mode=review' as Href)}
+                          style={styles.actionBtn}
+                        />
+                      ) : (
+                        <Button
+                          compact={phone}
+                          variant="secondary"
+                          label={phone ? 'Add to Review' : 'Add blunders to Review'}
+                          testID="practice-add-review"
+                          onPress={game.addBlundersToReview}
+                          style={styles.actionBtn}
+                        />
+                      )
                     ) : null}
                     <Button compact={phone} label="Play again" onPress={game.resetBoard} style={styles.actionBtn} />
                   </View>
-                </View>
-              ) : game.status ? (
-                <View {...liveA11y()} style={[play.guide, phone && play.phoneCard]}>
-                  <Text style={[text.bodyStrong, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
-                    {game.status}
-                  </Text>
                 </View>
               ) : game.hangingNow[0] ? (
                 <BlunderOverlay
@@ -283,6 +372,12 @@ export function PracticeScreen() {
                   )}
                   headerAction={drillAction}
                 />
+              ) : game.status ? (
+                <View {...liveA11y()} style={[play.guide, phone && play.phoneCard]}>
+                  <Text style={[text.bodyStrong, phone && text.bodyPhone]} numberOfLines={phone ? 2 : undefined}>
+                    {game.status}
+                  </Text>
+                </View>
               ) : (
                 <View style={[play.guide, phone && play.phoneCard]}>
                   <Text style={[text.body, phone && text.bodyPhone]} numberOfLines={phone ? 3 : undefined}>
@@ -308,8 +403,8 @@ export function PracticeScreen() {
             options={SIDE_OPTIONS}
             value={game.playerColor}
             onChange={(side) => {
-              game.setPlayerColor(side);
               setOptionsOpen(false);
+              requestSide(side);
             }}
           />
         </View>
@@ -320,6 +415,27 @@ export function PracticeScreen() {
             options={ELO_OPTIONS}
             value={String(game.botElo)}
             onChange={(value) => game.setBotElo(Number(value) as PracticeElo)}
+          />
+        </View>
+        <View style={styles.actionRow}>
+          <Button
+            variant="secondary"
+            label="Flip board"
+            onPress={() => {
+              game.toggleFlip();
+              setOptionsOpen(false);
+            }}
+            style={styles.actionBtn}
+          />
+          <Button
+            variant="secondary"
+            label="Resign"
+            disabled={!game.canResign}
+            onPress={() => {
+              game.resignGame();
+              setOptionsOpen(false);
+            }}
+            style={styles.actionBtn}
           />
         </View>
         <View style={styles.actionRow}>
@@ -337,14 +453,37 @@ export function PracticeScreen() {
             variant="secondary"
             label="New game"
             onPress={() => {
-              game.resetBoard();
               setOptionsOpen(false);
+              requestNewGame();
             }}
             style={styles.actionBtn}
           />
         </View>
         <Button label="Done" onPress={() => setOptionsOpen(false)} />
       </Sheet>
+
+      <Dialog visible={pendingReset !== null} onClose={() => setPendingReset(null)}>
+        <Text style={text.title}>
+          {pendingReset?.kind === 'side' ? 'Switch sides?' : 'Start a new game?'}
+        </Text>
+        <Text style={[text.muted, styles.dialogCopy]}>
+          Your current game ({game.playerMoves} {game.playerMoves === 1 ? 'move' : 'moves'}) will be cleared. Resign first if you want to add blunders to Review.
+        </Text>
+        <View style={styles.dialogActions}>
+          <Button
+            variant="secondary"
+            label="Cancel"
+            onPress={() => setPendingReset(null)}
+            style={styles.actionBtn}
+          />
+          <Button
+            label={pendingReset?.kind === 'side' ? 'Switch sides' : 'New game'}
+            testID="practice-confirm-reset"
+            onPress={confirmReset}
+            style={styles.actionBtn}
+          />
+        </View>
+      </Dialog>
     </>
   );
 }
@@ -387,6 +526,23 @@ const styles = themedStyleSheet((colors) => ({
     lineHeight: lineHeights[16],
     color: colors.text,
   },
+  undoChip: {
+    height: 26,
+    paddingHorizontal: spacing[8],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  undoChipText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.text,
+  },
   pressed: {
     opacity: 0.82,
   },
@@ -409,7 +565,7 @@ const styles = themedStyleSheet((colors) => ({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[8],
+    gap: spacing[6],
   },
   reportActions: {
     flexDirection: 'row',
@@ -450,5 +606,14 @@ const styles = themedStyleSheet((colors) => ({
   },
   sheetSection: {
     gap: spacing[8],
+  },
+  dialogCopy: {
+    textAlign: 'center',
+  },
+  dialogActions: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: spacing[8],
+    marginTop: spacing[4],
   },
 }));

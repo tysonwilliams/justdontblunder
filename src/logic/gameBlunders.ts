@@ -123,11 +123,16 @@ function* replayBlunders(pgn: string, userColor: Color): Generator<DrillPosition
       from: played.from,
       to: played.to,
       san: played.san,
+      promotion: played.promotion as 'q' | 'r' | 'b' | 'n' | undefined,
     });
+    // Opening gambit pawns (e.g. 1. d4 d5 2. c4) are not real one-move blunders.
+    const isOpeningGambit =
+      built != null && ply < 10 && !played.captured && built.expectedDropCp <= 100 && built.theme === 'hanging';
+    const kept = isOpeningGambit ? null : built;
     const moveNumber = Number(before.split(' ')[5]) || Math.floor(ply / 2) + 1;
-    yield built
+    yield kept
       ? {
-          ...built,
+          ...kept,
           source: {
             gameId: 'pasted',
             move: played.san,

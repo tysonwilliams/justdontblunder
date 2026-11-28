@@ -1,6 +1,6 @@
 import type { AccessibilityState } from 'react-native';
 
-type ControlRole = 'button' | 'tab';
+type ControlRole = 'button' | 'tab' | 'link';
 
 /**
  * Native screen readers read the accessibility* props. React Native Web
@@ -8,6 +8,13 @@ type ControlRole = 'button' | 'tab';
  * accessibilityState, so both are set.
  */
 export function controlA11y(role: ControlRole, label: string, selected = false) {
+  if (role === 'link') {
+    return {
+      accessibilityRole: role,
+      accessibilityLabel: label,
+      'aria-label': label,
+    };
+  }
   const state: AccessibilityState = { selected };
   return {
     accessibilityRole: role,

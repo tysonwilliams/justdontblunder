@@ -102,8 +102,14 @@ export function safeChoiceFor(drill: DrillPosition): SafeChoice | null {
     safe = moves.find((move) => safeCheck(move)) ?? null;
   }
 
-  let blunder: Move | null =
-    moves.find((move) => move.from === drill.atRiskSquare && blunderCheck(move)) ?? null;
+  let blunder: Move | null = null;
+  if (drill.source?.move) {
+    const actual = moves.find((move) => move.san === drill.source?.move);
+    if (actual && blunderCheck(actual)) blunder = actual;
+  }
+  if (!blunder) {
+    blunder = moves.find((move) => move.from === drill.atRiskSquare && blunderCheck(move)) ?? null;
+  }
   if (!blunder) {
     blunder = moves.find((move) => blunderCheck(move)) ?? null;
   }

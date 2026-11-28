@@ -7,7 +7,6 @@ import { liveA11y } from '@/src/components/ui/a11y';
 import { SettingSwitch } from '@/src/components/ui/SettingSwitch';
 import { Bone } from '@/src/components/ui/Skeleton';
 import { text } from '@/src/components/ui/text';
-import { useLayout } from '@/src/components/ui/useLayout';
 import {
   loadLeaderboardPage,
   saveLeaderboardName,
@@ -138,7 +137,6 @@ export function StreakLeaderboardView({
   onPlay,
 }: ViewProps) {
   const { colors } = useTheme();
-  const { phone } = useLayout();
   const boardsReady = !loading && configured && !unavailable;
   return (
     <View style={styles.card} testID="leaderboard">
@@ -195,7 +193,7 @@ export function StreakLeaderboardView({
               : 'Off until you turn it on. The board shows the name, not your email.'}
           </Text>
         </View>
-      ) : loading ? null : (
+      ) : loading || !configured ? null : (
         <Text style={text.muted}>{GUEST_NOTE}</Text>
       )}
       {notice ? (
@@ -207,7 +205,7 @@ export function StreakLeaderboardView({
       {!loading && !configured ? <Text style={text.muted}>{NO_SERVER}</Text> : null}
       {!loading && configured && unavailable ? <Text style={text.muted}>{UNAVAILABLE}</Text> : null}
       {boardsReady ? (
-        <View style={[styles.boards, !phone && styles.boardsWide]}>
+        <View style={styles.boards}>
           <BoardList
             title="This week"
             detail="Resets Monday at 00:00 UTC"

@@ -7,6 +7,7 @@ import { useTriggerAnimation } from '@/src/components/drills/useTriggerAnimation
 import { useTrainerRound } from '@/src/components/trainer/useTrainerRound';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
+import { threatAttackerArrow } from '@/src/logic/difficulty';
 import {
   createHomeSession,
   homePlayPrompt,
@@ -71,8 +72,9 @@ function solutionMove(drill: DrillPosition): { from: Square; to: Square; fen: st
   if (!uci || uci.length < 4) return null;
   const from = uci.slice(0, 2) as Square;
   const to = uci.slice(2, 4) as Square;
+  const promo = uci.length >= 5 ? (uci[4] as 'q' | 'r' | 'b' | 'n') : undefined;
   const game = createGame(drill.fen);
-  const moved = tryMove(game, from, to);
+  const moved = tryMove(game, from, to, promo);
   if (!moved) return null;
   return { from: moved.from, to: moved.to, fen: game.fen() };
 }
@@ -89,6 +91,7 @@ export function useHomeTrainer() {
   const { colors, scheme } = useTheme();
   const { state, dispatch } = useTrainerRound();
   const [packSeed, setPackSeed] = useState(0);
+  const [hintStep, setHintStep] = useState(0);
   const [session, setSession] = useState(() => buildHomeSession(0));
   const hydrated = useHydrated(useProgressStore.persist);
   const started = useRef(false);
@@ -134,6 +137,7 @@ export function useHomeTrainer() {
   const next = () => {
     if (total === 0) return;
     started.current = true;
+    setHintStep(0);
     dispatch({ type: 'advance', length: total, wrap: false });
   };
 
@@ -154,9 +158,19 @@ export function useHomeTrainer() {
     applyRoundEffects(result.effects, current, false);
   };
 
+  const stepHint = () => {
+    if (latest.current.round !== 'playing') return;
+    if (hintStep >= 2) {
+      revealIdea();
+      return;
+    }
+    setHintStep((step) => step + 1);
+  };
+
   const restart = () => {
     const nextSeed = packSeed + 1;
     setPackSeed(nextSeed);
+    setHintStep(0);
     started.current = true;
     setSession(buildHomeSession(nextSeed));
     dispatch({ type: 'begin' });
@@ -173,7 +187,7 @@ export function useHomeTrainer() {
         afterFen: event.afterFen,
         move: { from: event.from, to: event.to },
         san: event.san,
-        line: ok ? [] : punishmentLine(current, event.from, event.to),
+        line: ok ? [] : punishmentLine(current, event.from, event.to, event.promotion),
         sudden: false,
         missText: '',
       });
@@ -214,19 +228,35 @@ export function useHomeTrainer() {
       ? `In your game you played ${drill.source.move}.`
       : null;
   const roundCopy = [baseSpeech, gameMoveNote].filter(Boolean).join(' ');
+  const compactNote = drill?.source?.move && round !== 'playing' ? `Played ${drill.source.move}` : undefined;
+  const hintArrow = useMemo(
+    () => (unprompted && round === 'playing' && hintStep >= 2 && drill ? threatAttackerArrow(drill) : null),
+    [drill, hintStep, round, unprompted],
+  );
   const threatFrom = !state.shownIdea ? playback.arrow?.from : undefined;
   const threatTo = !state.shownIdea ? playback.arrow?.to : undefined;
   const threatArrow = useMemo<BoardArrow[]>(() => {
-    if (!threatFrom || !threatTo) return [];
-    return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
-  }, [colors, scheme, threatFrom, threatTo]);
+    if (threatFrom && threatTo) {
+      return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
+    }
+    if (hintArrow) {
+      return [{ from: hintArrow.from, to: hintArrow.to, color: markColor('warning', scheme, colors) }];
+    }
+    return [];
+  }, [colors, hintArrow, scheme, threatFrom, threatTo]);
+  const showAttention = (!unprompted || hintStep >= 1) && round === 'playing' && !trigger.animating;
   const attentionSquares = useMemo(
-    () => (!unprompted && round === 'playing' && !trigger.animating && drill ? [drill.atRiskSquare] : []),
-    [unprompted, round, trigger.animating, drill],
+    () => (showAttention && drill ? [drill.atRiskSquare] : []),
+    [showAttention, drill],
   );
-  const headline = drill ? themeHeadline(drill.theme) : 'Stop hanging pieces.';
-  const prompt = drill ? (unprompted ? `${drill.sideToMove === 'w' ? 'White' : 'Black'} to move. Find a safe move.` : homePlayPrompt(drill)) : '';
+  const headline = drill ? (!unprompted || hintStep >= 2 ? themeHeadline(drill.theme) : 'Find a safe move.') : 'Stop hanging pieces.';
+  const prompt = drill
+    ? !unprompted || hintStep >= 2
+      ? homePlayPrompt(drill)
+      : `${drill.sideToMove === 'w' ? 'White' : 'Black'} to move. Scan the board and avoid blundering.`
+    : '';
   const sourceLabel = useMemo(() => (drill ? personalSourceLabel(drill) : null), [drill]);
+  const sourceUrl = drill?.source?.url ?? null;
 
   return {
     drill,
@@ -241,8 +271,11 @@ export function useHomeTrainer() {
     streak,
     learn,
     unprompted,
+    hintStep,
+    stepHint,
     headline,
     sourceLabel,
+    sourceUrl,
     orientation,
     boardFen: round === 'playing' ? trigger.fen : board.fen,
     boardLastMove: round === 'playing' ? trigger.lastMove : board.lastMove,
@@ -250,6 +283,7 @@ export function useHomeTrainer() {
     marks,
     card,
     roundCopy,
+    compactNote,
     threatArrow,
     attentionSquares,
     prompt,
@@ -257,6 +291,7 @@ export function useHomeTrainer() {
     watchingReply: board.watchingReply,
     hasReplay: state.replayLine.length > 0,
     replayReply: playback.replay,
+    skipReply: playback.skip,
     onMove,
     revealIdea,
     next,

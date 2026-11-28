@@ -39,8 +39,12 @@ type Props = {
   extraLabel?: string;
   onExtra?: () => void;
   extraTestID?: string;
+  /** Short meta label shown inline on phone next to the title (e.g. next review gap or game move). */
+  compactNote?: string;
   /** Shown in place of the buttons while a punishment line is still playing. */
   waiting?: string;
+  /** Tap handler on the waiting label to skip straight to the end of playback. */
+  onWaitingPress?: () => void;
 };
 
 export function BlunderOverlay({
@@ -59,7 +63,9 @@ export function BlunderOverlay({
   extraLabel,
   onExtra,
   extraTestID,
+  compactNote,
   waiting,
+  onWaitingPress,
 }: Props) {
   const { colors } = useTheme();
   const { phone, tight, contentHeight } = useLayout();
@@ -101,7 +107,13 @@ export function BlunderOverlay({
               <Text style={styles.bannerTitle} numberOfLines={1}>
                 {title}
               </Text>
-              {headerAction ? <BookmarkAction action={headerAction} compact /> : null}
+              {headerAction ? (
+                <BookmarkAction action={headerAction} compact />
+              ) : compactNote ? (
+                <Text style={styles.bannerCompactNote} numberOfLines={1}>
+                  {compactNote}
+                </Text>
+              ) : null}
             </View>
             <Text style={styles.bannerMessage} numberOfLines={2} testID="coach-line">
               {copy}
@@ -110,9 +122,20 @@ export function BlunderOverlay({
         </View>
         <View style={styles.bannerActions}>
           {waiting && !onDismiss ? (
-            <Text style={styles.waitingPhone} numberOfLines={1}>
-              {waiting}
-            </Text>
+            onWaitingPress ? (
+              <Pressable
+                {...controlA11y('button', `${waiting} Tap to skip`)}
+                onPress={onWaitingPress}
+                style={styles.waitingTap}>
+                <Text style={styles.waitingPhone} numberOfLines={1}>
+                  {waiting}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.waitingPhone} numberOfLines={1}>
+                {waiting}
+              </Text>
+            )
           ) : (
             <>
               {onDismiss ? (
@@ -175,7 +198,18 @@ export function BlunderOverlay({
           <Text style={styles.hint}>{hint}</Text>
         </View>
       ) : null}
-      {waiting && !onDismiss ? <Text style={styles.waiting}>{waiting}</Text> : null}
+      {waiting && !onDismiss ? (
+        onWaitingPress ? (
+          <Pressable
+            {...controlA11y('button', `${waiting} Click to skip`)}
+            onPress={onWaitingPress}
+            style={styles.waitingTap}>
+            <Text style={styles.waiting}>{waiting}</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.waiting}>{waiting}</Text>
+        )
+      ) : null}
       {rowActions && (onDismiss || (onSecondary && secondaryLabel) || (onExtra && extraLabel)) ? (
         <View style={styles.actions}>
           {onDismiss ? (
@@ -340,6 +374,16 @@ const styles = themedStyleSheet((colors) => ({
     lineHeight: lineHeights[16],
     color: colors.text,
     letterSpacing: letterSpacing.tight,
+  },
+  bannerCompactNote: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.textMuted,
+    flexShrink: 0,
+  },
+  waitingTap: {
+    cursor: 'pointer',
   },
   bookmark: {
     flexDirection: 'row',

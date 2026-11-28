@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { DrillsImportNudge } from '@/src/components/drills/DrillsImportNudge';
 import type { useDrillSession } from '@/src/components/drills/useDrillSession';
 import { DrillToolbar } from '@/src/components/DrillToolbar';
+import { controlA11y } from '@/src/components/ui/a11y';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { Button } from '@/src/components/ui/Button';
 import { LineBox } from '@/src/components/ui/LineBox';
@@ -17,7 +18,7 @@ import { ProgressTrack } from '@/src/components/ui/ProgressTrack';
 import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
-import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
+import { type DrillMode, type DrillSourceFilter, type ThemeFilter } from '@/src/logic/drillLink';
 import { HABIT_PROMPT, themeInstruction, turnPrompt, type DrillTheme } from '@/src/logic/drills';
 import { REVIEW_INTERVALS } from '@/src/logic/reviewSchedule';
 import { drillStreakExtra } from '@/src/logic/streak';
@@ -32,10 +33,11 @@ type Props = {
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
   onStreak: (streak: boolean) => void;
+  onSource?: (source: DrillSourceFilter) => void;
   phone: boolean;
 };
 
-export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) {
+export function DrillPlay({ session, onMode, onTheme, onStreak, onSource, phone }: Props) {
   useTheme();
   const drill = session.drill;
 
@@ -98,11 +100,13 @@ export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) 
       mode={session.mode}
       theme={session.theme}
       streak={session.streak}
+      source={session.source}
       unprompted={session.unprompted}
       blitzTimer={session.blitzTimer}
       onMode={onMode}
       onTheme={onTheme}
       onStreak={onStreak}
+      onSource={onSource}
       onUnprompted={session.setUnprompted}
       onBlitzTimer={session.setBlitzTimer}
     />
@@ -158,6 +162,11 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
         <View style={play.progressGrow}>
           <ProgressTrack progress={session.progress} />
         </View>
+        {session.sourceLabel ? (
+          <Text style={styles.phoneSourceTag} numberOfLines={1}>
+            Your game
+          </Text>
+        ) : null}
         {session.blitzTimer && session.round === 'playing' ? (
           <Text
             testID="blitz-clock"
@@ -166,7 +175,7 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
               session.secondsLeft <= 5 && styles.clockWarnText,
               session.secondsLeft <= 3 && styles.clockDangerText,
             ]}>
-            {session.secondsLeft}s
+            {session.secondsLeft === 0 ? "Time's up" : `${session.secondsLeft}s`}
           </Text>
         ) : null}
         <PuzzleCount
@@ -214,11 +223,28 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
             </View>
           ) : null}
           {session.sourceLabel ? (
-            <View style={styles.sourcePill} testID="drill-source">
-              <Text style={styles.sourceText} numberOfLines={1}>
-                {session.sourceLabel}
-              </Text>
-            </View>
+            session.sourceUrl ? (
+              <Pressable
+                {...controlA11y('link', `Open game: ${session.sourceLabel}`)}
+                testID="drill-source"
+                onPress={() => {
+                  if (session.sourceUrl) void Linking.openURL(session.sourceUrl);
+                }}
+                style={(state) => {
+                  const hovered = 'hovered' in state && Boolean(state.hovered);
+                  return [styles.sourcePill, styles.sourcePillLink, (hovered || state.pressed) && styles.sourcePillHover];
+                }}>
+                <Text style={styles.sourceTextLink} numberOfLines={1}>
+                  {session.sourceLabel} ↗
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={styles.sourcePill} testID="drill-source">
+                <Text style={styles.sourceText} numberOfLines={1}>
+                  {session.sourceLabel}
+                </Text>
+              </View>
+            )
           ) : null}
           {session.reviewing ? (
             <ReviewMasteryPips saves={session.reviewSaves} ahead={session.practicingAhead} />
@@ -284,6 +310,7 @@ function DrillAside({ session, phone }: { session: Session; phone: boolean }) {
     <DrillFeedback
       round={session.round}
       message={session.roundCopy}
+      compactNote={session.compactNote}
       score={session.score.correct}
       runOver={session.runOver}
       shownIdea={session.shownIdea}
@@ -292,6 +319,7 @@ function DrillAside({ session, phone }: { session: Session; phone: boolean }) {
       onNext={session.next}
       onAgain={session.tryAgain}
       onReplay={session.replayReply}
+      onSkipReply={session.skipReply}
       onDone={session.showRunSummary}
     />
   );
@@ -405,6 +433,7 @@ function StreakAside({ phone, onReveal }: { phone: boolean; onReveal: () => void
 function DrillFeedback({
   round,
   message,
+  compactNote,
   score,
   runOver,
   shownIdea,
@@ -413,10 +442,12 @@ function DrillFeedback({
   onNext,
   onAgain,
   onReplay,
+  onSkipReply,
   onDone,
 }: {
   round: Session['round'];
   message: string;
+  compactNote?: string;
   score: number;
   runOver: boolean;
   shownIdea: boolean;
@@ -425,6 +456,7 @@ function DrillFeedback({
   onNext: () => void;
   onAgain: () => void;
   onReplay: () => void;
+  onSkipReply: () => void;
   onDone: () => void;
 }) {
   return (
@@ -434,15 +466,18 @@ function DrillFeedback({
         tone="success"
         title="Nice save"
         message={message}
+        compactNote={compactNote}
         actionLabel={runOver ? 'Done' : 'Next drill'}
         onDismiss={runOver ? onDone : onNext}
       />
       <BlunderOverlay
         visible={round === 'retry'}
         tone="danger"
-        title="Not quite"
+        title="Blunder"
         message={message}
-        waiting={replyReady ? undefined : 'Watch the reply.'}
+        compactNote={compactNote}
+        waiting={replyReady ? undefined : 'Showing reply…'}
+        onWaitingPress={replyReady ? undefined : onSkipReply}
         actionLabel={replyReady ? 'Try again' : undefined}
         onDismiss={replyReady ? onAgain : undefined}
         actionTestID="try-again"
@@ -455,6 +490,7 @@ function DrillFeedback({
         tone="warn"
         title="Here's the idea"
         message={message}
+        compactNote={compactNote}
         actionLabel="Next drill"
         onDismiss={onNext}
       />
@@ -463,12 +499,17 @@ function DrillFeedback({
         tone="danger"
         title="Streak over"
         message={`${score} in a row. ${message}`}
-        waiting={!shownIdea && !replyReady ? 'Watch the reply.' : undefined}
+        compactNote={compactNote}
+        waiting={!shownIdea && !replyReady ? 'Showing reply…' : undefined}
+        onWaitingPress={!shownIdea && !replyReady ? onSkipReply : undefined}
         actionLabel={!replyReady ? undefined : shownIdea ? 'Done' : 'Try again'}
         onDismiss={!replyReady ? undefined : shownIdea ? onDone : onAgain}
         actionTestID={shownIdea ? undefined : 'try-again'}
-        secondaryLabel={replyReady && !shownIdea ? 'Done' : undefined}
-        onSecondary={replyReady && !shownIdea ? onDone : undefined}
+        secondaryLabel={replyReady && !shownIdea ? (hasReplay ? 'Replay' : 'Done') : undefined}
+        onSecondary={replyReady && !shownIdea ? (hasReplay ? onReplay : onDone) : undefined}
+        secondaryTestID={replyReady && !shownIdea && hasReplay ? 'replay-reply' : undefined}
+        extraLabel={replyReady && !shownIdea && hasReplay ? 'Done' : undefined}
+        onExtra={replyReady && !shownIdea && hasReplay ? onDone : undefined}
       />
     </>
   );
@@ -480,6 +521,13 @@ const styles = themedStyleSheet((colors) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  phoneSourceTag: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.accent,
+    flexShrink: 0,
   },
   metaStrip: {
     flexDirection: 'row',
@@ -546,11 +594,24 @@ const styles = themedStyleSheet((colors) => ({
     backgroundColor: colors.surface,
     maxWidth: '100%',
   },
+  sourcePillLink: {
+    cursor: 'pointer',
+  },
+  sourcePillHover: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
   sourceText: {
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes[12],
     lineHeight: lineHeights[16],
     color: colors.textMuted,
+  },
+  sourceTextLink: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.accent,
   },
   masteryPill: {
     flexDirection: 'row',

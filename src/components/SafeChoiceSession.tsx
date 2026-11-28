@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
@@ -6,6 +6,7 @@ import { ChoiceButtons } from '@/src/components/drills/ChoiceButtons';
 import { DrillsImportNudge } from '@/src/components/drills/DrillsImportNudge';
 import { useSafeChoiceSession } from '@/src/components/drills/useSafeChoiceSession';
 import { DrillToolbar } from '@/src/components/DrillToolbar';
+import { controlA11y } from '@/src/components/ui/a11y';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { Button } from '@/src/components/ui/Button';
 import { LineBox } from '@/src/components/ui/LineBox';
@@ -18,20 +19,32 @@ import { PuzzleCount } from '@/src/components/ui/PuzzleCount';
 import { text } from '@/src/components/ui/text';
 import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
-import type { DrillMode, ThemeFilter } from '@/src/logic/drillLink';
+import {
+  themeFilterLabel,
+  type DrillMode,
+  type DrillSourceFilter,
+  type ThemeFilter,
+} from '@/src/logic/drillLink';
 import { HABIT_PROMPT } from '@/src/logic/drills';
-import { spacing } from '@/src/theme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { useTheme } from '@/src/theme/useTheme';
+import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
 type Props = {
   theme: ThemeFilter;
+  source?: DrillSourceFilter;
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
+  onSource?: (source: DrillSourceFilter) => void;
 };
 
-export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
+export function SafeChoiceSession({ theme, source = 'all', onMode, onTheme, onSource }: Props) {
+  useTheme();
   const { phone } = useLayout();
-  const session = useSafeChoiceSession(theme);
-  const toolbar = <DrillToolbar mode="pick" theme={theme} onMode={onMode} onTheme={onTheme} />;
+  const session = useSafeChoiceSession(theme, source);
+  const toolbar = (
+    <DrillToolbar mode="pick" theme={theme} source={source} onMode={onMode} onTheme={onTheme} onSource={onSource} />
+  );
 
   useKeyboardShortcuts(
     {
@@ -82,22 +95,41 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
         session.tryAgain();
         return true;
       },
+      p: () => {
+        if (session.round !== 'retry' || !session.replyReady || !session.hasReplay) return false;
+        session.replayReply();
+        return true;
+      },
     },
     !session.done && Boolean(session.drill && session.presented),
   );
 
   if (session.done) {
+    const emptyOwn = source === 'own' && session.session.positions.length === 0;
     const pct = session.score.total ? Math.round((session.score.correct / session.score.total) * 100) : 0;
     return (
       <ScoreFrame toolbar={toolbar}>
         <View style={play.done}>
           <Text style={text.eyebrow}>Drills</Text>
-          <Text style={text.title}>That's the set</Text>
-          <Text style={text.hero}>
-            {session.score.correct}/{session.score.total}
-          </Text>
-          <Text style={text.muted}>{pct}% safe on the first try</Text>
-          <Button label="Play again" onPress={() => session.restart()} />
+          <Text style={text.title}>{emptyOwn ? 'No personal blunders here' : "That's the set"}</Text>
+          {emptyOwn ? (
+            <>
+              <Text style={text.muted}>
+                {theme === 'all'
+                  ? 'Import your Chess.com or Lichess games to build your own set.'
+                  : `None of your imported blunders are ${themeFilterLabel(theme).toLowerCase()} yet.`}
+              </Text>
+              <Button label="Show all puzzles" onPress={() => onSource?.('all')} />
+            </>
+          ) : (
+            <>
+              <Text style={text.hero}>
+                {session.score.correct}/{session.score.total}
+              </Text>
+              <Text style={text.muted}>{pct}% safe on the first try</Text>
+              <Button label="Play again" onPress={() => session.restart()} />
+            </>
+          )}
           <DrillsImportNudge />
         </View>
       </ScoreFrame>
@@ -129,6 +161,29 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
         ) : (
           <BoardLead gap={spacing[10]}>
             {toolbar}
+            {session.sourceLabel ? (
+              session.sourceUrl ? (
+                <Pressable
+                  {...controlA11y('link', `Open game: ${session.sourceLabel}`)}
+                  onPress={() => {
+                    if (session.sourceUrl) void Linking.openURL(session.sourceUrl);
+                  }}
+                  style={(state) => {
+                    const hovered = 'hovered' in state && Boolean(state.hovered);
+                    return [styles.sourcePill, styles.sourcePillLink, (hovered || state.pressed) && styles.sourcePillHover];
+                  }}>
+                  <Text style={styles.sourceTextLink} numberOfLines={1}>
+                    {session.sourceLabel} ↗
+                  </Text>
+                </Pressable>
+              ) : (
+                <View style={styles.sourcePill}>
+                  <Text style={styles.sourceText} numberOfLines={1}>
+                    {session.sourceLabel}
+                  </Text>
+                </View>
+              )
+            ) : null}
             <Text style={text.title} testID="drill-task">
               Which move is safe?
             </Text>
@@ -167,14 +222,34 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
                 tone={session.card.tone}
                 title={session.card.title}
                 message={session.roundCopy}
-                waiting={session.card.tone === 'danger' && !session.replyReady ? 'Watch the reply.' : undefined}
+                waiting={session.card.tone === 'danger' && !session.replyReady ? 'Showing reply…' : undefined}
+                onWaitingPress={session.card.tone === 'danger' && !session.replyReady ? session.skipReply : undefined}
                 actionLabel={session.card.tone === 'danger' ? (session.replyReady ? 'Try again' : undefined) : 'Next'}
                 onDismiss={
                   session.card.tone === 'danger' ? (session.replyReady ? session.tryAgain : undefined) : session.next
                 }
                 actionTestID={session.card.tone === 'danger' ? 'try-again' : 'next-puzzle'}
-                secondaryLabel={session.card.tone === 'danger' && session.replyReady ? 'Next' : undefined}
-                onSecondary={session.card.tone === 'danger' && session.replyReady ? session.next : undefined}
+                secondaryLabel={
+                  session.card.tone === 'danger' && session.replyReady
+                    ? session.hasReplay
+                      ? 'Replay'
+                      : 'Next'
+                    : undefined
+                }
+                onSecondary={
+                  session.card.tone === 'danger' && session.replyReady
+                    ? session.hasReplay
+                      ? session.replayReply
+                      : session.next
+                    : undefined
+                }
+                secondaryTestID={session.card.tone === 'danger' && session.replyReady && session.hasReplay ? 'replay-reply' : undefined}
+                extraLabel={
+                  !phone && session.card.tone === 'danger' && session.replyReady && session.hasReplay ? 'Next' : undefined
+                }
+                onExtra={
+                  !phone && session.card.tone === 'danger' && session.replyReady && session.hasReplay ? session.next : undefined
+                }
               />
             ) : phone ? (
               <View style={play.phoneCard}>
@@ -194,11 +269,40 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
   );
 }
 
-const styles = {
+const styles = themedStyleSheet((colors) => ({
   progressRow: {
     height: 16,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
-};
+  sourcePill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[3],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    maxWidth: '100%',
+  },
+  sourcePillLink: {
+    cursor: 'pointer',
+  },
+  sourcePillHover: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  sourceText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
+  },
+  sourceTextLink: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.accent,
+  },
+}));
