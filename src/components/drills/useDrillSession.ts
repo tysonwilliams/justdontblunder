@@ -11,7 +11,7 @@ import { openStreakRun, publishStreakScore } from '@/src/data/leaderboard';
 import {
   reviewForEntries,
   sessionForTheme,
-  upcomingReviewCount,
+  upcomingReviewSummary,
   type DrillSourceFilter,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
@@ -143,10 +143,12 @@ export function useDrillSession(
   const latest = useRef({ drill, sudden, reviewing, practicingAhead, index });
   latest.current = { drill, sudden, reviewing, practicingAhead, index };
 
-  const upcomingCount = useMemo(
-    () => (reviewing ? upcomingReviewCount(reviewEntries, theme) : 0),
+  const upcoming = useMemo(
+    () => (reviewing ? upcomingReviewSummary(reviewEntries, theme) : { count: 0, soonestDays: null }),
     [reviewing, reviewEntries, theme],
   );
+  const upcomingCount = upcoming.count;
+  const upcomingNextDays = upcoming.soonestDays;
   const reviewEntry = useMemo(
     () => (reviewing && drill ? (reviewEntries.find((entry) => entry.id === drill.id) ?? null) : null),
     [reviewing, drill, reviewEntries],
@@ -454,6 +456,7 @@ export function useDrillSession(
     reviewing,
     practicingAhead,
     upcomingCount,
+    upcomingNextDays,
     reviewSaves: reviewEntry?.saves ?? 0,
     sourceLabel,
     sourceUrl,

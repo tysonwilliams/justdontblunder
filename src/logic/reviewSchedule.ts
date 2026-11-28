@@ -81,6 +81,13 @@ export function formatReviewGap(days: number): string {
   return `${days} days`;
 }
 
+/** Natural phrasing for when an upcoming review returns ("tomorrow", "in 3 days"). */
+export function formatDueWhen(days: number): string {
+  if (days <= 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  return `in ${days} days`;
+}
+
 export function nextReviewGapDays(
   entry: { saves?: number; intervalDays?: number } | undefined,
 ): number {

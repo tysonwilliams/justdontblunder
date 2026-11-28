@@ -28,3 +28,13 @@ export function addLocalDays(value: string, days: number): string {
   const utc = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + Math.trunc(days)));
   return utc.toISOString().slice(0, 10);
 }
+
+/** Whole calendar days from `from` to `to` (`YYYY-MM-DD`). Null when either key is invalid. */
+export function daysBetweenLocalDates(from: string, to: string): number | null {
+  if (!isDateKey(from) || !isDateKey(to)) return null;
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  const start = Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1);
+  const end = Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1);
+  return Math.round((end - start) / 86_400_000);
+}
