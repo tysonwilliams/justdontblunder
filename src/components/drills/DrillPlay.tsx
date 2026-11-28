@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
+import { DrillsImportNudge } from '@/src/components/drills/DrillsImportNudge';
 import type { useDrillSession } from '@/src/components/drills/useDrillSession';
 import { DrillToolbar } from '@/src/components/DrillToolbar';
 import { BoardLead } from '@/src/components/ui/BoardLead';
@@ -121,7 +122,9 @@ export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) 
         />
       }
       aside={
-        <PhoneTray banner={<DrillAside session={session} phone={phone} />} />
+        <PhoneTray banner={<DrillAside session={session} phone={phone} />}>
+          {!session.streak ? <DrillsImportNudge compact={phone} /> : null}
+        </PhoneTray>
       }
     />
   );

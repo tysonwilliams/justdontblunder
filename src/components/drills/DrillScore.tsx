@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { highlightsForRound } from '@/src/components/Board/highlight';
+import { DrillsImportNudge } from '@/src/components/drills/DrillsImportNudge';
 import { DrillToolbar, type DrillToolbarProps } from '@/src/components/DrillToolbar';
 import type { DrillRunSummary as DrillRunSummaryData } from '@/src/components/drills/useDrillSession';
 import { Button } from '@/src/components/ui/Button';
@@ -148,6 +149,7 @@ export function DrillDone({
             onPress={onRestart}
           />
         )}
+        <DrillsImportNudge />
       </View>
     </ScoreFrame>
   );

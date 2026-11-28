@@ -319,8 +319,9 @@ const styles = themedStyleSheet((colors) => ({
   },
   deskStreakRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing[10],
+    gap: spacing[8],
   },
   deskStreakNote: {
     flex: 1,
