@@ -1,13 +1,11 @@
 import { memo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import type { Square } from 'chess.js';
 
 import type { BoardSquareModel } from '@/src/components/Board/boardSquares';
-import { legalMoveInk } from '@/src/components/Board/highlight';
 import { Piece } from '@/src/components/Board/Piece';
 import { noteSquareRender } from '@/src/components/Board/squareRenderCount';
 import { squareA11y } from '@/src/components/ui/a11y';
-import { getActivePalette } from '@/src/theme/active';
 import { colors, radii } from '@/src/theme/tokens';
 
 type Props = BoardSquareModel & {
@@ -18,26 +16,27 @@ export const BoardSquare = memo(function BoardSquare({
   square,
   squareSize,
   backgroundColor,
+  legalInk,
+  selectionColor,
   pieceCode,
   isLegal,
-  isDark,
   hidePiece,
   label,
   selected,
   onPress,
 }: Props) {
   noteSquareRender(square);
-  const palette = getActivePalette();
-  const ink = legalMoveInk(isDark, palette);
   const dot = Math.max(10, Math.round(squareSize * 0.26));
   const ring = Math.round(squareSize * 0.86);
   const ringWidth = Math.max(3, Math.round(squareSize * 0.075));
 
   const clickable = isLegal || Boolean(pieceCode);
+  const webTabProps = Platform.OS === 'web' ? { tabIndex: clickable || selected ? (0 as const) : (-1 as const) } : null;
 
   return (
     <Pressable
       {...squareA11y(label, selected)}
+      {...webTabProps}
       onPress={() => onPress(square)}
       style={[
         styles.square,
@@ -54,7 +53,7 @@ export const BoardSquare = memo(function BoardSquare({
             width: dot,
             height: dot,
             borderRadius: radii.pill,
-            backgroundColor: ink,
+            backgroundColor: legalInk,
             zIndex: 2,
           }}
         />
@@ -71,13 +70,13 @@ export const BoardSquare = memo(function BoardSquare({
             height: ring,
             borderRadius: radii.pill,
             borderWidth: ringWidth,
-            borderColor: ink,
+            borderColor: legalInk,
             backgroundColor: colors.transparent,
             zIndex: 4,
           }}
         />
       ) : null}
-      {selected ? <SelectionCorners size={squareSize} color={palette.boardCoordOnLight} /> : null}
+      {selected ? <SelectionCorners size={squareSize} color={selectionColor} /> : null}
     </Pressable>
   );
 });

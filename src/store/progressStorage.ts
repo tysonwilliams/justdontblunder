@@ -28,7 +28,10 @@ function commit(): Promise<void> {
   const json = JSON.stringify(pending.value);
   const write = () => {
     if (epoch !== writeEpoch) return undefined;
-    return Promise.resolve(AsyncStorage.setItem(pending.name, json)).then(() => undefined);
+    return Promise.resolve(AsyncStorage.setItem(pending.name, json)).then(
+      () => undefined,
+      () => undefined,
+    );
   };
   chain = chain.then(write, write);
   return chain;

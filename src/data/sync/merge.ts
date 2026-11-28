@@ -28,9 +28,16 @@ export function mergeSnapshots(guest: SyncSnapshot, remote: SyncSnapshot, now = 
   const today = calendarDay(now, cleanTimeZone(guest.timezone) ?? cleanTimeZone(remote.timezone) ?? 'UTC');
   const ownDrills = mergeDrills(guest.progress.library.ownDrills, remote.progress.library.ownDrills);
   const live = new Set(ownDrills.map((drill) => drill.id));
+  const ownById = new Map(ownDrills.map((drill) => [drill.id, drill]));
+  const hydrateReview = (entries: readonly ReviewEntry[]): ReviewEntry[] =>
+    entries.map((entry) => {
+      if (entry.drill) return entry;
+      const linked = ownById.get(entry.id);
+      return linked ? { ...entry, drill: linked } : entry;
+    });
   const review = mergeReview(
-    guest.progress.review.review,
-    remote.progress.review.review,
+    hydrateReview(guest.progress.review.review),
+    hydrateReview(remote.progress.review.review),
     guest.reviewMeta,
     remote.reviewMeta,
     today,

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
-import { authFrom } from '@/src/auth/supabaseAuth';
-import { getSupabase } from '@/src/data/supabase';
+import { getSupabasePublicConfig } from '@/src/data/supabaseConfig';
+import { loadSupabase } from '@/src/data/supabaseLazy';
 
 export type AccountPhase = 'loading' | 'guest' | 'signed-in';
 
@@ -24,11 +24,7 @@ export const useAccountStore = create<AccountState>(() => ({
 }));
 
 export function accountsConfigured(): boolean {
-  try {
-    return getSupabase() !== null;
-  } catch {
-    return false;
-  }
+  return getSupabasePublicConfig() !== null;
 }
 
 /** Display only. Authorization stays on the Supabase session, never on this label. */
@@ -50,34 +46,46 @@ export function identityFromUser(user: {
  * Missing config leaves the player as a guest. This does not sync progress.
  */
 export function startAccountSession(): () => void {
-  let client: ReturnType<typeof getSupabase>;
-  try {
-    client = getSupabase();
-  } catch {
-    client = null;
-  }
-  if (!client) {
+  if (!getSupabasePublicConfig()) {
     useAccountStore.setState({ phase: 'guest', configured: false, user: null });
     return () => undefined;
   }
   useAccountStore.setState({ configured: true });
-  const { data } = client.auth.onAuthStateChange((_event, session) => {
-    const user = session?.user;
-    useAccountStore.setState({
-      phase: user ? 'signed-in' : 'guest',
-      configured: true,
-      user: user ? identityFromUser(user) : null,
+  let stopped = false;
+  let unsubscribe: (() => void) | null = null;
+  void loadSupabase()
+    .then((client) => {
+      if (stopped) return;
+      if (!client) {
+        useAccountStore.setState({ phase: 'guest', configured: false, user: null });
+        return;
+      }
+      const { data } = client.auth.onAuthStateChange((_event, session) => {
+        const user = session?.user;
+        useAccountStore.setState({
+          phase: user ? 'signed-in' : 'guest',
+          configured: true,
+          user: user ? identityFromUser(user) : null,
+        });
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+    })
+    .catch(() => {
+      if (!stopped) {
+        useAccountStore.setState({ phase: 'guest', configured: false, user: null });
+      }
     });
-  });
   return () => {
-    data.subscription.unsubscribe();
+    stopped = true;
+    unsubscribe?.();
+    unsubscribe = null;
   };
 }
 
 export async function signOutCurrentAccount(): Promise<'signed-out' | 'failed' | 'guest'> {
-  const client = getSupabase();
+  const client = await loadSupabase();
   if (!client) return 'guest';
-  const { error } = await authFrom(client).signOut();
+  const { error } = await client.auth.signOut();
   return error ? 'failed' : 'signed-out';
 }
 

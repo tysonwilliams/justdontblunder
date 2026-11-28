@@ -1,9 +1,10 @@
-import type { DrillTheme } from '@/src/logic/drills';
+import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
 import { profileFromSaved } from '@/src/logic/gameImport';
+import { isDateKey } from '@/src/logic/localDate';
 import { PUZZLE_POOL_SIZE } from '@/src/logic/puzzlePool';
 import { parseDrillList, reviewFromSaved, type ReviewEntry } from '@/src/logic/reviewPile';
 import { scanFromSaved } from '@/src/store/slices/scan';
-import type { Experience, ProgressState, ScanProgress, ThemeTally } from '@/src/store/progressTypes';
+import type { DailyTally, Experience, ProgressState, ScanProgress, ThemeTally } from '@/src/store/progressTypes';
 
 /**
  * v0 is the flat `jdb-progress-v1` document.
@@ -21,6 +22,9 @@ const THEMES: readonly DrillTheme[] = ['hanging', 'fork', 'pin', 'back_rank', 'm
 export type PersistedTraining = {
   dailyStreak: number;
   lastDrillDate: string | null;
+  dailyCompletedDate?: string | null;
+  dailyOutcomes?: boolean[];
+  dailyHistory?: Record<string, DailyTally>;
   drillsCompleted: number;
   drillsCorrect: number;
   blundersAvoided: number;
@@ -64,6 +68,9 @@ export function blankPersisted(): PersistedProgress {
     training: {
       dailyStreak: 0,
       lastDrillDate: null,
+      dailyCompletedDate: null,
+      dailyOutcomes: [],
+      dailyHistory: {},
       drillsCompleted: 0,
       drillsCorrect: 0,
       blundersAvoided: 0,
@@ -83,10 +90,21 @@ export function blankPersisted(): PersistedProgress {
 }
 
 export function partializeProgress(state: ProgressState): PersistedProgress {
+  const ownIds = new Set(state.ownDrills.map((drill) => drill.id));
+  const compactReview = state.review.map((entry) => {
+    if (entry.drill && ownIds.has(entry.id)) {
+      const { drill: _omit, ...rest } = entry;
+      return rest;
+    }
+    return entry;
+  });
   return {
     training: {
       dailyStreak: state.dailyStreak,
       lastDrillDate: state.lastDrillDate,
+      dailyCompletedDate: state.dailyCompletedDate,
+      dailyOutcomes: state.dailyOutcomes,
+      dailyHistory: state.dailyHistory,
       drillsCompleted: state.drillsCompleted,
       drillsCorrect: state.drillsCorrect,
       blundersAvoided: state.blundersAvoided,
@@ -101,7 +119,7 @@ export function partializeProgress(state: ProgressState): PersistedProgress {
     review: {
       missedDate: state.missedDate,
       missedIds: state.review.map((entry) => entry.id),
-      review: state.review,
+      review: compactReview,
     },
     library: {
       ownDrills: state.ownDrills,
@@ -132,6 +150,9 @@ export function applyPersisted(current: ProgressState, saved: PersistedProgress)
   return {
     ...current,
     ...saved.training,
+    dailyCompletedDate: saved.training.dailyCompletedDate ?? null,
+    dailyOutcomes: saved.training.dailyOutcomes ?? [],
+    dailyHistory: saved.training.dailyHistory ?? {},
     missedDate: saved.review.missedDate,
     review: saved.review.review,
     missedIds: saved.review.missedIds,
@@ -148,7 +169,8 @@ export function applyPersisted(current: ProgressState, saved: PersistedProgress)
 
 function persistedFromLegacy(value: unknown): PersistedProgress {
   const saved = asRecord(value) ?? {};
-  const review = readReview(saved.review, saved.missedIds);
+  const ownDrills = parseDrillList(saved.ownDrills, PUZZLE_POOL_SIZE);
+  const review = readReview(saved.review, saved.missedIds, ownDrills);
   return {
     training: readTraining(saved),
     review: {
@@ -157,7 +179,7 @@ function persistedFromLegacy(value: unknown): PersistedProgress {
       missedIds: review.map((entry) => entry.id),
     },
     library: {
-      ownDrills: parseDrillList(saved.ownDrills, PUZZLE_POOL_SIZE),
+      ownDrills,
       pastedIds: readIdList(saved.pastedIds),
       gameProfile: profileFromSaved(saved.gameProfile),
     },
@@ -175,7 +197,8 @@ function persistedFromSlices(value: unknown): PersistedProgress {
   const reviewRecord = asRecord(saved.review);
   const library = asRecord(saved.library);
   const preferences = asRecord(saved.preferences);
-  const review = readReview(reviewRecord?.review, reviewRecord?.missedIds);
+  const ownDrills = parseDrillList(library?.ownDrills, PUZZLE_POOL_SIZE);
+  const review = readReview(reviewRecord?.review, reviewRecord?.missedIds, ownDrills);
   return {
     training: readTraining(asRecord(saved.training) ?? {}),
     review: {
@@ -184,7 +207,7 @@ function persistedFromSlices(value: unknown): PersistedProgress {
       missedIds: review.map((entry) => entry.id),
     },
     library: {
-      ownDrills: parseDrillList(library?.ownDrills, PUZZLE_POOL_SIZE),
+      ownDrills,
       pastedIds: readIdList(library?.pastedIds),
       gameProfile: profileFromSaved(library?.gameProfile),
     },
@@ -198,9 +221,13 @@ function persistedFromSlices(value: unknown): PersistedProgress {
 }
 
 function readTraining(saved: Record<string, unknown>): PersistedTraining {
+  const completedDate = readText(saved.dailyCompletedDate, null);
   return {
     dailyStreak: readCount(saved.dailyStreak),
     lastDrillDate: readText(saved.lastDrillDate, null),
+    dailyCompletedDate: completedDate && isDateKey(completedDate) ? completedDate : null,
+    dailyOutcomes: readOutcomes(saved.dailyOutcomes),
+    dailyHistory: readDailyHistory(saved.dailyHistory),
     drillsCompleted: readCount(saved.drillsCompleted),
     drillsCorrect: readCount(saved.drillsCorrect),
     blundersAvoided: readCount(saved.blundersAvoided),
@@ -214,8 +241,8 @@ function readTraining(saved: Record<string, unknown>): PersistedTraining {
   };
 }
 
-function readReview(review: unknown, missedIds: unknown): ReviewEntry[] {
-  return reviewFromSaved({ review, missedIds });
+function readReview(review: unknown, missedIds: unknown, ownDrills: readonly DrillPosition[] = []): ReviewEntry[] {
+  return reviewFromSaved({ review, missedIds }, undefined, ownDrills);
 }
 
 /** The old flat blob has `review` and `scan`. Slices add these three objects. */
@@ -247,6 +274,32 @@ function readFlag(value: unknown): boolean {
 function readExperience(value: unknown): Experience | null {
   if (value === 'new' || value === 'basics' || value === 'intermediate') return value;
   return null;
+}
+
+function readOutcomes(value: unknown): boolean[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 7).filter((item): item is boolean => typeof item === 'boolean');
+}
+
+function readDailyHistory(value: unknown): Record<string, DailyTally> {
+  const record = asRecord(value);
+  if (!record) return {};
+  const entries: [string, DailyTally][] = [];
+  for (const [key, raw] of Object.entries(record)) {
+    if (!isDateKey(key)) continue;
+    const item = asRecord(raw);
+    if (!item) continue;
+    const done = readCount(item.done);
+    const correct = readCount(item.correct);
+    if (done <= 0) continue;
+    entries.push([key, { done, correct: Math.min(done, Math.max(0, correct)) }]);
+  }
+  entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  const out: Record<string, DailyTally> = {};
+  for (const [key, tally] of entries.slice(-14)) {
+    out[key] = tally;
+  }
+  return out;
 }
 
 function readIdList(value: unknown): string[] {

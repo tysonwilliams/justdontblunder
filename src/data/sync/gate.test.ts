@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const getSupabase = vi.hoisted(() => vi.fn());
+const loadSupabase = vi.hoisted(() => vi.fn());
+const getSupabasePublicConfig = vi.hoisted(() => vi.fn());
 const createSupabaseProgressRepo = vi.hoisted(() => vi.fn());
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
@@ -11,10 +12,13 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-vi.mock('@/src/data/supabase', () => ({
-  getSupabase,
+vi.mock('@/src/data/supabaseConfig', () => ({
+  getSupabasePublicConfig,
   isSyncEnabled: () => process.env.EXPO_PUBLIC_SYNC_ENABLED !== 'false',
-  syncClientFrom: (client: unknown) => client,
+}));
+
+vi.mock('@/src/data/supabaseLazy', () => ({
+  loadSupabase,
 }));
 
 vi.mock('@/src/data/sync/supabaseRepo', () => ({
@@ -39,43 +43,55 @@ describe('progress sync gate', () => {
   afterEach(() => {
     vi.useRealTimers();
     delete process.env.EXPO_PUBLIC_SYNC_ENABLED;
-    getSupabase.mockReset();
+    loadSupabase.mockReset();
+    getSupabasePublicConfig.mockReset();
     createSupabaseProgressRepo.mockReset();
     useProgressStore.getState().resetProgress();
   });
 
-  it('does not create a client when the kill switch is false', () => {
+  it('does not load Supabase when the kill switch is false or config is missing', () => {
+    getSupabasePublicConfig.mockReturnValue({ url: 'https://example.supabase.co', anonKey: 'sb_publishable_test' });
     process.env.EXPO_PUBLIC_SYNC_ENABLED = 'false';
-    const stop = startProgressSync();
-    expect(getSupabase).not.toHaveBeenCalled();
-    stop();
+    const stopKill = startProgressSync();
+    expect(loadSupabase).not.toHaveBeenCalled();
+    stopKill();
+
+    delete process.env.EXPO_PUBLIC_SYNC_ENABLED;
+    getSupabasePublicConfig.mockReturnValue(null);
+    const stopUnconfigured = startProgressSync();
+    expect(loadSupabase).not.toHaveBeenCalled();
+    stopUnconfigured();
   });
 
-  it('stops before opening a socket when no client exists', () => {
-    getSupabase.mockReturnValue(null);
+  it('stops before opening a socket when no client exists', async () => {
+    getSupabasePublicConfig.mockReturnValue({ url: 'https://example.supabase.co', anonKey: 'sb_publishable_test' });
+    loadSupabase.mockResolvedValue(null);
     const stop = startProgressSync();
-    expect(getSupabase).toHaveBeenCalledOnce();
+    await Promise.resolve();
+    expect(loadSupabase).toHaveBeenCalledOnce();
     expect(createSupabaseProgressRepo).not.toHaveBeenCalled();
     stop();
   });
 
   it('does not sync a guest when the flag is unset', async () => {
     await useProgressStore.persist.rehydrate();
-    getSupabase.mockReturnValue(authClient(null));
+    getSupabasePublicConfig.mockReturnValue({ url: 'https://example.supabase.co', anonKey: 'sb_publishable_test' });
+    loadSupabase.mockResolvedValue(authClient(null));
     vi.useFakeTimers();
     const stop = startProgressSync();
     await vi.advanceTimersByTimeAsync(2000);
-    expect(getSupabase).toHaveBeenCalledOnce();
+    expect(loadSupabase).toHaveBeenCalledOnce();
     expect(createSupabaseProgressRepo).not.toHaveBeenCalled();
     stop();
   });
 
   it('merges once on sign-in and pushes subsequent local edits without reverting them', async () => {
     await useProgressStore.persist.rehydrate();
+    getSupabasePublicConfig.mockReturnValue({ url: 'https://example.supabase.co', anonKey: 'sb_publishable_test' });
     const mergeOnSignIn = vi.fn(async () => ({}));
     const push = vi.fn(async () => undefined);
     createSupabaseProgressRepo.mockReturnValue({ mergeOnSignIn, push });
-    getSupabase.mockReturnValue(authClient({ user: { id: 'user-1' } }));
+    loadSupabase.mockResolvedValue(authClient({ user: { id: 'user-1' } }));
     vi.useFakeTimers();
     const stop = startProgressSync();
     await vi.advanceTimersByTimeAsync(1600);

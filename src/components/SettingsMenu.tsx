@@ -16,8 +16,7 @@ import { Sheet } from '@/src/components/ui/Sheet';
 import { text } from '@/src/components/ui/text';
 import { signOutBeforeDeviceErase } from '@/src/auth/deviceSession';
 import { signOutCurrentAccount, useAccountStore } from '@/src/auth/session';
-import { authFrom } from '@/src/auth/supabaseAuth';
-import { getSupabase } from '@/src/data/supabase';
+import { loadSupabase } from '@/src/data/supabaseLazy';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { clearOnboardingClaim } from '@/src/logic/onboardingPrompt';
 import { eraseDeviceData } from '@/src/store/eraseDeviceData';
@@ -293,8 +292,21 @@ export function SettingsMenu() {
           variant="danger"
           onPress={() => {
             void (async () => {
-              const client = getSupabase();
-              const ready = await signOutBeforeDeviceErase(client ? authFrom(client) : null);
+              const client = await loadSupabase();
+              const ready = await signOutBeforeDeviceErase(
+                client
+                  ? {
+                      async getSession() {
+                        const { data } = await client.auth.getSession();
+                        return { userId: data.session?.user.id ?? null };
+                      },
+                      async signOut() {
+                        const { error } = await client.auth.signOut();
+                        return { error: error ? { message: error.message } : null };
+                      },
+                    }
+                  : null,
+              );
               if (ready === 'failed') {
                 setAccountStatus(SIGN_OUT_FAILED);
                 setConfirmReset(false);

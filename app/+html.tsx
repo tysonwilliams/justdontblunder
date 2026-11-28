@@ -20,9 +20,9 @@ export default function Root({ children }: { children: ReactNode }) {
           content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
         />
         <meta name="theme-color" content={palettes.dark.background} />
-        <link rel="icon" href="/favicon.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Don't Blunder" />
         <script dangerouslySetInnerHTML={{ __html: themeBootScript() }} />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: themeShellCss() }} />

@@ -8,6 +8,7 @@ import {
   LESSONS,
   learnCard,
   lessonById,
+  nextCourseLessonId,
   nextLessonId,
   parseLessonId,
   practiceHref,
@@ -255,5 +256,12 @@ describe('club lessons (900-1600)', () => {
         expect(hangingGain(drill.fen, drill.atRiskSquare, drill.sideToMove), `${drill.id} threat`).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('advances nextCourseLessonId from Foundations into Club lessons and stops after all ten', () => {
+    expect(nextCourseLessonId([])).toBe('blunder');
+    expect(nextCourseLessonId([...ORDER])).toBe('counting');
+    expect(nextCourseLessonId([...ORDER, 'counting', 'overloaded'])).toBe('discovered');
+    expect(nextCourseLessonId([...ORDER, 'counting', 'overloaded', 'discovered', 'quiet_trap'])).toBeNull();
   });
 });

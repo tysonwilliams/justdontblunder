@@ -2,6 +2,7 @@
   "name": "Just Don't Blunder",
   "short_name": "Don't Blunder",
   "description": "A chess trainer that marks a blunder in red and a save in green. Play, learn, and drill with no account.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,4 +1,4 @@
-import { getSupabase } from '@/src/data/supabase';
+import { loadSupabase } from '@/src/data/supabaseLazy';
 import { checkDisplayName } from '@/src/logic/displayName';
 import { streakScoreInRange } from '@/src/logic/streak';
 
@@ -200,15 +200,15 @@ export function createLeaderboardDb(client: LeaderboardQueryClient): Leaderboard
   };
 }
 
-function leaderboardDb(): LeaderboardDb | null {
-  const client = getSupabase();
+async function leaderboardDb(): Promise<LeaderboardDb | null> {
+  const client = await loadSupabase();
   if (!client) return null;
   return createLeaderboardDb(client as unknown as LeaderboardQueryClient);
 }
 
 export async function loadLeaderboardPage(): Promise<LeaderboardPage> {
   try {
-    return await loadLeaderboardPageWith(leaderboardDb());
+    return await loadLeaderboardPageWith(await leaderboardDb());
   } catch {
     return emptyPage(true, true);
   }
@@ -216,7 +216,7 @@ export async function loadLeaderboardPage(): Promise<LeaderboardPage> {
 
 export async function saveLeaderboardName(raw: string, optedIn: boolean): Promise<SaveNameResult> {
   try {
-    return await saveLeaderboardNameWith(leaderboardDb(), raw, optedIn);
+    return await saveLeaderboardNameWith(await leaderboardDb(), raw, optedIn);
   } catch {
     return { ok: false, message: TRY_AGAIN };
   }
@@ -224,7 +224,7 @@ export async function saveLeaderboardName(raw: string, optedIn: boolean): Promis
 
 export async function publishStreakScore(score: number): Promise<void> {
   try {
-    await publishStreakScoreWith(leaderboardDb(), score);
+    await publishStreakScoreWith(await leaderboardDb(), score);
   } catch {
     return;
   }
@@ -232,7 +232,7 @@ export async function publishStreakScore(score: number): Promise<void> {
 
 export async function openStreakRun(): Promise<void> {
   try {
-    await openStreakRunWith(leaderboardDb());
+    await openStreakRunWith(await leaderboardDb());
   } catch {
     return;
   }

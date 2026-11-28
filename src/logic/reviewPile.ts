@@ -16,10 +16,27 @@ export type ReviewEntry = ReviewSchedule & {
   drill?: DrillPosition;
 };
 
+export const MAX_REVIEW_ENTRIES = 250;
+
 const THEMES: readonly DrillTheme[] = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'];
 
 export function fenKey(fen: string): string {
   return fen.trim().split(/\s+/).slice(0, 4).join(' ');
+}
+
+/** Cap the review pile so localStorage stays bounded, dropping furthest-out mastered cards first. */
+export function capReviewEntries(entries: readonly ReviewEntry[], limit = MAX_REVIEW_ENTRIES): ReviewEntry[] {
+  if (entries.length <= limit) return [...entries];
+  const indexed = entries.map((entry, index) => ({ entry, index }));
+  indexed.sort((a, b) => {
+    const aDue = a.entry.dueOn ?? '';
+    const bDue = b.entry.dueOn ?? '';
+    if (a.entry.intervalDays !== b.entry.intervalDays) return a.entry.intervalDays - b.entry.intervalDays;
+    if (aDue !== bDue) return aDue < bDue ? -1 : 1;
+    return a.index - b.index;
+  });
+  const keepIndices = new Set(indexed.slice(0, limit).map((item) => item.index));
+  return entries.filter((_, index) => keepIndices.has(index));
 }
 
 /** A miss goes to the front and back to the short box, due today. A personal position stays attached. */
@@ -34,7 +51,7 @@ export function rememberBankMiss(
   const next: ReviewEntry = { id, ...lapseSchedule(today) };
   const attached = drill ?? previous?.drill;
   if (attached) next.drill = attached.id === id ? attached : { ...attached, id };
-  return [next, ...rest];
+  return capReviewEntries([next, ...rest]);
 }
 
 /** Keep a personal position. Storing it again does not reset a schedule already earned. */
@@ -49,7 +66,7 @@ export function rememberPosition(
   );
   const rest = entries.filter((entry) => entry !== previous);
   const schedule = previous ? scheduleFromSaved(previous, today) : dueNow(today);
-  return [{ id: drill.id, ...schedule, drill }, ...rest];
+  return capReviewEntries([{ id: drill.id, ...schedule, drill }, ...rest]);
 }
 
 /** One correct review. The card stays, and the next gap is the next step on the ladder. */
@@ -78,7 +95,7 @@ export function installImported(
   }
   const kept = entries.filter((entry) => !entry.drill || !keys.has(fenKey(entry.drill.fen)));
   const added: ReviewEntry[] = incoming.map((drill) => ({ id: drill.id, ...dueNow(today), drill }));
-  return [...added, ...kept];
+  return capReviewEntries([...added, ...kept]);
 }
 
 /**
@@ -106,22 +123,27 @@ export function enrollImportedReviews(
     existingKeys.add(key);
     added.push({ id: drill.id, ...dueNow(today), drill });
   }
-  return added.length > 0 ? [...added, ...entries] : [...entries];
+  return added.length > 0 ? capReviewEntries([...added, ...entries]) : [...entries];
 }
 
 export function reviewFromSaved(
   saved: { review?: unknown; missedIds?: unknown },
   today = localDateKey(),
+  ownDrills: readonly DrillPosition[] = [],
 ): ReviewEntry[] {
-  if (Array.isArray(saved.review)) return sanitize(saved.review, today);
+  const byId = new Map(ownDrills.map((drill) => [drill.id, drill]));
+  if (Array.isArray(saved.review)) return capReviewEntries(sanitize(saved.review, today, byId));
   if (!Array.isArray(saved.missedIds)) return [];
-  return sanitize(
-    saved.missedIds.map((id) => ({ id, saves: 0 })),
-    today,
+  return capReviewEntries(
+    sanitize(
+      saved.missedIds.map((id) => ({ id, saves: 0 })),
+      today,
+      byId,
+    ),
   );
 }
 
-function sanitize(value: readonly unknown[], today: string): ReviewEntry[] {
+function sanitize(value: readonly unknown[], today: string, ownById: ReadonlyMap<string, DrillPosition>): ReviewEntry[] {
   const out: ReviewEntry[] = [];
   for (const item of value) {
     if (!item || typeof item !== 'object') continue;
@@ -129,7 +151,12 @@ function sanitize(value: readonly unknown[], today: string): ReviewEntry[] {
     if (typeof entry.id !== 'string' || entry.id.length === 0) continue;
     const schedule = scheduleFromSaved(entry, today);
     if (entry.drill === undefined) {
-      if (entry.id.startsWith('own-')) continue;
+      if (entry.id.startsWith('own-')) {
+        const linked = ownById.get(entry.id);
+        if (!linked) continue;
+        out.push({ id: linked.id, ...schedule, drill: linked });
+        continue;
+      }
       out.push({ id: entry.id, ...schedule });
       continue;
     }

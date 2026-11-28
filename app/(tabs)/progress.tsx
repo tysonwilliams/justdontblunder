@@ -18,7 +18,8 @@ import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { drillHref } from '@/src/logic/drillLink';
 import { themeLabel, weakestTheme, type DrillTheme } from '@/src/logic/drills';
-import { dueTodayCount, dueTodayLabel } from '@/src/logic/reviewSchedule';
+import { addLocalDays, localDateKey } from '@/src/logic/localDate';
+import { dueTodayCount, dueTodayLabel, isDue } from '@/src/logic/reviewSchedule';
 import { ALL_LESSONS } from '@/src/logic/lessons';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { activeDailyStreak } from '@/src/store/slices/training';
@@ -34,6 +35,7 @@ export function generateMetadata() {
 }
 
 const THEMES = ['hanging', 'fork', 'pin', 'back_rank', 'missed_mate'] as const;
+const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 
 export default function ProgressScreen() {
   const router = useRouter();
@@ -44,32 +46,35 @@ export default function ProgressScreen() {
   const progressReady = useHydrated(useProgressStore.persist) && !forceSkeleton();
   const [showAllStats, setShowAllStats] = useState(false);
 
-  const {
-    dailyStreak,
-    lastDrillDate,
-    recordStreak,
-    bestPuzzleStreak,
-    review,
-    drillsCompleted,
-    drillsCorrect,
-    blundersAvoided,
-    blundersMade,
-    practiceMoves,
-    themeStats,
-    completedLessons,
-    xp,
-    gameProfile,
-    ownDrills,
-  } = useProgressStore();
+  const dailyStreak = useProgressStore((s) => s.dailyStreak);
+  const lastDrillDate = useProgressStore((s) => s.lastDrillDate);
+  const dailyHistory = useProgressStore((s) => s.dailyHistory);
+  const recordStreak = useProgressStore((s) => s.recordStreak);
+  const bestPuzzleStreak = useProgressStore((s) => s.bestPuzzleStreak);
+  const review = useProgressStore((s) => s.review);
+  const drillsCompleted = useProgressStore((s) => s.drillsCompleted);
+  const drillsCorrect = useProgressStore((s) => s.drillsCorrect);
+  const blundersAvoided = useProgressStore((s) => s.blundersAvoided);
+  const blundersMade = useProgressStore((s) => s.blundersMade);
+  const practiceMoves = useProgressStore((s) => s.practiceMoves);
+  const themeStats = useProgressStore((s) => s.themeStats);
+  const completedLessons = useProgressStore((s) => s.completedLessons);
+  const xp = useProgressStore((s) => s.xp);
+  const gameProfile = useProgressStore((s) => s.gameProfile);
+  const ownDrillsCount = useProgressStore((s) => s.ownDrills.length);
 
+  const today = localDateKey();
   const liveStreak = activeDailyStreak(dailyStreak, lastDrillDate);
   const accuracy = drillsCompleted > 0 ? Math.round((drillsCorrect / drillsCompleted) * 100) : 0;
-  const dueCount = dueTodayCount(review);
+  const dueCount = dueTodayCount(review, today);
   const reviewWaiting = review.length > 0;
   const weak = weakestTheme(themeStats);
   const badges = badgeList(liveStreak, recordStreak, bestPuzzleStreak, blundersAvoided);
   const earnedCount = badges.filter((badge) => badge.earned).length;
-  const hoistImportOnPhone = phone && progressReady && !gameProfile && ownDrills.length === 0;
+  const hoistImportOnPhone = phone && progressReady && !gameProfile && ownDrillsCount === 0;
+
+  const last7 = summarizeLast7Days(dailyHistory, today);
+  const srs = summarizeReviewMastery(review, today);
 
   return (
     <Screen>
@@ -103,6 +108,35 @@ export default function ProgressScreen() {
                 <HeroStat label="XP" value={String(xp)} />
                 <HeroStat label="Accuracy" value={drillsCompleted > 0 ? `${accuracy}%` : '—'} />
                 <HeroStat label="Best run" value={String(bestPuzzleStreak)} />
+              </View>
+              <View style={styles.weekWrap} testID="progress-week-activity">
+                <View style={styles.weekHead}>
+                  <Text style={styles.weekLabel}>Last 7 days</Text>
+                  <Text style={styles.weekMeta}>
+                    {last7.weekDone > 0
+                      ? `${last7.weekDone} drills · ${last7.weekPct}% safe`
+                      : 'No drills yet this week'}
+                  </Text>
+                </View>
+                <View style={styles.weekBars}>
+                  {last7.days.map((day) => {
+                    const heightPct = day.done > 0 ? Math.max(24, Math.round((day.done / last7.maxDone) * 100)) : 12;
+                    return (
+                      <View key={day.key} style={styles.dayCol}>
+                        <View style={styles.dayBarTrack}>
+                          <View
+                            style={[
+                              styles.dayBarFill,
+                              day.done > 0 ? styles.dayBarActive : styles.dayBarIdle,
+                              { height: `${heightPct}%` },
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.dayLabel, day.isToday && styles.dayLabelToday]}>{day.label}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
               {showAllStats ? (
                 <View style={styles.extraStats}>
@@ -142,6 +176,29 @@ export default function ProgressScreen() {
 
         <View style={[styles.columns, wideGrid && styles.columnsWide]}>
           <View style={styles.col}>
+            {progressReady && srs.total > 0 ? (
+              <View style={styles.card} testID="progress-srs-mastery">
+                <View style={styles.cardHead}>
+                  <Text style={text.section}>Spaced review</Text>
+                  <Text style={text.muted}>{srs.total} tracked</Text>
+                </View>
+                <View style={styles.srsRow}>
+                  <View style={styles.srsCell}>
+                    <Text style={[styles.srsValue, srs.due > 0 && styles.srsDue]}>{srs.due}</Text>
+                    <Text style={styles.srsLabel}>Due now</Text>
+                  </View>
+                  <View style={styles.srsCell}>
+                    <Text style={styles.srsValue}>{srs.learning}</Text>
+                    <Text style={styles.srsLabel}>Learning</Text>
+                  </View>
+                  <View style={styles.srsCell}>
+                    <Text style={[styles.srsValue, srs.mastered > 0 && styles.srsMastered]}>{srs.mastered}</Text>
+                    <Text style={styles.srsLabel}>Mastered</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.card}>
               <View style={styles.cardHead}>
                 <Text style={text.section}>Themes</Text>
@@ -208,6 +265,45 @@ export default function ProgressScreen() {
       </View>
     </Screen>
   );
+}
+
+function summarizeLast7Days(
+  dailyHistory: Record<string, { done: number; correct: number }>,
+  today: string,
+) {
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const dateKey = addLocalDays(today, i - 6);
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const dow = new Date(y ?? 2026, (m ?? 1) - 1, d ?? 1).getDay();
+    const tally = dailyHistory[dateKey];
+    return {
+      key: dateKey,
+      label: DAY_INITIALS[dow] ?? '',
+      done: tally?.done ?? 0,
+      correct: tally?.correct ?? 0,
+      isToday: i === 6,
+    };
+  });
+  const maxDone = Math.max(1, ...days.map((d) => d.done));
+  const weekDone = days.reduce((sum, d) => sum + d.done, 0);
+  const weekCorrect = days.reduce((sum, d) => sum + d.correct, 0);
+  const weekPct = weekDone > 0 ? Math.round((weekCorrect / weekDone) * 100) : null;
+  return { days, maxDone, weekDone, weekPct };
+}
+
+function summarizeReviewMastery(
+  review: readonly { intervalDays: number; dueOn: string }[],
+  today: string,
+) {
+  let due = 0;
+  let learning = 0;
+  let mastered = 0;
+  for (const entry of review) {
+    if (isDue(entry, today)) due += 1;
+    else if (entry.intervalDays >= 16) mastered += 1;
+    else learning += 1;
+  }
+  return { due, learning, mastered, total: review.length };
 }
 
 function badgeList(
@@ -336,6 +432,104 @@ const styles = themedStyleSheet((colors) => ({
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes[13],
     lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  weekWrap: {
+    gap: spacing[8],
+    paddingTop: spacing[12],
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  weekHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  weekLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.text,
+  },
+  weekMeta: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
+  },
+  weekBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing[8],
+  },
+  dayCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing[4],
+  },
+  dayBarTrack: {
+    width: '100%',
+    maxWidth: 28,
+    height: 36,
+    justifyContent: 'flex-end',
+    borderRadius: radii.sm,
+    backgroundColor: colors.background,
+    overflow: 'hidden',
+  },
+  dayBarFill: {
+    width: '100%',
+    borderRadius: radii.sm,
+  },
+  dayBarActive: {
+    backgroundColor: colors.accent,
+  },
+  dayBarIdle: {
+    backgroundColor: colors.border,
+  },
+  dayLabel: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.textDim,
+  },
+  dayLabelToday: {
+    fontFamily: fonts.bodyBold,
+    color: colors.text,
+  },
+  srsRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: spacing.sm,
+  },
+  srsCell: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing[10],
+    paddingHorizontal: spacing[8],
+    borderRadius: radii.md,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing[2],
+  },
+  srsValue: {
+    fontFamily: fonts.display,
+    fontSize: fontSizes[20],
+    lineHeight: lineHeights[24],
+    color: colors.text,
+  },
+  srsDue: {
+    color: colors.accent,
+  },
+  srsMastered: {
+    color: colors.success,
+  },
+  srsLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
     color: colors.textMuted,
   },
   extraStats: {

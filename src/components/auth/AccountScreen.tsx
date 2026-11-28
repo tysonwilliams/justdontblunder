@@ -25,9 +25,9 @@ import {
 import { enabledOAuthProviders, loadOAuthAvailability, shownOAuthProviders } from '@/src/auth/providers';
 import { authCallbackUrl, browserOrigin, passwordUpdateUrl } from '@/src/auth/redirect';
 import { signOutCurrentAccount, useAccountStore } from '@/src/auth/session';
-import { authFrom } from '@/src/auth/supabaseAuth';
-import type { OAuthProviderId } from '@/src/auth/types';
-import { getSupabase, getSupabasePublicConfig } from '@/src/data/supabase';
+import type { AuthApi, OAuthProviderId } from '@/src/auth/types';
+import { getSupabasePublicConfig } from '@/src/data/supabaseConfig';
+import { loadSupabaseAuth } from '@/src/data/supabaseLazy';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, lineHeights, spacing } from '@/src/theme';
@@ -176,15 +176,15 @@ function GuestAccount() {
     }
   };
 
-  const withApi = async (work: (api: ReturnType<typeof authFrom>, origin: string) => Promise<void>) => {
-    const client = getSupabase();
+  const withApi = async (work: (api: AuthApi, origin: string) => Promise<void>) => {
+    const api = await loadSupabaseAuth();
     const origin = browserOrigin();
-    if (!client || !origin) {
+    if (!api || !origin) {
       setNotice('Open this page in the browser to continue.');
       return;
     }
     try {
-      await work(authFrom(client), origin);
+      await work(api, origin);
     } catch {
       setNotice("That didn't work. Try again.");
     }

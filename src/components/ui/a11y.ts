@@ -4,11 +4,29 @@ type ControlRole = 'button' | 'tab' | 'link';
 
 /**
  * Native screen readers read the accessibility* props. React Native Web
- * forwards aria-label, aria-selected, and aria-live, and drops
+ * forwards aria-label, aria-pressed, aria-selected, and aria-live, and drops
  * accessibilityState, so both are set.
  */
-export function controlA11y(role: ControlRole, label: string, selected = false) {
+export function controlA11y(role: ControlRole, label: string, selected?: boolean) {
   if (role === 'link') {
+    return {
+      accessibilityRole: role,
+      accessibilityLabel: label,
+      'aria-label': label,
+    };
+  }
+  if (role === 'tab') {
+    const isSelected = Boolean(selected);
+    const state: AccessibilityState = { selected: isSelected };
+    return {
+      accessibilityRole: role,
+      accessibilityLabel: label,
+      accessibilityState: state,
+      'aria-label': label,
+      'aria-selected': isSelected,
+    };
+  }
+  if (selected === undefined) {
     return {
       accessibilityRole: role,
       accessibilityLabel: label,
@@ -21,7 +39,7 @@ export function controlA11y(role: ControlRole, label: string, selected = false) 
     accessibilityLabel: label,
     accessibilityState: state,
     'aria-label': label,
-    'aria-selected': selected,
+    'aria-pressed': selected,
   };
 }
 

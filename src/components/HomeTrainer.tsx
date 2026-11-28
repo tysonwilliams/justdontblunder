@@ -92,8 +92,16 @@ export function HomeTrainer() {
             <Text style={[text.hero, phone && text.heroPhone]}>
               {trainer.score.correct}/{trainer.score.total}
             </Text>
+            {trainer.dailyOutcomes.length > 0 ? (
+              <View style={styles.dotStrip} testID="daily-outcomes">
+                {trainer.dailyOutcomes.map((ok, i) => (
+                  <View key={i} style={[styles.outcomeDot, ok ? styles.outcomeSave : styles.outcomeMiss]} />
+                ))}
+              </View>
+            ) : null}
             <Text style={[text.muted, phone && text.mutedPhone]}>
               {pct}% saved on the first try
+              {trainer.dailyXpEarned > 0 ? ` · +${trainer.dailyXpEarned} XP` : ''}
             </Text>
             {trainer.hydrated && trainer.streak > 0 ? (
               <View style={styles.streakWrap}>
@@ -407,5 +415,23 @@ const styles = themedStyleSheet((colors) => ({
   },
   streakWrap: {
     alignSelf: 'center',
+  },
+  dotStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[6],
+    marginVertical: spacing[2],
+  },
+  outcomeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: radii.pill,
+  },
+  outcomeSave: {
+    backgroundColor: colors.success,
+  },
+  outcomeMiss: {
+    backgroundColor: colors.danger,
   },
 }));

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Text, View } from 'react-native';
 
 import { coordinateMarks, type BoardOrientation } from '@/src/components/Board/coordinates';
@@ -9,7 +10,7 @@ type Props = {
   squareSize: number;
 };
 
-export function BoardCoordinates({ orientation, squareSize }: Props) {
+export const BoardCoordinates = memo(function BoardCoordinates({ orientation, squareSize }: Props) {
   const { colors } = useTheme();
   if (squareSize <= 0) return null;
   const marks = coordinateMarks(orientation, squareSize);
@@ -48,4 +49,4 @@ export function BoardCoordinates({ orientation, squareSize }: Props) {
       })}
     </View>
   );
-}
+});

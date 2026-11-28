@@ -1,14 +1,10 @@
-import 'react-native-gesture-handler';
-import 'react-native-url-polyfill/auto';
-import {
-  Nunito_500Medium,
-  Nunito_700Bold,
-  Nunito_800ExtraBold,
-} from '@expo-google-fonts/nunito';
-import {
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_700Bold,
-} from '@expo-google-fonts/space-grotesk';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import '@/src/polyfills/url';
+import { Nunito_500Medium } from '@expo-google-fonts/nunito/500Medium';
+import { Nunito_700Bold } from '@expo-google-fonts/nunito/700Bold';
+import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito/800ExtraBold';
+import { SpaceGrotesk_500Medium } from '@expo-google-fonts/space-grotesk/500Medium';
+import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
 import { useFonts } from 'expo-font';
 import { Stack, usePathname, useRouter, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,7 +12,6 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { BootSkeleton } from '@/src/components/ui/Skeleton';
@@ -82,7 +77,6 @@ export default function RootLayout() {
     Nunito_800ExtraBold,
     SpaceGrotesk_500Medium,
     SpaceGrotesk_700Bold,
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   useEffect(() => {
@@ -92,6 +86,18 @@ export default function RootLayout() {
   useEffect(() => startAccountSession(), []);
   useEffect(() => startProgressSync(), []);
   useEffect(() => startClientErrorReporting(), []);
+
+  useEffect(() => {
+    if (
+      Platform.OS !== 'web' ||
+      process.env.NODE_ENV !== 'production' ||
+      typeof navigator === 'undefined' ||
+      !('serviceWorker' in navigator)
+    ) {
+      return;
+    }
+    void navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!themeReady) return;

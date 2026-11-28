@@ -1,6 +1,12 @@
 import { useEffect, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/src/components/Board/useReducedMotion';
 import { BoardLead } from '@/src/components/ui/BoardLead';
@@ -44,10 +50,14 @@ function usePulseStyle() {
   useEffect(() => {
     const ms = skeletonPulseMs(reduced);
     if (ms === 0) {
+      cancelAnimation(opacity);
       opacity.value = 1;
       return;
     }
     opacity.value = withRepeat(withTiming(0.5, { duration: ms }), -1, true);
+    return () => {
+      cancelAnimation(opacity);
+    };
   }, [opacity, reduced]);
 
   return useAnimatedStyle(() => ({ opacity: opacity.value }));

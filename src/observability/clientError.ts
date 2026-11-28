@@ -1,7 +1,7 @@
-import packageJson from '@/package.json';
-import { getSupabasePublicConfig } from '@/src/data/supabase';
+import { getSupabasePublicConfig } from '@/src/data/supabaseConfig';
 import { ERROR_REPORT_SESSION_KEY } from '@/src/storage/sessionKeys';
 
+export const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION?.trim() || '0.1.0';
 const MAX_REPORTS = 8;
 const DEDUPE_MS = 60_000;
 const MESSAGE_LIMIT = 500;
@@ -218,7 +218,7 @@ export function reportClientError(
   const row = prepareClientError({
     error,
     route: options?.route === undefined ? currentRoute() : options.route,
-    version: options?.version ?? packageJson.version,
+    version: options?.version ?? APP_VERSION,
     platform: options?.platform ?? 'web',
   });
   if (!row) return;

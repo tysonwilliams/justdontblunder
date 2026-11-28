@@ -989,10 +989,18 @@ export function withLessonComplete(completed: readonly string[], id: string): st
   return [...completed, id];
 }
 
-/** First unfinished lesson in the suggested order. Null when the course is done. */
+/** First unfinished lesson in the suggested core order. Null when the six foundations are done. */
 export function nextLessonId(completed: readonly string[]): LessonId | null {
   for (const id of ORDER) {
     if (!completed.includes(id)) return id;
+  }
+  return null;
+}
+
+/** First unfinished lesson across both Foundations and Club tracks. */
+export function nextCourseLessonId(completed: readonly string[]): LessonId | null {
+  for (const lesson of ALL_LESSONS) {
+    if (!completed.includes(lesson.id)) return lesson.id;
   }
   return null;
 }

@@ -13,8 +13,7 @@ import {
   shareAuthAttempt,
 } from '@/src/auth/callback';
 import { browserAuthSearch, clearAuthSearch } from '@/src/auth/redirect';
-import { authFrom } from '@/src/auth/supabaseAuth';
-import { getSupabase } from '@/src/data/supabase';
+import { loadSupabaseAuth } from '@/src/data/supabaseLazy';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { spacing } from '@/src/theme';
@@ -25,22 +24,26 @@ export function AuthCallbackScreen() {
   const [message, setMessage] = useState('Signing you in…');
 
   useEffect(() => {
-    const client = getSupabase();
-    if (!client) {
-      setMessage('Sign-in is not available in this build.');
-      return;
-    }
     const search = browserAuthSearch();
     let live = true;
-    void shareAuthAttempt(`callback:${search}`, () => finishAuthCallback(authFrom(client), parseAuthQuery(search)))
-      .then((result) => {
-        clearAuthSearch();
+    void loadSupabaseAuth()
+      .then((api) => {
         if (!live) return;
-        if (result.status === 'ready') {
-          router.replace(result.next as Href);
+        if (!api) {
+          setMessage('Sign-in is not available in this build.');
           return;
         }
-        setMessage(result.message);
+        return shareAuthAttempt(`callback:${search}`, () => finishAuthCallback(api, parseAuthQuery(search))).then(
+          (result) => {
+            clearAuthSearch();
+            if (!live) return;
+            if (result.status === 'ready') {
+              router.replace(result.next as Href);
+              return;
+            }
+            setMessage(result.message);
+          },
+        );
       })
       .catch(() => {
         clearAuthSearch();

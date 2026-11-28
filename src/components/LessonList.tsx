@@ -11,7 +11,15 @@ import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { ALL_LESSONS, CLUB_LESSONS, LESSONS, type Lesson, type LessonId } from '@/src/logic/lessons';
+import {
+  ALL_LESSONS,
+  CLUB_LESSONS,
+  LESSONS,
+  lessonById,
+  nextCourseLessonId,
+  type Lesson,
+  type LessonId,
+} from '@/src/logic/lessons';
 import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
@@ -29,7 +37,8 @@ export function LessonList({ onOpen }: Props) {
   const { split, phone, topNav } = useLayout();
   const done = new Set(completed);
   const completedCount = ALL_LESSONS.filter((lesson) => done.has(lesson.id)).length;
-  const nextLesson = ALL_LESSONS.find((lesson) => !done.has(lesson.id)) ?? null;
+  const nextId = nextCourseLessonId(completed);
+  const nextLesson = nextId ? lessonById(nextId) : null;
 
   const renderSection = (lessons: readonly Lesson[], club = false) =>
     ready
@@ -39,9 +48,7 @@ export function LessonList({ onOpen }: Props) {
           return (
             <Pressable
               key={lesson.id}
-              {...controlA11y('button', label, complete)}
-              accessibilityState={{ selected: complete, checked: complete }}
-              aria-checked={complete}
+              {...controlA11y('button', label)}
               testID={`lesson-open-${lesson.id}`}
               onPress={() => onOpen(lesson.id)}
               style={(state) => {

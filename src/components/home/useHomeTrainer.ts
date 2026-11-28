@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Square } from 'chess.js';
 
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
@@ -18,6 +18,7 @@ import {
 } from '@/src/logic/drills';
 import { leadWithPersonal } from '@/src/logic/earlyPlay';
 import { createGame, tryMove } from '@/src/logic/game';
+import { localDateKey } from '@/src/logic/localDate';
 import { buildPuzzlePool } from '@/src/logic/puzzlePool';
 import { punishmentLine } from '@/src/logic/punishment';
 import { learnCard } from '@/src/logic/lessons';
@@ -28,6 +29,7 @@ import { applyRoundEffects } from '@/src/store/trainerResult';
 import { activeDailyStreak } from '@/src/store/slices/training';
 import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
+import { XP_PER_SAFE_MOVE } from '@/src/store/xp';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
@@ -92,14 +94,20 @@ export function useHomeTrainer() {
   const { state, dispatch } = useTrainerRound();
   const [packSeed, setPackSeed] = useState(0);
   const [hintStep, setHintStep] = useState(0);
+  const [outcomes, setOutcomes] = useState<boolean[]>([]);
+  const [playingExtra, setPlayingExtra] = useState(false);
   const [session, setSession] = useState(() => buildHomeSession(0));
   const hydrated = useHydrated(useProgressStore.persist);
   const started = useRef(false);
+  const savedCompletion = useRef(false);
   const positionsRef = useRef(session.positions);
   positionsRef.current = session.positions;
 
   const dailyStreak = useProgressStore((s) => s.dailyStreak);
   const lastDrillDate = useProgressStore((s) => s.lastDrillDate);
+  const dailyCompletedDate = useProgressStore((s) => s.dailyCompletedDate);
+  const savedDailyOutcomes = useProgressStore((s) => s.dailyOutcomes);
+  const markDailyComplete = useProgressStore((s) => s.markDailyComplete);
   const review = useProgressStore((s) => s.review);
   const gameProfile = useProgressStore((s) => s.gameProfile);
   const experience = useProgressStore((s) => s.experience);
@@ -114,10 +122,18 @@ export function useHomeTrainer() {
   const index = state.index;
   const round = state.phase;
   const total = session.positions.length;
-  const done = total > 0 && index >= total;
+  const sessionDone = total > 0 && index >= total;
+  const completedToday = hydrated && dailyCompletedDate === localDateKey() && !playingExtra && !started.current;
+  const done = sessionDone || completedToday;
   const drill: DrillPosition | undefined = session.positions[index];
   const latest = useRef({ drill, round, index });
   latest.current = { drill, round, index };
+
+  useEffect(() => {
+    if (!sessionDone || savedCompletion.current) return;
+    savedCompletion.current = true;
+    markDailyComplete(outcomes);
+  }, [markDailyComplete, outcomes, sessionDone]);
 
   usePuzzleGrowth(
     !done,
@@ -145,6 +161,15 @@ export function useHomeTrainer() {
     dispatch({ type: 'tryAgain', fen: null });
   };
 
+  const recordOutcome = useCallback((slot: number, correct: boolean) => {
+    setOutcomes((prev) => {
+      if (slot < prev.length) return prev;
+      const nextList = [...prev];
+      nextList[slot] = correct;
+      return nextList;
+    });
+  }, []);
+
   const revealIdea = () => {
     const current = latest.current.drill;
     if (!current || latest.current.round !== 'playing') return;
@@ -155,6 +180,9 @@ export function useHomeTrainer() {
     });
     if (!result.accepted) return;
     started.current = true;
+    if (result.effects.some((e) => e.type === 'recordResult')) {
+      recordOutcome(latest.current.index, false);
+    }
     applyRoundEffects(result.effects, current, false);
   };
 
@@ -171,6 +199,9 @@ export function useHomeTrainer() {
     const nextSeed = packSeed + 1;
     setPackSeed(nextSeed);
     setHintStep(0);
+    setOutcomes([]);
+    setPlayingExtra(true);
+    savedCompletion.current = false;
     started.current = true;
     setSession(buildHomeSession(nextSeed));
     dispatch({ type: 'begin' });
@@ -193,10 +224,13 @@ export function useHomeTrainer() {
       });
       if (!result.accepted) return false;
       started.current = true;
+      if (result.effects.some((e) => e.type === 'recordResult')) {
+        recordOutcome(latest.current.index, ok);
+      }
       applyRoundEffects(result.effects, current, false);
       return ok;
     },
-    [dispatch],
+    [dispatch, recordOutcome],
   );
 
   const replayActive = round === 'retry';
@@ -257,11 +291,22 @@ export function useHomeTrainer() {
     : '';
   const sourceLabel = useMemo(() => (drill ? personalSourceLabel(drill) : null), [drill]);
   const sourceUrl = drill?.source?.url ?? null;
+  const finalOutcomes = sessionDone ? outcomes : completedToday ? savedDailyOutcomes : outcomes;
+  const displayScore =
+    completedToday && !sessionDone
+      ? {
+          correct: savedDailyOutcomes.filter(Boolean).length,
+          total: savedDailyOutcomes.length || total,
+        }
+      : state.score;
+  const dailyXpEarned = displayScore.correct * XP_PER_SAFE_MOVE;
 
   return {
     drill,
     done,
-    score: state.score,
+    score: displayScore,
+    dailyOutcomes: finalOutcomes,
+    dailyXpEarned,
     dueCount,
     hasProfile: gameProfile != null,
     total,
