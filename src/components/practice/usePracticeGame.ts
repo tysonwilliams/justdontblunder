@@ -15,8 +15,10 @@ import {
   materialBalance,
   type PracticeElo,
 } from '@/src/logic/reply';
+import { bestPunishment } from '@/src/logic/safety';
 import { countRetriedMove } from '@/src/store/drillStats';
 import { useProgressStore } from '@/src/store/progress';
+import { useHydrated } from '@/src/store/useHydrated';
 import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
@@ -32,12 +34,35 @@ export type PracticeBlunder = {
 type Snapshot = {
   fen: string;
   lastMove: { from: Square; to: Square } | null;
+  countedMove: boolean;
+  blunderFen?: string;
 };
 
 export function sentence(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return '';
   return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function positionKey(fen: string): string {
+  return fen.split(' ').slice(0, 4).join(' ');
+}
+
+function incomingMateThreat(fen: string, opp: Color): { san: string; from: Square; to: Square } | null {
+  const game = createGame(fen);
+  if (game.isGameOver() || game.isCheck()) return null;
+  const parts = fen.split(' ');
+  if (parts.length < 6) return null;
+  parts[1] = opp;
+  parts[3] = '-';
+  try {
+    const probe = createGame(parts.join(' '));
+    const hit = bestPunishment(probe.fen());
+    if (hit?.mate) return { san: hit.san, from: hit.from, to: hit.to };
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function gameResultLine(fen: string): string | null {
@@ -64,15 +89,18 @@ export function usePracticeGame() {
   const awardXp = useProgressStore((s) => s.awardXp);
   const savePersonalDrill = useProgressStore((s) => s.savePersonalDrill);
   const experience = useProgressStore((s) => s.experience);
+  const hydrated = useHydrated(useProgressStore.persist);
 
   const [playerColor, setPlayerColorState] = useState<Color>('w');
-  const [botElo, setBotElo] = useState<PracticeElo>(() => defaultPracticeElo(experience));
+  const [flipped, setFlipped] = useState(false);
+  const [botElo, setBotEloState] = useState<PracticeElo>(() => defaultPracticeElo(experience));
   const [fen, setFen] = useState(() => createGame().fen());
   const [feedback, setFeedback] = useState<MoveFeedback | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [tone, setTone] = useState<'danger' | 'success' | 'warn'>('danger');
   const [replySan, setReplySan] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
+  const [resigned, setResigned] = useState(false);
   const [highlights, setHighlights] = useState<Square[]>([]);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [blunder, setBlunder] = useState<PracticeBlunder | null>(null);
@@ -83,21 +111,39 @@ export function usePracticeGame() {
 
   const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryUncounted = useRef(false);
+  const manualElo = useRef(false);
   const lastMoveRef = useRef(lastMove);
+  const historyRef = useRef(history);
   const checkpoint = useRef<Snapshot | null>(null);
   lastMoveRef.current = lastMove;
+  historyRef.current = history;
   const gate = useRef({ thinking, gameOver: false, playerColor, botElo });
 
-  const resultLine = useMemo(() => gameResultLine(fen), [fen]);
+  useEffect(() => {
+    if (!hydrated || manualElo.current) return;
+    if (playerMoves > 0 || historyRef.current.length > 0) return;
+    setBotEloState(defaultPracticeElo(experience));
+  }, [experience, hydrated, playerMoves]);
+
+  const setBotElo = useCallback((next: PracticeElo) => {
+    manualElo.current = true;
+    setBotEloState(next);
+  }, []);
+
+  const opponentColor: Color = playerColor === 'w' ? 'b' : 'w';
+  const oppName = sideName(opponentColor);
+  const boardResult = useMemo(() => gameResultLine(fen), [fen]);
+  const resultLine = resigned ? `You resigned — ${oppName} wins.` : boardResult;
   const gameOver = resultLine != null;
   gate.current = { thinking, gameOver, playerColor, botElo };
-  const isPlayerTurn = turnOf(fen) === playerColor;
-  const opponentColor: Color = playerColor === 'w' ? 'b' : 'w';
+  const isPlayerTurn = !resigned && turnOf(fen) === playerColor;
   const hangingNow = useMemo(
-    () => (isPlayerTurn ? findHangingPieces(fen, playerColor) : []),
-    [fen, isPlayerTurn, playerColor],
+    () => (isPlayerTurn && !gameOver ? findHangingPieces(fen, playerColor) : []),
+    [fen, gameOver, isPlayerTurn, playerColor],
   );
   const materialDelta = useMemo(() => materialBalance(fen, playerColor), [fen, playerColor]);
+  const orientation: 'white' | 'black' =
+    (playerColor === 'w') !== flipped ? 'white' : 'black';
 
   useEffect(() => {
     return () => {
@@ -125,6 +171,8 @@ export function usePracticeGame() {
       if (replyTimer.current) clearTimeout(replyTimer.current);
       const freshFen = createGame().fen();
       setFen(freshFen);
+      setFlipped(false);
+      setResigned(false);
       setFeedback(null);
       setStatus(null);
       setReplySan(null);
@@ -157,6 +205,20 @@ export function usePracticeGame() {
     [startFresh],
   );
 
+  const toggleFlip = useCallback(() => {
+    setFlipped((value) => !value);
+  }, []);
+
+  const resignGame = useCallback(() => {
+    if (gate.current.gameOver) return;
+    if (replyTimer.current) clearTimeout(replyTimer.current);
+    setThinking(false);
+    setFeedback(null);
+    setStatus(null);
+    setHighlights([]);
+    setResigned(true);
+  }, []);
+
   const dismissFeedback = () => {
     setFeedback(null);
     setHighlights([]);
@@ -182,6 +244,14 @@ export function usePracticeGame() {
     if (replyTimer.current) clearTimeout(replyTimer.current);
     const previous = history[history.length - 1]!;
     setHistory((prev) => prev.slice(0, -1));
+    if (previous.countedMove) {
+      setPlayerMoves((n) => Math.max(0, n - 1));
+    }
+    if (previous.blunderFen) {
+      setSessionBlunders((prev) => prev.filter((item) => item.fen !== previous.blunderFen));
+      setBlundersAdded(false);
+    }
+    setResigned(false);
     setThinking(false);
     setFen(previous.fen);
     setLastMove(previous.lastMove);
@@ -210,10 +280,16 @@ export function usePracticeGame() {
       const hadHanging = findHangingPieces(event.beforeFen, side).length > 0;
       const retried = retryUncounted.current;
       retryUncounted.current = false;
-      const snapBefore: Snapshot = { fen: event.beforeFen, lastMove: lastMoveRef.current };
+      const countedMove = countRetriedMove(retried);
+      const snapBefore: Snapshot = {
+        fen: event.beforeFen,
+        lastMove: lastMoveRef.current,
+        countedMove,
+        blunderFen: result.ok ? undefined : event.beforeFen,
+      };
       setHistory((prev) => [...prev.slice(-40), snapBefore]);
 
-      if (countRetriedMove(retried)) {
+      if (countedMove) {
         markPracticeMove(result.ok && hadHanging, !result.ok);
         awardXp(result.ok);
         setPlayerMoves((n) => n + 1);
@@ -229,9 +305,12 @@ export function usePracticeGame() {
       setFen(event.afterFen);
       setLastMove({ from: event.from, to: event.to });
       setReplySan(null);
+      const opp: Color = side === 'w' ? 'b' : 'w';
+      const oppLabel = sideName(opp);
       if (result.ok) {
-        setFeedback({ ...result, message: line });
-        setStatus(null);
+        // Quiet status note on clean moves avoids flashing a big green banner every turn.
+        setFeedback(null);
+        setStatus(`${sentence(line)} ${oppLabel} is moving…`);
         setTone('success');
         setHighlights([]);
         setBlunder(null);
@@ -248,39 +327,58 @@ export function usePracticeGame() {
 
       const afterSnap = snapshot(createGame(event.afterFen));
       if (afterSnap.isGameOver) {
+        setStatus(null);
         setThinking(false);
         return result.ok;
       }
 
+      const recentKeys = new Set<string>(historyRef.current.map((snap) => positionKey(snap.fen)));
+      recentKeys.add(positionKey(event.beforeFen));
+      recentKeys.add(positionKey(event.afterFen));
+
       setThinking(true);
       if (replyTimer.current) clearTimeout(replyTimer.current);
-      const oppLabel = sideName(side === 'w' ? 'b' : 'w');
       replyTimer.current = setTimeout(() => {
-        const reply = chooseBotReply(event.afterFen, elo);
+        const reply = chooseBotReply(event.afterFen, elo, recentKeys);
         if (reply) {
           setFen(reply.fen);
           setLastMove({ from: reply.from, to: reply.to });
           setReplySan(reply.san);
           playFeedback(soundForSan(reply.san));
-          const created = findHangingPieces(reply.fen, side);
           if (!result.ok) {
-            // Clear stale pre-reply blunder highlights once the opponent has executed the capture.
             setHighlights([]);
           }
-          if (result.ok && !created[0]) setFeedback(null);
-          if (result.ok) setStatus(null);
-          if (result.ok && created[0]) {
-            const name = created[0].message.replace(/^You left the /, '').replace(/ hanging$/, '');
-            setFeedback({
-              ok: false,
-              title: 'Hanging piece',
-              message: `${oppLabel} played ${reply.san}. Before you move: your ${name} on ${created[0].squares[0]} is hanging`,
-              squares: created[0].squares,
-              severity: 'mistake',
-              pattern: created[0],
-            });
-            setTone('warn');
-            setHighlights(created[0].squares);
+          if (result.ok) {
+            setStatus(null);
+            const mateThreat = incomingMateThreat(reply.fen, opp);
+            if (mateThreat) {
+              setFeedback({
+                ok: false,
+                title: 'Mate threat',
+                message: `${oppLabel} played ${reply.san}. Watch out: ${mateThreat.san} threatens checkmate in one`,
+                squares: [mateThreat.to, mateThreat.from],
+                severity: 'blunder',
+              });
+              setTone('warn');
+              setHighlights([mateThreat.to, mateThreat.from]);
+            } else {
+              const created = findHangingPieces(reply.fen, side);
+              if (created[0]) {
+                const name = created[0].message.replace(/^You left the /, '').replace(/ hanging$/, '');
+                setFeedback({
+                  ok: false,
+                  title: 'Hanging piece',
+                  message: `${oppLabel} played ${reply.san}. Before you move: your ${name} on ${created[0].squares[0]} is hanging`,
+                  squares: created[0].squares,
+                  severity: 'mistake',
+                  pattern: created[0],
+                });
+                setTone('warn');
+                setHighlights(created[0].squares);
+              } else {
+                setStatus(`${oppLabel} played ${reply.san}. Your move.`);
+              }
+            }
           }
         }
         setThinking(false);
@@ -305,7 +403,6 @@ export function usePracticeGame() {
     return drawn;
   }, [colors, feedback, hangingNow, highlights, scheme, status, tone]);
 
-  const oppName = sideName(opponentColor);
   const panelMessage = feedback
     ? replySan && tone !== 'warn'
       ? `${sentence(feedback.message)} ${oppName} played ${replySan}.`
@@ -322,10 +419,13 @@ export function usePracticeGame() {
   return {
     fen,
     playerColor,
+    orientation,
+    flipped,
     botElo,
     isPlayerTurn,
     materialDelta,
     canUndo: history.length > 0,
+    canResign: playerMoves > 0 && !gameOver,
     playerMoves,
     sessionBlunders,
     blundersAdded,
@@ -344,6 +444,8 @@ export function usePracticeGame() {
     panelMessage,
     setPlayerColor,
     setBotElo,
+    toggleFlip,
+    resignGame,
     resetBoard,
     undoMove,
     addBlundersToReview,

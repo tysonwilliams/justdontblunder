@@ -4,17 +4,42 @@ import { Pressable, Text, View } from 'react-native';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconHelp } from '@/src/components/ui/icons';
 import { Sheet } from '@/src/components/ui/Sheet';
+import { text } from '@/src/components/ui/text';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
+import { useLayout } from '@/src/components/ui/useLayout';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
 
+const SHORTCUTS: readonly { key: string; action: string }[] = [
+  { key: 'Enter / Space', action: 'Next drill or try again' },
+  { key: 'H', action: 'Next hint or show the idea' },
+  { key: 'R', action: 'Try again after a blunder' },
+  { key: 'P', action: 'Replay the opponent’s capture' },
+  { key: '1 / 2 or A / B', action: 'Choose a move in Pick mode' },
+  { key: 'U / F', action: 'Undo move or flip board in Practice' },
+  { key: 'Right-click drag', action: 'Draw arrows or highlight squares' },
+  { key: '?', action: 'Toggle this guide' },
+];
+
 /**
- * Quiet "?" trigger that opens the board color guide in a clean sheet,
- * keeping board screens uncluttered.
+ * Quiet "?" trigger that opens the board color guide (and desktop shortcuts)
+ * in a clean sheet, keeping board screens uncluttered.
  */
 export function ColorLegend({ compact = false }: { compact?: boolean }) {
   const { colors } = useTheme();
+  const { phone } = useLayout();
   const [open, setOpen] = useState(false);
+
+  useKeyboardShortcuts(
+    {
+      '?': () => {
+        setOpen((current) => !current);
+        return true;
+      },
+    },
+    !phone,
+  );
 
   const items = [
     { label: 'Good save', detail: 'A safe move that avoids losing material or getting mated.', color: colors.success },
@@ -25,7 +50,7 @@ export function ColorLegend({ compact = false }: { compact?: boolean }) {
   return (
     <>
       <Pressable
-        {...controlA11y('button', 'Board color guide', open)}
+        {...controlA11y('button', 'Board color guide and shortcuts', open)}
         testID="color-legend-trigger"
         hitSlop={spacing.xs}
         onPress={() => setOpen(true)}
@@ -41,7 +66,7 @@ export function ColorLegend({ compact = false }: { compact?: boolean }) {
         <IconHelp color={colors.textDim} size={compact ? 16 : 18} />
       </Pressable>
 
-      <Sheet visible={open} onClose={() => setOpen(false)} title="Board colors" testID="color-legend-sheet">
+      <Sheet visible={open} onClose={() => setOpen(false)} title="Board guide" testID="color-legend-sheet">
         <View style={styles.list}>
           {items.map((item) => (
             <View key={item.label} style={styles.item}>
@@ -53,6 +78,21 @@ export function ColorLegend({ compact = false }: { compact?: boolean }) {
             </View>
           ))}
         </View>
+        {!phone ? (
+          <View style={styles.shortcuts} testID="keyboard-shortcuts-guide">
+            <Text style={text.section}>Keyboard shortcuts</Text>
+            <View style={styles.shortcutList}>
+              {SHORTCUTS.map((row) => (
+                <View key={row.key} style={styles.shortcutRow}>
+                  <View style={styles.keyCap}>
+                    <Text style={styles.keyText}>{row.key}</Text>
+                  </View>
+                  <Text style={styles.shortcutAction}>{row.action}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </Sheet>
     </>
   );
@@ -108,5 +148,42 @@ const styles = themedStyleSheet((colors) => ({
     color: colors.textMuted,
     fontSize: fontSizes[14],
     lineHeight: lineHeights[20],
+  },
+  shortcuts: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing[12],
+    gap: spacing[8],
+  },
+  shortcutList: {
+    gap: spacing[6],
+  },
+  shortcutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[10],
+  },
+  keyCap: {
+    paddingHorizontal: spacing[8],
+    paddingVertical: spacing[2],
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.background,
+  },
+  keyText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.text,
+  },
+  shortcutAction: {
+    flex: 1,
+    textAlign: 'right',
+    fontFamily: fonts.body,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
   },
 }));

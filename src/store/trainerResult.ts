@@ -1,5 +1,7 @@
 import type { DrillPosition } from '@/src/logic/drills';
-import { reviewMiss } from '@/src/logic/puzzlePool';
+import { localDateKey } from '@/src/logic/localDate';
+import { reviewId, reviewMiss } from '@/src/logic/puzzlePool';
+import { isDue } from '@/src/logic/reviewSchedule';
 import type { TrainerEffect } from '@/src/logic/trainerRound';
 import { useProgressStore } from '@/src/store/progress';
 
@@ -8,7 +10,15 @@ export function persistTrainerResult(correct: boolean, drill: DrillPosition, rev
   const store = useProgressStore.getState();
   store.markDrillResult(correct, drill.theme);
   if (correct) {
-    if (reviewing) store.recordSave(drill.id);
+    if (reviewing) {
+      store.recordSave(drill.id);
+      return;
+    }
+    const id = reviewId(drill.id);
+    const dueEntry = store.review.find((entry) => entry.id === id);
+    if (dueEntry && isDue(dueEntry, localDateKey())) {
+      store.recordSave(id);
+    }
     return;
   }
   const miss = reviewMiss(drill);

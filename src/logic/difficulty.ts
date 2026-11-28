@@ -22,13 +22,22 @@ function pieceCount(fen: string): number {
 export function drillDifficulty(drill: Pick<DrillPosition, 'fen' | 'theme' | 'traps' | 'expectedDropCp'>): DrillDifficulty {
   const pieces = pieceCount(drill.fen);
   if (drill.traps.length > 0) return 'sharp';
-  if ((drill.theme === 'fork' || drill.theme === 'pin' || drill.theme === 'missed_mate') && pieces >= 22) {
+  if ((drill.theme === 'pin' || drill.theme === 'missed_mate') && pieces >= 27) {
     return 'sharp';
   }
-  if (drill.theme !== 'hanging' || pieces >= 20 || drill.expectedDropCp <= 300) {
-    return 'club';
+  if (drill.theme === 'fork' && pieces >= 28 && drill.expectedDropCp <= 500) {
+    return 'sharp';
   }
-  return 'starter';
+  if (drill.theme === 'hanging' && drill.expectedDropCp >= 500) {
+    return 'starter';
+  }
+  if (pieces <= 18 && drill.theme === 'hanging') {
+    return 'starter';
+  }
+  if (drill.theme === 'back_rank' && pieces <= 25) {
+    return 'starter';
+  }
+  return 'club';
 }
 
 export function difficultyLabel(tier: DrillDifficulty): string {

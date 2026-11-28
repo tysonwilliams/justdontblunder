@@ -13,6 +13,7 @@ import { PhoneTray } from '@/src/components/ui/PhoneTray';
 import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { isCorrectDrillMove } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
@@ -66,33 +67,81 @@ export function LessonTry({
       setRound('correct');
       return true;
     }
-    setReplayLine(punishmentLine(current, event.from, event.to));
+    setReplayLine(punishmentLine(current, event.from, event.to, event.promotion));
     setRound('retry');
     return false;
   }, []);
 
-  if (!task || !drill) return null;
-
-  const tryAgain = () => {
+  const tryAgain = useCallback(() => {
+    const current = latest.current.drill;
+    if (!current) return;
     setReplayLine([]);
-    setDisplayFen(drill.fen);
+    setDisplayFen(current.fen);
     setLastMove(null);
     setRound('playing');
-  };
+  }, []);
 
-  const reveal = () => {
-    const uci = drill.solution[0];
+  const reveal = useCallback(() => {
+    const current = latest.current.drill;
+    if (!current) return;
+    const uci = current.solution[0];
     if (!uci || uci.length < 4) return;
     const from = uci.slice(0, 2) as Square;
     const to = uci.slice(2, 4) as Square;
-    const game = createGame(drill.fen);
-    const moved = tryMove(game, from, to);
+    const promo = uci.length >= 5 ? (uci[4] as 'q' | 'r' | 'b' | 'n') : undefined;
+    const game = createGame(current.fen);
+    const moved = tryMove(game, from, to, promo);
     if (!moved) return;
     setDisplayFen(game.fen());
     setLastMove({ from: moved.from, to: moved.to });
     setReplayLine([]);
     setRound('revealed');
-  };
+  }, []);
+
+  useKeyboardShortcuts(
+    {
+      Enter: () => {
+        if (round === 'correct' || round === 'revealed') {
+          onNext();
+          return true;
+        }
+        if (round === 'retry' && replyReady) {
+          tryAgain();
+          return true;
+        }
+        return false;
+      },
+      ' ': () => {
+        if (round === 'correct' || round === 'revealed') {
+          onNext();
+          return true;
+        }
+        if (round === 'retry' && replyReady) {
+          tryAgain();
+          return true;
+        }
+        return false;
+      },
+      h: () => {
+        if (round !== 'playing') return false;
+        reveal();
+        return true;
+      },
+      r: () => {
+        if (round !== 'retry' || !replyReady) return false;
+        tryAgain();
+        return true;
+      },
+      p: () => {
+        if (round !== 'retry' || !replyReady || replayLine.length === 0) return false;
+        playback.replay();
+        return true;
+      },
+    },
+    Boolean(task && drill),
+  );
+
+  if (!task || !drill) return null;
 
   const boardFen = playback.fen ?? displayFen ?? drill.fen;
   const boardLastMove = playback.move ?? lastMove;
@@ -147,7 +196,16 @@ export function LessonTry({
                 />
               </View>
             ) : (
-              <TryResult round={round} message={copy} ready={replyReady} onAgain={tryAgain} onNext={onNext} />
+              <TryResult
+                round={round}
+                message={copy}
+                ready={replyReady}
+                hasReplay={replayLine.length > 0}
+                onAgain={tryAgain}
+                onReplay={playback.replay}
+                onSkipReply={playback.skip}
+                onNext={onNext}
+              />
             )
           }
         />
@@ -160,13 +218,19 @@ function TryResult({
   round,
   message,
   ready,
+  hasReplay,
   onAgain,
+  onReplay,
+  onSkipReply,
   onNext,
 }: {
   round: Exclude<TryRound, 'playing'>;
   message: string;
   ready: boolean;
+  hasReplay: boolean;
   onAgain: () => void;
+  onReplay: () => void;
+  onSkipReply: () => void;
   onNext: () => void;
 }) {
   switch (round) {
@@ -199,12 +263,16 @@ function TryResult({
         <BlunderOverlay
           visible
           tone="danger"
-          title="Not quite"
+          title="Blunder"
           message={message}
-          waiting={ready ? undefined : 'Watch the reply.'}
+          waiting={ready ? undefined : 'Showing reply…'}
+          onWaitingPress={ready ? undefined : onSkipReply}
           actionLabel={ready ? 'Try again' : undefined}
           onDismiss={ready ? onAgain : undefined}
           actionTestID="try-again"
+          secondaryLabel={ready && hasReplay ? 'Replay' : undefined}
+          onSecondary={ready && hasReplay ? onReplay : undefined}
+          secondaryTestID="replay-reply"
         />
       );
     default: {

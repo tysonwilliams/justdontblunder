@@ -22,11 +22,12 @@ export function IconTrain({ color, size = 22 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
-        d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"
+        d="M3.5 6.5a2 2 0 0 1 2-2H10a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h4.5a2 2 0 0 1 2 2v11.5a1 1 0 0 1-1 1H14a2 2 0 0 0-2 1 2 2 0 0 0-2-1H4.5a1 1 0 0 1-1-1V6.5Z"
         stroke={color}
         strokeWidth={1.8}
+        strokeLinejoin="round"
       />
-      <Path d="M12 7.5v4.2l2.8 1.8" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M12 5.5v14.5" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
     </Svg>
   );
 }

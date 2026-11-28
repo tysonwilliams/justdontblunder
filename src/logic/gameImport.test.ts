@@ -53,7 +53,12 @@ describe('game import', () => {
     ]);
     const once = drillsFromGames([record(queenHang('a3'), 2, 'blitz', 'w')]);
     expect(again).toHaveLength(once.length);
-    expect(again.some((drill) => /You played Qh5\. The knight on f6 takes it\./.test(drill.note))).toBe(true);
+    expect(again.some((drill) => /You played Qh5\. Nxh5 wins your queen on h5\./.test(drill.note))).toBe(true);
+
+    // Classic opening pawn gambits (1. e4 e5 2. f4 / 1. d4 d5 2. c4) should not flood personal drills.
+    const gambit = new Chess();
+    for (const san of ['d4', 'd5', 'c4', 'dxc4', 'e3']) gambit.move(san);
+    expect(drillsFromGames([record(gambit.pgn(), 5, 'rapid', 'w')])).toHaveLength(0);
   });
 
   it('ignores the opponent’s blunders', () => {

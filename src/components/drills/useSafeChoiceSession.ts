@@ -7,8 +7,13 @@ import { useTrainerRound } from '@/src/components/trainer/useTrainerRound';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
 import { playFeedback } from '@/src/feedback/playFeedback';
-import { sessionForTheme, type ThemeFilter } from '@/src/logic/drillLink';
-import { isCorrectDrillMove, type DrillPosition, type DrillSession as DrillSessionData } from '@/src/logic/drills';
+import { sessionForTheme, type DrillSourceFilter, type ThemeFilter } from '@/src/logic/drillLink';
+import {
+  isCorrectDrillMove,
+  personalSourceLabel,
+  type DrillPosition,
+  type DrillSession as DrillSessionData,
+} from '@/src/logic/drills';
 import { buildPoolForTheme } from '@/src/logic/puzzlePool';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
@@ -41,12 +46,15 @@ export function safeResultCard(round: TrainerPhase): { title: string; tone: 'suc
   }
 }
 
-export function useSafeChoiceSession(theme: ThemeFilter) {
+export function useSafeChoiceSession(theme: ThemeFilter, source: DrillSourceFilter = 'all') {
   const { colors, scheme } = useTheme();
   const { state, dispatch } = useTrainerRound();
   const hydrated = useHydrated(useProgressStore.persist);
   const [session, setSession] = useState<DrillSessionData>(() =>
-    sessionForTheme(theme, buildPoolForTheme(useProgressStore.getState().ownDrills, theme)),
+    sessionForTheme(
+      theme,
+      buildPoolForTheme(useProgressStore.getState().ownDrills, theme, undefined, { ownOnly: source === 'own' }),
+    ),
   );
   const started = useRef(false);
   const positionsRef = useRef<readonly DrillPosition[]>(session.positions);
@@ -66,6 +74,8 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
     [drill?.sideToMove],
   );
+  const sourceLabel = useMemo(() => (drill ? personalSourceLabel(drill) : null), [drill]);
+  const sourceUrl = drill?.source?.url ?? null;
 
   const begin = (nextSession: DrillSessionData) => {
     started.current = true;
@@ -84,7 +94,10 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
       const personal = theme === 'all' ? own : own.filter((item) => item.theme === theme);
       return {
         personal,
-        rebuilt: sessionForTheme(theme, buildPoolForTheme(own, theme)).positions,
+        rebuilt: sessionForTheme(
+          theme,
+          buildPoolForTheme(own, theme, undefined, { ownOnly: source === 'own' }),
+        ).positions,
       };
     },
     (positions) => {
@@ -171,6 +184,7 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
 
   return {
     theme,
+    source,
     done,
     drill,
     presented,
@@ -179,6 +193,8 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     round,
     score: state.score,
     orientation,
+    sourceLabel,
+    sourceUrl,
     boardFen: board.fen,
     boardLastMove: board.lastMove,
     progress,
@@ -189,11 +205,20 @@ export function useSafeChoiceSession(theme: ThemeFilter) {
     attentionSquares,
     replyReady: board.replyReady,
     watchingReply: board.watchingReply,
+    hasReplay: state.replayLine.length > 0,
+    replayReply: playback.replay,
+    skipReply: playback.skip,
     choose,
     next,
     tryAgain,
     begin,
-    restart: () => begin(sessionForTheme(theme, buildPoolForTheme(useProgressStore.getState().ownDrills, theme))),
+    restart: () =>
+      begin(
+        sessionForTheme(
+          theme,
+          buildPoolForTheme(useProgressStore.getState().ownDrills, theme, undefined, { ownOnly: source === 'own' }),
+        ),
+      ),
   };
 }
 

@@ -47,6 +47,7 @@ export default function LearnScreen() {
       lessonId={lessonId}
       onBack={() => router.setParams({ lesson: '' })}
       onPractice={(href) => router.push(href as Href)}
+      onOpenLesson={openLesson}
     />
   );
 }

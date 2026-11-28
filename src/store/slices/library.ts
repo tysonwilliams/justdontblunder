@@ -6,6 +6,8 @@ import { PUZZLE_POOL_SIZE, keepOwnDrills, mergeOwnDrills } from '@/src/logic/puz
 import { enrollImportedReviews } from '@/src/logic/reviewPile';
 import type { ProgressState } from '@/src/store/progressTypes';
 
+import { initialScan } from '@/src/store/slices/scan';
+
 export type LibraryData = {
   gameProfile: GameProfile | null;
   ownDrills: DrillPosition[];
@@ -13,7 +15,7 @@ export type LibraryData = {
 };
 
 type LibrarySlice = LibraryData &
-  Pick<ProgressState, 'saveGameProfile' | 'saveImportedDrills' | 'mergeImportedDrills'>;
+  Pick<ProgressState, 'saveGameProfile' | 'clearGameProfile' | 'saveImportedDrills' | 'mergeImportedDrills'>;
 
 export function initialLibrary(): LibraryData {
   return { gameProfile: null, ownDrills: [], pastedIds: [] };
@@ -22,6 +24,7 @@ export function initialLibrary(): LibraryData {
 export const createLibrarySlice: StateCreator<ProgressState, [], [], LibrarySlice> = (set) => ({
   ...initialLibrary(),
   saveGameProfile: (profile) => set({ gameProfile: profile }),
+  clearGameProfile: () => set({ gameProfile: null, ...initialScan() }),
   saveImportedDrills: (drills) => set({ ownDrills: keepOwnDrills(drills, PUZZLE_POOL_SIZE) }),
   mergeImportedDrills: (drills) =>
     set((state) => {

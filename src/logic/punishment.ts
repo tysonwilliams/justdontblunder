@@ -43,13 +43,18 @@ function playUci(game: Chess, uci: string): PunishmentStep | null {
  * Plays the single capture or mate in 1.
  * A two-move trap is a save, so it has no punishment line.
  */
-export function punishmentLine(drill: DrillPosition, from: Square, to: Square): PunishmentStep[] {
+export function punishmentLine(
+  drill: DrillPosition,
+  from: Square,
+  to: Square,
+  promotion?: 'q' | 'r' | 'b' | 'n',
+): PunishmentStep[] {
   const game = new Chess(drill.fen);
-  const student = playUci(game, `${from}${to}`);
+  const student = playUci(game, `${from}${to}${promotion ?? ''}`);
   if (!student) return [];
 
   const hit = bestPunishment(game.fen());
-  const script = hit ? [`${hit.from}${hit.to}`] : [];
+  const script = hit ? [`${hit.from}${hit.to}${hit.promotion ?? ''}`] : [];
 
   const steps: PunishmentStep[] = [];
   for (const uci of script) {

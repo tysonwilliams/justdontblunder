@@ -11,22 +11,33 @@ import { PlayFrame } from '@/src/components/ui/PlayFrame';
 import { play } from '@/src/components/ui/playStyles';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { radii } from '@/src/theme';
-import { type DrillMode, type ThemeFilter } from '@/src/logic/drillLink';
+import { type DrillMode, type DrillSourceFilter, type ThemeFilter } from '@/src/logic/drillLink';
 import { shownBest } from '@/src/logic/streak';
 
 type Props = {
   mode: DrillPlayMode;
   theme: ThemeFilter;
   streak: boolean;
+  source?: DrillSourceFilter;
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
   onStreak: (streak: boolean) => void;
+  onSource?: (source: DrillSourceFilter) => void;
 };
 
-export function DrillSession({ mode, theme, streak, onMode, onTheme, onStreak }: Props) {
-  const session = useDrillSession(mode, theme, streak);
+export function DrillSession({
+  mode,
+  theme,
+  streak,
+  source = 'all',
+  onMode,
+  onTheme,
+  onStreak,
+  onSource,
+}: Props) {
+  const session = useDrillSession(mode, theme, streak, source);
   const { phone } = useLayout();
-  const toolbar = { mode, theme, streak, onMode, onTheme, onStreak };
+  const toolbar = { mode, theme, streak, source, onMode, onTheme, onStreak, onSource };
 
   if (session.runSummary) {
     return (
@@ -68,6 +79,7 @@ export function DrillSession({ mode, theme, streak, onMode, onTheme, onStreak }:
         reviewing={session.reviewing}
         streak={streak}
         emptyReview={session.reviewing && session.session.positions.length === 0}
+        emptyOwn={!session.reviewing && source === 'own' && session.session.positions.length === 0}
         upcomingCount={session.upcomingCount}
         correct={session.score.correct}
         total={session.score.total}
@@ -78,5 +90,14 @@ export function DrillSession({ mode, theme, streak, onMode, onTheme, onStreak }:
     );
   }
 
-  return <DrillPlay session={session} onMode={onMode} onTheme={onTheme} onStreak={onStreak} phone={phone} />;
+  return (
+    <DrillPlay
+      session={session}
+      onMode={onMode}
+      onTheme={onTheme}
+      onStreak={onStreak}
+      onSource={onSource}
+      phone={phone}
+    />
+  );
 }

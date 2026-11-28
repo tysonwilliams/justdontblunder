@@ -59,6 +59,7 @@ export type ProgressState = {
   recordSave: (drillId: string) => void;
   savePersonalDrill: (drill: DrillPosition) => void;
   saveGameProfile: (profile: GameProfile) => void;
+  clearGameProfile: () => void;
   saveImportedDrills: (drills: readonly DrillPosition[]) => void;
   mergeImportedDrills: (drills: readonly DrillPosition[]) => void;
   setExperience: (value: Experience | null) => void;

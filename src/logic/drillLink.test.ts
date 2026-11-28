@@ -93,4 +93,23 @@ describe('drill deep links', () => {
     const ahead = reviewForEntries(entries, 'all', '2026-11-26', { includeAhead: true });
     expect(ahead.positions.map((drill) => drill.id)).toEqual(['hang-q-01', 'mate-03']);
   });
+
+  it('round-trips source=own for Play and Pick and drops it on Review', () => {
+    expect(drillHref('play', 'all', false, 'own')).toBe('/drills?source=own');
+    expect(drillHref('play', 'fork', false, 'own')).toBe('/drills?theme=fork&source=own');
+    expect(drillHref('pick', 'pin', false, 'own')).toBe('/drills?mode=pick&theme=pin&source=own');
+    expect(drillHref('review', 'all', false, 'own')).toBe('/drills?mode=review');
+    expect(resolveDrillQuery({ source: 'own', theme: 'fork' })).toMatchObject({
+      mode: 'play',
+      theme: 'fork',
+      streak: false,
+      source: 'own',
+      href: '/drills?theme=fork&source=own',
+    });
+    expect(resolveDrillQuery({ mode: 'review', source: 'own' })).toMatchObject({
+      mode: 'review',
+      source: 'all',
+      href: '/drills?mode=review',
+    });
+  });
 });

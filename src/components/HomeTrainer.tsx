@@ -1,5 +1,5 @@
 import { useRouter, type Href } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
@@ -8,6 +8,7 @@ import { useHomeTrainer } from '@/src/components/home/useHomeTrainer';
 import { MenuButton } from '@/src/components/SettingsMenu';
 import { StreakBadge } from '@/src/components/StreakBadge';
 import { DueTodayLink } from '@/src/components/review/DueTodayLink';
+import { controlA11y } from '@/src/components/ui/a11y';
 import { BoardLead } from '@/src/components/ui/BoardLead';
 import { Button } from '@/src/components/ui/Button';
 import { ColorLegend } from '@/src/components/ui/ColorLegend';
@@ -60,7 +61,8 @@ export function HomeTrainer() {
       },
       h: () => {
         if (trainer.round !== 'playing') return false;
-        trainer.revealIdea();
+        if (trainer.unprompted) trainer.stepHint();
+        else trainer.revealIdea();
         return true;
       },
       r: () => {
@@ -137,6 +139,16 @@ export function HomeTrainer() {
 
   if (!drill) return <PlaySkeleton />;
 
+  const hintLabel =
+    trainer.hintStep === 0 ? 'Hint (1/3)' : trainer.hintStep === 1 ? 'Hint (2/3)' : 'Show the idea';
+  const coachText = trainer.unprompted
+    ? trainer.hintStep === 0
+      ? 'Find any safe move — no threat highlight.'
+      : trainer.hintStep === 1
+        ? 'Check the amber piece under fire.'
+        : themeInstruction(drill.theme)
+    : themeInstruction(drill.theme);
+
   return (
     <View style={styles.stage}>
       <PlayFrame
@@ -153,22 +165,48 @@ export function HomeTrainer() {
               </View>
             </View>
             {!phone && trainer.sourceLabel ? (
-              <View style={styles.sourcePill} testID="home-source">
-                <Text style={styles.sourceText} numberOfLines={1}>
-                  {trainer.sourceLabel}
-                </Text>
-              </View>
+              trainer.sourceUrl ? (
+                <Pressable
+                  {...controlA11y('link', `Open game: ${trainer.sourceLabel}`)}
+                  testID="home-source"
+                  onPress={() => {
+                    if (trainer.sourceUrl) void Linking.openURL(trainer.sourceUrl);
+                  }}
+                  style={(state) => {
+                    const hovered = 'hovered' in state && Boolean(state.hovered);
+                    return [styles.sourcePill, styles.sourcePillLink, (hovered || state.pressed) && styles.sourcePillHover];
+                  }}>
+                  <Text style={styles.sourceTextLink} numberOfLines={1}>
+                    {trainer.sourceLabel} ↗
+                  </Text>
+                </Pressable>
+              ) : (
+                <View style={styles.sourcePill} testID="home-source">
+                  <Text style={styles.sourceText} numberOfLines={1}>
+                    {trainer.sourceLabel}
+                  </Text>
+                </View>
+              )
             ) : null}
-            <LineBox height={phone ? 24 : 32}>
-              <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>
-                {trainer.headline}
-              </Text>
-            </LineBox>
-            <LineBox height={phone ? 18 : 22}>
-              <Text style={[text.habit, phone && text.habitPhone]} numberOfLines={1}>
-                {trainer.prompt}
-              </Text>
-            </LineBox>
+            {phone ? (
+              <>
+                <LineBox height={24}>
+                  <Text style={[text.title, text.titlePhone]} numberOfLines={1}>
+                    {trainer.headline}
+                  </Text>
+                </LineBox>
+                <LineBox height={18}>
+                  <Text style={[text.habit, text.habitPhone]} numberOfLines={1}>
+                    {trainer.prompt}
+                  </Text>
+                </LineBox>
+              </>
+            ) : (
+              <>
+                <Text style={text.title}>{trainer.headline}</Text>
+                <Text style={text.habit}>{trainer.prompt}</Text>
+              </>
+            )}
             <View style={styles.progressRow}>
               <View style={play.progressGrow}>
                 <ProgressTrack progress={trainer.progress} />
@@ -201,7 +239,11 @@ export function HomeTrainer() {
                   tone={trainer.card.tone}
                   title={trainer.card.title}
                   message={trainer.roundCopy}
-                  waiting={trainer.card.tone === 'danger' && !trainer.replyReady ? 'Watch the reply.' : undefined}
+                  compactNote={trainer.compactNote}
+                  waiting={trainer.card.tone === 'danger' && !trainer.replyReady ? 'Showing reply…' : undefined}
+                  onWaitingPress={
+                    trainer.card.tone === 'danger' && !trainer.replyReady ? trainer.skipReply : undefined
+                  }
                   actionLabel={
                     trainer.card.tone === 'danger' ? (trainer.replyReady ? 'Try again' : undefined) : 'Next drill'
                   }
@@ -240,17 +282,28 @@ export function HomeTrainer() {
                     testID="home-coach"
                     style={[text.muted, phone && text.mutedPhone, styles.coachCopy]}
                     numberOfLines={phone ? 2 : undefined}>
-                    {trainer.unprompted ? 'Find any safe move — no threat highlight.' : themeInstruction(drill.theme)}
+                    {coachText}
                   </Text>
                   <View style={phone ? styles.phoneActions : styles.deskActions}>
-                    <Button
-                      compact={phone}
-                      variant="secondary"
-                      label="Show the idea"
-                      testID="home-idea"
-                      onPress={trainer.revealIdea}
-                      style={phone ? styles.actionFlex : undefined}
-                    />
+                    {trainer.unprompted && trainer.hintStep < 2 ? (
+                      <Button
+                        compact={phone}
+                        variant="secondary"
+                        label={hintLabel}
+                        testID="home-hint"
+                        onPress={trainer.stepHint}
+                        style={phone ? styles.actionFlex : undefined}
+                      />
+                    ) : (
+                      <Button
+                        compact={phone}
+                        variant="secondary"
+                        label="Show the idea"
+                        testID="home-idea"
+                        onPress={trainer.revealIdea}
+                        style={phone ? styles.actionFlex : undefined}
+                      />
+                    )}
                     <Button
                       compact={phone}
                       variant="ghost"
@@ -307,11 +360,24 @@ const styles = themedStyleSheet((colors) => ({
     backgroundColor: colors.surface,
     maxWidth: '100%',
   },
+  sourcePillLink: {
+    cursor: 'pointer',
+  },
+  sourcePillHover: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
   sourceText: {
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes[12],
     lineHeight: lineHeights[16],
     color: colors.textMuted,
+  },
+  sourceTextLink: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.accent,
   },
   progressRow: {
     height: 18,

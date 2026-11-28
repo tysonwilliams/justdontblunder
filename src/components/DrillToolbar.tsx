@@ -17,6 +17,7 @@ import {
   THEME_FILTERS,
   themeFilterLabel,
   type DrillMode,
+  type DrillSourceFilter,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
 import { dueTodayCount } from '@/src/logic/reviewSchedule';
@@ -30,6 +31,8 @@ export type DrillToolbarProps = {
   theme: ThemeFilter;
   /** Sudden-death rules. Only shown while Play is selected. */
   streak?: boolean;
+  /** Filter strictly to imported personal blunders when `'own'`. */
+  source?: DrillSourceFilter;
   /** Hide theme spoiler and pre-highlighted amber danger square until Hint is tapped. */
   unprompted?: boolean;
   /** Optional 15-second Blitz Check countdown per puzzle. */
@@ -37,6 +40,7 @@ export type DrillToolbarProps = {
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
   onStreak?: (streak: boolean) => void;
+  onSource?: (source: DrillSourceFilter) => void;
   onUnprompted?: (unprompted: boolean) => void;
   onBlitzTimer?: (blitzTimer: boolean) => void;
 };
@@ -57,11 +61,13 @@ export function DrillToolbar({
   mode,
   theme,
   streak = false,
+  source = 'all',
   unprompted = false,
   blitzTimer = false,
   onMode,
   onTheme,
   onStreak,
+  onSource,
   onUnprompted,
   onBlitzTimer,
 }: DrillToolbarProps) {
@@ -69,10 +75,15 @@ export function DrillToolbar({
   const { phone, topNav } = useLayout();
   const [open, setOpen] = useState(false);
   const review = useProgressStore((state) => state.review);
+  const ownCount = useProgressStore((state) => state.ownDrills.length);
   const due = dueTodayCount(review);
+  const showOwnFilter = mode !== 'review' && ownCount > 0 && Boolean(onSource);
 
-  const filtered = mode !== 'play' || theme !== 'all';
-  const summary = theme === 'all' ? MODE_LABEL[mode] : `${MODE_LABEL[mode]} · ${themeFilterLabel(theme)}`;
+  const filtered = mode !== 'play' || theme !== 'all' || (showOwnFilter && source === 'own');
+  const summaryParts = [MODE_LABEL[mode]];
+  if (showOwnFilter && source === 'own') summaryParts.push('My games');
+  if (theme !== 'all') summaryParts.push(themeFilterLabel(theme));
+  const summary = summaryParts.join(' · ');
 
   const modeOptions = DRILL_MODES.map((item) => ({
     id: item.id,
@@ -80,6 +91,11 @@ export function DrillToolbar({
     spoken: item.id === 'review' && due > 0 ? `${item.label}, ${due} due` : item.label,
     testID: `drill-mode-${item.id}`,
   }));
+
+  const sourceOptions: { id: DrillSourceFilter; label: string; testID: string }[] = [
+    { id: 'all', label: 'All puzzles', testID: 'drill-source-all' },
+    { id: 'own', label: `My games (${ownCount})`, testID: 'drill-source-own' },
+  ];
 
   if (!phone) {
     return (
@@ -94,6 +110,26 @@ export function DrillToolbar({
           </View>
         </View>
         <View style={styles.deskThemeRow}>
+          {showOwnFilter && onSource ? (
+            <Pressable
+              {...controlA11y('button', `My games only (${ownCount})`, source === 'own')}
+              testID="drill-source-own"
+              onPress={() => onSource(source === 'own' ? 'all' : 'own')}
+              style={(state) => {
+                const hovered = 'hovered' in state && Boolean(state.hovered);
+                return [
+                  styles.deskThemePill,
+                  source === 'own' && styles.deskThemePillOn,
+                  (hovered || state.pressed) && source !== 'own' && styles.deskThemePillHover,
+                ];
+              }}>
+              <Text
+                style={[styles.deskThemeLabel, source === 'own' && styles.deskThemeLabelOn]}
+                numberOfLines={1}>
+                My games ({ownCount})
+              </Text>
+            </Pressable>
+          ) : null}
           {THEME_FILTERS.map((item) => {
             const selected = item.id === theme;
             return (
@@ -193,6 +229,13 @@ export function DrillToolbar({
           <Text style={text.section}>Mode</Text>
           <SegmentedControl height={38} value={mode} onChange={onMode} options={modeOptions} />
         </View>
+
+        {showOwnFilter && onSource ? (
+          <View style={styles.section}>
+            <Text style={text.section}>Source</Text>
+            <SegmentedControl height={38} value={source} onChange={onSource} options={sourceOptions} />
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <Text style={text.section}>Theme</Text>

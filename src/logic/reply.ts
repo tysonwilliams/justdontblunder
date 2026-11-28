@@ -1,4 +1,4 @@
-import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'chess.js';
+import { Chess, type Color, type Move, type Square } from 'chess.js';
 
 import { pieceValue } from '@/src/logic/safety';
 
@@ -70,13 +70,13 @@ export type BotReply = {
 
 export type BlackReply = BotReply;
 
-function searchPlies(elo: number): number {
-  return elo >= 800 ? 2 : 1;
+function searchPlies(_elo: number): number {
+  return 2;
 }
 
 /** Share of non-forcing choices the opponent misses. Derived only from the Elo rating. */
 function slipRate(elo: number): number {
-  return Math.min(0.45, Math.max(0, (1450 - elo) / 1500));
+  return Math.min(0.45, Math.max(0, (1500 - elo) / 1450));
 }
 
 function slipBucket(fen: string): number {
@@ -125,12 +125,35 @@ function orderedMoves(game: Chess): Move[] {
   });
 }
 
+/** Capture-only quiescence search so 2-ply evaluation never panics on safely defended pieces. */
+function quiesce(game: Chess, alpha: number, beta: number, qDepth: number): number {
+  const standPat = materialFor(game, game.turn());
+  if (standPat >= beta || qDepth <= 0) return standPat;
+  let best = standPat;
+  if (best > alpha) alpha = best;
+  const captures = game
+    .moves({ verbose: true })
+    .filter((move) => Boolean(move.captured || move.promotion))
+    .sort((a, b) => captureRank(b) - captureRank(a));
+  for (const move of captures) {
+    game.move(move);
+    const score = game.isCheckmate() ? MATE_SCORE : -quiesce(game, -beta, -alpha, qDepth - 1);
+    game.undo();
+    if (score > best) best = score;
+    if (score > alpha) alpha = score;
+    if (alpha >= beta) break;
+  }
+  return best;
+}
+
 function negamax(game: Chess, depth: number, alpha: number, beta: number): number {
-  if (game.isCheckmate()) return -MATE_SCORE;
-  if (game.isDraw()) return 0;
-  if (depth <= 0) return materialFor(game, game.turn());
+  if (depth <= 0) {
+    if (game.inCheck() && game.isCheckmate()) return -MATE_SCORE;
+    return quiesce(game, alpha, beta, 4);
+  }
   const moves = orderedMoves(game);
-  if (!moves.length) return 0;
+  if (!moves.length) return game.inCheck() ? -MATE_SCORE : 0;
+  if (game.isInsufficientMaterial()) return 0;
   let best = -MATE_SCORE - 1;
   for (const move of moves) {
     game.move(move);
@@ -149,8 +172,9 @@ function bookRank(move: Move, side: Color): number {
   return index === -1 ? book.length : index;
 }
 
-function pieceRank(type: PieceSymbol): number {
-  switch (type) {
+function pieceRank(move: Move): number {
+  if (move.san === 'O-O' || move.san === 'O-O-O') return -1;
+  switch (move.piece) {
     case 'n':
     case 'b':
       return 0;
@@ -163,7 +187,7 @@ function pieceRank(type: PieceSymbol): number {
     case 'k':
       return 4;
     default: {
-      const _exhaustive: never = type;
+      const _exhaustive: never = move.piece;
       return _exhaustive;
     }
   }
@@ -174,7 +198,7 @@ type Scored = { move: Move; score: number };
 function byHumanOrder(a: Scored, b: Scored, side: Color): number {
   const book = bookRank(a.move, side) - bookRank(b.move, side);
   if (book !== 0) return book;
-  const develop = pieceRank(a.move.piece) - pieceRank(b.move.piece);
+  const develop = pieceRank(a.move) - pieceRank(b.move);
   if (develop !== 0) return develop;
   const center = (CENTER.has(b.move.to) ? 1 : 0) - (CENTER.has(a.move.to) ? 1 : 0);
   if (center !== 0) return center;
@@ -190,8 +214,16 @@ function shouldSlip(fen: string, best: number, second: number, elo: number): boo
   return slipBucket(fen) < slipRate(elo) * 1000;
 }
 
+function positionKey(fen: string): string {
+  return fen.split(' ').slice(0, 4).join(' ');
+}
+
 /** Opponent reply for whichever side is to move, tuned to `elo`. */
-export function chooseBotReply(fen: string, elo: number = PRACTICE_OPPONENT_ELO): BotReply | null {
+export function chooseBotReply(
+  fen: string,
+  elo: number = PRACTICE_OPPONENT_ELO,
+  recentPositionKeys?: ReadonlySet<string>,
+): BotReply | null {
   const game = new Chess(fen);
   const side = game.turn();
   const moves = orderedMoves(game);
@@ -201,7 +233,10 @@ export function chooseBotReply(fen: string, elo: number = PRACTICE_OPPONENT_ELO)
   const ranked: Scored[] = [];
   for (const move of moves) {
     game.move(move);
-    const score = game.isCheckmate() ? MATE_SCORE : -negamax(game, plies - 1, -1000, 1000);
+    let score = game.isCheckmate() ? MATE_SCORE : -negamax(game, plies - 1, -1000, 1000);
+    if (recentPositionKeys && recentPositionKeys.has(positionKey(game.fen())) && score < MATE_SCORE - 1) {
+      score -= 0.5;
+    }
     game.undo();
     ranked.push({ move, score });
   }
@@ -212,10 +247,16 @@ export function chooseBotReply(fen: string, elo: number = PRACTICE_OPPONENT_ELO)
 
   let chosen = best;
   if (shouldSlip(fen, best.score, second, elo)) {
-    const floor = Math.max(-1, best.score - 1);
+    const drop = elo <= 600 ? 2 : 1;
+    const floor = Math.max(-drop, best.score - drop);
     const softer = ranked.filter((entry) => entry.score >= floor && entry.score < best.score);
     softer.sort((a, b) => byHumanOrder(a, b, side));
     if (softer[0]) chosen = softer[0];
+  } else if (elo <= 900 && ranked.length > 1) {
+    const ties = ranked.filter((entry) => entry.score === best.score);
+    if (ties.length > 1 && slipBucket(fen) < (elo <= 600 ? 500 : 250)) {
+      chosen = ties[slipBucket(`${fen}:${elo}`) % ties.length] ?? best;
+    }
   }
 
   const played = game.move(chosen.move);

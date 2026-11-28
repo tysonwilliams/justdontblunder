@@ -37,6 +37,7 @@ import { BOARD_BORDER, squareSizeForFrame } from '@/src/components/Board/boardGe
 import { pieceCodeFrom } from '@/src/components/Board/pieceCode';
 import { useReducedMotion } from '@/src/components/Board/useReducedMotion';
 import { controlA11y } from '@/src/components/ui/a11y';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
 import {
   createGame,
@@ -751,6 +752,17 @@ function ChessBoardView({
       window.removeEventListener('pointerup', onPointerUp);
     };
   }, []);
+
+  useKeyboardShortcuts(
+    {
+      Escape: () => {
+        setPendingPromotion(null);
+        return true;
+      },
+    },
+    pendingPromotion !== null,
+    { modal: true },
+  );
 
   const hiddenSquares = squaresHiddenBy(flights);
   const rowKey = [

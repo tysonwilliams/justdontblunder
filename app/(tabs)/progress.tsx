@@ -58,6 +58,8 @@ export default function ProgressScreen() {
     themeStats,
     completedLessons,
     xp,
+    gameProfile,
+    ownDrills,
   } = useProgressStore();
 
   const liveStreak = activeDailyStreak(dailyStreak, lastDrillDate);
@@ -67,6 +69,7 @@ export default function ProgressScreen() {
   const weak = weakestTheme(themeStats);
   const badges = badgeList(liveStreak, recordStreak, bestPuzzleStreak, blundersAvoided);
   const earnedCount = badges.filter((badge) => badge.earned).length;
+  const hoistImportOnPhone = phone && progressReady && !gameProfile && ownDrills.length === 0;
 
   return (
     <Screen>
@@ -135,6 +138,8 @@ export default function ProgressScreen() {
           )}
         </View>
 
+        {hoistImportOnPhone ? <GameImport /> : null}
+
         <View style={[styles.columns, wideGrid && styles.columnsWide]}>
           <View style={styles.col}>
             <View style={styles.card}>
@@ -187,7 +192,7 @@ export default function ProgressScreen() {
           </View>
 
           <View style={styles.col}>
-            {progressReady ? (
+            {hoistImportOnPhone ? null : progressReady ? (
               <GameImport />
             ) : (
               <View style={styles.card}>

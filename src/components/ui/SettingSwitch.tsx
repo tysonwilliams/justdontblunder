@@ -93,9 +93,10 @@ const styles = themedStyleSheet((colors) => ({
   },
   rowCompact: {
     alignSelf: 'center',
-    height: 44,
-    minHeight: 44,
-    paddingHorizontal: spacing[14],
+    height: 32,
+    minHeight: 32,
+    paddingHorizontal: spacing[10],
+    gap: spacing[6],
   },
   rowCompactPhone: {
     height: 32,
@@ -123,19 +124,19 @@ const styles = themedStyleSheet((colors) => ({
     lineHeight: lineHeights[16],
   },
   labelDesk: {
-    fontSize: fontSizes[16],
-    lineHeight: lineHeights[22],
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
   },
   labelCompactOn: {
     color: colors.accent,
   },
   trackDesk: {
-    width: 46,
-    height: 28,
+    width: 34,
+    height: 20,
   },
   knobDesk: {
-    width: 22,
-    height: 22,
+    width: 14,
+    height: 14,
   },
   track: {
     width: 40,

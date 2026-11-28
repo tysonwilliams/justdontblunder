@@ -92,6 +92,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
         ]}>
         <Pressable
           {...controlA11y('button', "Just Don't Blunder home")}
+          {...(compactRail ? ({ title: "Just Don't Blunder" } as Record<string, string>) : undefined)}
           onPress={openHome}
           style={(press) => [
             styles.railBrand,
@@ -129,6 +130,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
               <Pressable
                 key={route.key}
                 {...controlA11y('tab', badge ? `${label}, ${badge} due` : label, focused)}
+                {...(compactRail ? ({ title: badge ? `${label} (${badge} due)` : label } as Record<string, string>) : undefined)}
                 onPress={onPress}
                 style={(press) => {
                   const hovered = 'hovered' in press && Boolean(press.hovered);
@@ -168,6 +170,7 @@ export function AppTabBar({ state, descriptors, emitter, navigateToTab, insets, 
           )}
           <Pressable
             {...controlA11y('button', 'Settings')}
+            {...(compactRail ? ({ title: 'Settings' } as Record<string, string>) : undefined)}
             testID="open-menu"
             onPress={openMenu}
             style={(press) => {

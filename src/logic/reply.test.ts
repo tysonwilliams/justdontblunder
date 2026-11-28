@@ -103,4 +103,22 @@ describe('chooseBlackReply', () => {
     expect(defaultPracticeElo('basics')).toBe(1200);
     expect(defaultPracticeElo('intermediate')).toBe(1500);
   });
+
+  it('avoids 1-ply queen suicide at 600 Elo and avoids repeating recent positions', () => {
+    // Test with f3 defended by g2 pawn: Qxf3 loses the queen for a knight (-6).
+    const defended = chooseBotReply('4k3/8/8/4q3/8/5N2/6P1/4K3 b - - 0 1', 600);
+    expect(defended).toBeTruthy();
+    expect(defended?.san).not.toBe('Qxf3');
+
+    // Repetition avoidance: when a move leads back to a seen position key, prefer another equal move.
+    const repFen = '4k3/8/8/8/8/8/8/3RK3 w - - 0 1';
+    const first = chooseBotReply(repFen, 1500);
+    expect(first).toBeTruthy();
+    if (first) {
+      const seen = new Set([first.fen.split(' ').slice(0, 4).join(' ')]);
+      const second = chooseBotReply(repFen, 1500, seen);
+      expect(second).toBeTruthy();
+      expect(second?.san).not.toBe(first.san);
+    }
+  });
 });
