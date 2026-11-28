@@ -44,7 +44,8 @@ export function LessonList({ onOpen }: Props) {
     ready
       ? lessons.map((lesson, index) => {
           const complete = done.has(lesson.id);
-          const label = `${lesson.title}${complete ? ', done' : ''}`;
+          const upNext = lesson.id === nextId;
+          const label = `${lesson.title}${complete ? ', done' : upNext ? ', up next' : ''}`;
           return (
             <Pressable
               key={lesson.id}
@@ -53,17 +54,38 @@ export function LessonList({ onOpen }: Props) {
               onPress={() => onOpen(lesson.id)}
               style={(state) => {
                 const hovered = 'hovered' in state && Boolean(state.hovered);
-                return [styles.row, (hovered || state.pressed) && styles.rowOn];
+                return [
+                  styles.row,
+                  upNext && styles.rowUpNext,
+                  (hovered || state.pressed) && styles.rowOn,
+                ];
               }}>
-              <View style={[styles.index, club && styles.indexClub]}>
-                <Text style={[styles.indexText, club && styles.indexClubText]}>{index + 1}</Text>
+              <View style={[styles.index, club && styles.indexClub, upNext && styles.indexUpNext]}>
+                <Text
+                  style={[
+                    styles.indexText,
+                    club && styles.indexClubText,
+                    upNext && styles.indexUpNextText,
+                  ]}>
+                  {index + 1}
+                </Text>
               </View>
               <View style={styles.copy}>
-                <Text style={styles.title} numberOfLines={1}>
-                  {lesson.title}
-                </Text>
+                <View style={styles.titleRow}>
+                  <Text style={styles.title} numberOfLines={1}>
+                    {lesson.title}
+                  </Text>
+                  {upNext ? (
+                    <View style={styles.upNextPill} testID="lesson-up-next">
+                      <Text style={styles.upNextText}>Up next</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={text.muted} numberOfLines={2}>
                   {lesson.summary}
+                </Text>
+                <Text style={styles.metaLine}>
+                  {lesson.cards.length} examples · {lesson.tries.length} tries · Self-paced
                 </Text>
               </View>
               {complete ? (
@@ -98,7 +120,7 @@ export function LessonList({ onOpen }: Props) {
             </View>
             <Text style={split ? text.display : text.title}>Learn</Text>
             <Text style={text.muted}>
-              Six core lessons plus four club tactics. About two minutes each. Any lesson is open.
+              Six core lessons plus four club tactics. Step through each example at your own pace, then try it yourself.
             </Text>
             {ready ? (
               <View style={styles.courseProgress}>
@@ -198,14 +220,17 @@ const styles = themedStyleSheet((colors) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[12],
-    minHeight: 58,
-    paddingVertical: spacing.sm,
+    minHeight: 68,
+    paddingVertical: spacing[10],
     paddingHorizontal: spacing[12],
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     cursor: 'pointer',
+  },
+  rowUpNext: {
+    borderColor: colors.accent,
   },
   rowOn: {
     backgroundColor: colors.surfaceRaised,
@@ -221,6 +246,9 @@ const styles = themedStyleSheet((colors) => ({
   indexClub: {
     backgroundColor: colors.accentSoft,
   },
+  indexUpNext: {
+    backgroundColor: colors.accent,
+  },
   indexText: {
     fontFamily: fonts.bodyExtra,
     color: colors.text,
@@ -230,16 +258,44 @@ const styles = themedStyleSheet((colors) => ({
   indexClubText: {
     color: colors.accent,
   },
+  indexUpNextText: {
+    color: colors.accentText,
+  },
   copy: {
     flex: 1,
     minWidth: 0,
-    gap: spacing.hairline,
+    gap: spacing[2],
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
   },
   title: {
     fontFamily: fonts.bodyBold,
     color: colors.text,
     fontSize: fontSizes[16],
     lineHeight: lineHeights[22],
+    flexShrink: 1,
+  },
+  upNextPill: {
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[1],
+    borderRadius: radii.pill,
+    backgroundColor: colors.accentSoft,
+    flexShrink: 0,
+  },
+  upNextText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.accent,
+  },
+  metaLine: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textDim,
   },
   check: {
     width: 28,

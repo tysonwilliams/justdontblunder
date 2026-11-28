@@ -25,7 +25,11 @@ type Playback = {
  * Steps through a punishment line: threat arrow first, then each reply.
  * `line` should be state owned by the caller so the timer is not restarted every render.
  */
-export function usePunishmentPlayback(active: boolean, line: PunishmentStep[]): Playback {
+export function usePunishmentPlayback(
+  active: boolean,
+  line: PunishmentStep[],
+  stepMs = PUNISHMENT_STEP_MS,
+): Playback {
   const reduced = useReducedMotion();
   const [runId, setRunId] = useState(0);
   const baseKey = active ? line.map((step) => `${step.from}${step.to}${step.fen}`).join('|') : '';
@@ -72,14 +76,14 @@ export function usePunishmentPlayback(active: boolean, line: PunishmentStep[]): 
           setFinishedOnce(true);
         }
         playFeedback(soundForSan(move.san));
-      }, PUNISHMENT_STEP_MS);
+      }, stepMs);
     };
     kick(0);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [active, replayKey, reduced]);
+  }, [active, replayKey, reduced, stepMs]);
 
   const replay = useCallback(() => {
     if (lineRef.current.length === 0) return;

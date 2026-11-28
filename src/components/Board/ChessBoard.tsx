@@ -105,6 +105,8 @@ function ChessBoardView({
   flipCue = false,
   hideTurn = false,
   size,
+  statusText,
+  onBoardPress,
   onMove,
   onPositionChange,
 }: ChessBoardProps) {
@@ -165,6 +167,7 @@ function ChessBoardView({
     selected,
     legal,
     fen,
+    onBoardPress,
     onMove,
     onPositionChange,
     orientation,
@@ -178,6 +181,7 @@ function ChessBoardView({
     selected,
     legal,
     fen,
+    onBoardPress,
     onMove,
     onPositionChange,
     orientation,
@@ -448,7 +452,10 @@ function ChessBoardView({
     (square: Square) => {
       if (suppressPress.current || phase.current !== 'idle') return;
       const now = latest.current;
-      if (!now.interactive) return;
+      if (!now.interactive) {
+        now.onBoardPress?.();
+        return;
+      }
       const piece = pieceAt(now.game, square);
       if (now.selected) {
         if (square === now.selected) {
@@ -826,12 +833,14 @@ function ChessBoardView({
     dragSquare && hoverSquare && hoverSquare !== dragSquare && squareSize > 0
       ? squareOrigin(hoverSquare, orientation, squareSize)
       : null;
-  const turnLine = boardStatusLine({
-    turn: snap.turn,
-    inCheck: snap.isCheck,
-    checkmate: snap.isCheckmate,
-    stalemate: snap.isStalemate,
-  });
+  const turnLine =
+    statusText ??
+    boardStatusLine({
+      turn: snap.turn,
+      inCheck: snap.isCheck,
+      checkmate: snap.isCheckmate,
+      stalemate: snap.isStalemate,
+    });
 
   // Phone drills keep this row off for the whole puzzle. Desktop always reserves it.
   const reserveTurn = phone ? !hideTurn || flipCue : true;
