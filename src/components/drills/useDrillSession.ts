@@ -26,7 +26,7 @@ import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
 import { clubTacticalWarning } from '@/src/logic/safety';
 import { missFeedback, roundSpeech } from '@/src/logic/saveFeedback';
-import { buildPoolForTheme, rotateList, shuffleWithSeed } from '@/src/logic/puzzlePool';
+import { buildPoolForTheme, orderPoolWithOwnFirst } from '@/src/logic/puzzlePool';
 import { formatReviewGap, nextReviewGapDays } from '@/src/logic/reviewSchedule';
 import { shownBest, streakScoreInRange } from '@/src/logic/streak';
 import { roundProgress, trainerBoard, type TrainerMove } from '@/src/logic/trainerRound';
@@ -75,19 +75,16 @@ function playingPool(
   restartCount: number,
 ): DrillPosition[] {
   const { ownDrills, drillsCompleted } = useProgressStore.getState();
-  const base = buildPoolForTheme(ownDrills, theme, undefined, { ownOnly: source === 'own' });
-  if (sudden) {
-    const seed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff) ^ (restartCount * 2654435761)) >>> 0;
-    return shuffleWithSeed(base, seed);
-  }
-  if (restartCount > 0) {
-    return rotateList(base, restartCount * 11);
-  }
-  // Keep drillsCompleted === 0 in canonical order so first-visit Play starts on hang-q-01.
-  if (source === 'all' && ownDrills.length === 0 && drillsCompleted > 0) {
-    return rotateList(base, drillsCompleted);
-  }
-  return base;
+  const seed = sudden
+    ? (Date.now() ^ Math.floor(Math.random() * 0x7fffffff) ^ (restartCount * 2654435761)) >>> 0
+    : undefined;
+  return orderPoolWithOwnFirst(ownDrills, theme, {
+    ownOnly: source === 'own',
+    sudden,
+    seed,
+    restartCount,
+    drillsCompleted,
+  });
 }
 
 function reviewSession(theme: ThemeFilter, includeAhead = false) {

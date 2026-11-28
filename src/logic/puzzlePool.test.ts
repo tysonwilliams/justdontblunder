@@ -15,6 +15,7 @@ import {
   buildPuzzlePool,
   keepOwnDrills,
   mergeScannedDrills,
+  orderPoolWithOwnFirst,
   poolSummary,
   PUZZLE_POOL_SIZE,
   reviewId,
@@ -125,5 +126,26 @@ describe('puzzle pool', () => {
     expect(ownOnlyAll.map((d) => d.id)).toEqual(['own-back-1']);
     const ownOnlyFork = buildPoolForTheme([personalBack], 'fork', undefined, { ownOnly: true });
     expect(ownOnlyFork).toHaveLength(0);
+  });
+
+  it('always puts personal blunders ahead of built-in starters across Play, Restart, and Streak', () => {
+    const starters = getAllDrills();
+    const personal = [own(1), own(2), own(3)];
+
+    const playPool = orderPoolWithOwnFirst(personal, 'all', { starter: starters });
+    expect(playPool.slice(0, 3).map((d) => d.id)).toEqual(['own-1', 'own-2', 'own-3']);
+
+    const restarted = orderPoolWithOwnFirst(personal, 'all', { starter: starters, restartCount: 1 });
+    expect(restarted.slice(0, 3).map((d) => d.id)).toEqual(['own-2', 'own-3', 'own-1']);
+
+    const streak = orderPoolWithOwnFirst(personal, 'all', { starter: starters, sudden: true, seed: 42 });
+    expect(new Set(streak.slice(0, 3).map((d) => d.id))).toEqual(new Set(['own-1', 'own-2', 'own-3']));
+    expect(streak.length).toBe(starters.length + personal.length);
+
+    // Without personal blunders, first visit starts on hang-q-01 and returning visits rotate starters.
+    const guestFirst = orderPoolWithOwnFirst([], 'all', { starter: starters, drillsCompleted: 0 });
+    expect(guestFirst[0]?.id).toBe(starters[0]?.id);
+    const guestReturning = orderPoolWithOwnFirst([], 'all', { starter: starters, drillsCompleted: 5 });
+    expect(guestReturning[0]?.id).toBe(starters[5]?.id);
   });
 });

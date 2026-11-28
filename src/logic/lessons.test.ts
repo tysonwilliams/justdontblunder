@@ -5,6 +5,7 @@ import { isAbsolutePin, isLiveForkOn } from '@/src/logic/danger';
 import { isCorrectDrillMove } from '@/src/logic/drills';
 import {
   CLUB_LESSONS,
+  HABIT_LESSONS,
   LESSONS,
   learnCard,
   lessonById,
@@ -258,10 +259,117 @@ describe('club lessons (900-1600)', () => {
     }
   });
 
-  it('advances nextCourseLessonId from Foundations into Club lessons and stops after all ten', () => {
+  it('advances nextCourseLessonId across Foundations, Club, and Habit lessons and stops after all fourteen', () => {
     expect(nextCourseLessonId([])).toBe('blunder');
     expect(nextCourseLessonId([...ORDER])).toBe('counting');
     expect(nextCourseLessonId([...ORDER, 'counting', 'overloaded'])).toBe('discovered');
-    expect(nextCourseLessonId([...ORDER, 'counting', 'overloaded', 'discovered', 'quiet_trap'])).toBeNull();
+    expect(nextCourseLessonId([...ORDER, 'counting', 'overloaded', 'discovered', 'quiet_trap'])).toBe('routine');
+    expect(
+      nextCourseLessonId([
+        ...ORDER,
+        'counting',
+        'overloaded',
+        'discovered',
+        'quiet_trap',
+        'routine',
+        'opening_traps',
+        'counterplay',
+        'endgame_safety',
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe('blunder-proof habit lessons', () => {
+  it('resolves all four habit lessons and verifies every card and guided try', () => {
+    expect(HABIT_LESSONS.map((lesson) => lesson.id)).toEqual([
+      'routine',
+      'opening_traps',
+      'counterplay',
+      'endgame_safety',
+    ]);
+    for (const lesson of HABIT_LESSONS) {
+      expect(parseLessonId(lesson.id)).toBe(lesson.id);
+      expect(lessonById(lesson.id)).toBe(lesson);
+      expect(lesson.cards.length).toBeGreaterThanOrEqual(2);
+      expect(lesson.tries.length).toBeGreaterThanOrEqual(2);
+
+      for (const card of lesson.cards) {
+        expect(materialIsReachable(card.fen), card.id).toBe(true);
+        const start = new Chess(card.fen);
+        expect(start.isCheck(), card.id).toBe(Boolean(card.inCheck));
+        const beats = resolveBeats(card.fen, card.beats);
+        expect(beats.map((beat) => beat.tone), card.id).toEqual(card.beats.map((beat) => beat.tone));
+        card.beats.forEach((beat, index) => {
+          const score = outcomeAt(card, index, beat);
+          if (beat.tone === 'blunder') expect(score, `${card.id} blunder`).toBeLessThan(0);
+          if (beat.tone === 'ok') expect(score, `${card.id} ok`).toBeGreaterThanOrEqual(0);
+          if (beat.tone === 'punishment') {
+            const shown = beats[index];
+            expect(shown?.captured || shown?.mate, `${card.id} punishment`).toBe(true);
+          }
+        });
+      }
+
+      for (const task of lesson.tries) {
+        const { drill } = task;
+        expect(materialIsReachable(drill.fen), drill.id).toBe(true);
+        expect(new Chess(drill.fen).turn(), drill.id).toBe(drill.sideToMove);
+        const game = new Chess(drill.fen);
+        for (const uci of drill.solution) {
+          expect(
+            isCorrectDrillMove(drill, uci.slice(0, 2) as Square, uci.slice(2, 4) as Square),
+            `${drill.id} ${uci}`,
+          ).toBe(true);
+        }
+        expect(
+          isCorrectDrillMove(drill, task.blunder.slice(0, 2) as Square, task.blunder.slice(2, 4) as Square),
+          `${drill.id} blunder`,
+        ).toBe(false);
+
+        switch (task.kind) {
+          case 'even':
+            expect(
+              moveOutcome(
+                drill.fen,
+                drill.solution[0]!.slice(0, 2) as Square,
+                drill.solution[0]!.slice(2, 4) as Square,
+                drill.sideToMove,
+              ),
+              drill.id,
+            ).toBe(0);
+            break;
+          case 'hanging':
+            expect(hangingGain(drill.fen, drill.atRiskSquare, drill.sideToMove), drill.id).toBeGreaterThan(0);
+            break;
+          case 'fork':
+            expect(isLiveForkOn(game, drill.atRiskSquare, drill.sideToMove), drill.id).toBe(true);
+            break;
+          case 'pin':
+            expect(isAbsolutePin(game, drill.atRiskSquare, drill.sideToMove), drill.id).toBe(true);
+            break;
+          case 'back_rank':
+            expect(
+              moveOutcome(
+                drill.fen,
+                task.blunder.slice(0, 2) as Square,
+                task.blunder.slice(2, 4) as Square,
+                drill.sideToMove,
+              ),
+              drill.id,
+            ).toBe(-100);
+            break;
+          case 'missed_mate': {
+            const opponent = drill.sideToMove === 'w' ? 'b' : 'w';
+            expect(opponentThreatensMateInOne(withTurn(drill.fen, opponent)), drill.id).toBe(true);
+            break;
+          }
+          default: {
+            const _exhaustive: never = task.kind;
+            throw new Error(_exhaustive);
+          }
+        }
+      }
+    }
   });
 });

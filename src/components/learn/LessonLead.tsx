@@ -68,11 +68,17 @@ export function LessonLead({
           {!topNav ? <MenuButton compact={phone} /> : null}
         </View>
       </View>
-      <LineBox height={phone ? 22 : 32}>
-        <Text style={[text.title, phone && text.titlePhone]} numberOfLines={1}>
+      {phone ? (
+        <LineBox height={22}>
+          <Text style={[text.title, text.titlePhone]} numberOfLines={1}>
+            {lesson.title}
+          </Text>
+        </LineBox>
+      ) : (
+        <Text style={text.title} numberOfLines={2}>
           {lesson.title}
         </Text>
-      </LineBox>
+      )}
       <LineBox height={phone ? 16 : 22}>
         <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={1}>
           {detail}

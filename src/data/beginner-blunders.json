@@ -987,6 +987,448 @@
     "traps": []
   },
   {
+    "id": "guide-hang-01",
+    "fen": "r1bqkb1r/ppp2ppp/1n2p3/8/2BP1P2/2N2N2/PP3PPP/R2QK2R w KQkq - 1 9",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "atRiskSquare": "c4",
+    "prompt": "Check their last move before castling — your bishop on c4 is loose.",
+    "solution": [
+      "c4b5",
+      "c4b3",
+      "c4d3",
+      "c4e2",
+      "c4f1",
+      "b2b3",
+      "d1b3",
+      "d1d3"
+    ],
+    "note": "Nb6 attacks your undefended bishop on c4. Retreating with Bd3, Be2, or Bb5+ avoids castling into Nxc4.",
+    "expectedDropCp": 300,
+    "acceptable": [
+      "c4b5",
+      "c4b3",
+      "c4d3",
+      "c4e2",
+      "c4f1",
+      "b2b3",
+      "d1b3",
+      "d1d3"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-hang-02",
+    "fen": "rn1qkb1r/1pp1pppp/p4n2/3b2N1/2pPP3/2N5/PP3PPP/R1BQKB1R b KQkq - 0 7",
+    "sideToMove": "b",
+    "theme": "hanging",
+    "atRiskSquare": "d5",
+    "prompt": "Your bishop on d5 is under fire in the center — get it safe.",
+    "solution": [
+      "d5e6"
+    ],
+    "note": "Both e4 and Nc3 aim at d5. Stepping back with Be6 saves the bishop cleanly.",
+    "expectedDropCp": 300,
+    "acceptable": [
+      "d5e6"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-hang-03",
+    "fen": "r1bqnrk1/pp1pppbp/6p1/n3P3/3N4/1BN1B3/PPP2PPP/R2QK2R w KQ - 1 10",
+    "sideToMove": "w",
+    "theme": "hanging",
+    "atRiskSquare": "e5",
+    "prompt": "Scan loose pieces and pawns — e5 is under attack from the g7 bishop.",
+    "solution": [
+      "d4f3",
+      "e3f4",
+      "f2f4"
+    ],
+    "note": "Black’s bishop on g7 aims down the long diagonal at e5. Defend it with f4 or Nf3, or keep material balanced.",
+    "expectedDropCp": 100,
+    "acceptable": [
+      "d4f3",
+      "e3f4",
+      "f2f4"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-hang-04",
+    "fen": "r1b1k2r/pp3ppp/2pp1b2/q3nN2/2P5/2N1P3/PPQ2PPP/2KR1B1R b kq - 1 11",
+    "sideToMove": "b",
+    "theme": "hanging",
+    "atRiskSquare": "d6",
+    "prompt": "Count attackers on d6 before chasing counterplay.",
+    "solution": [
+      "c8f5"
+    ],
+    "note": "Both Nf5 and Rd1 target d6. Playing Bxf5 removes a key attacker and keeps d6 safe.",
+    "expectedDropCp": 300,
+    "acceptable": [
+      "c8f5"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-fork-01",
+    "fen": "r1bqkb1r/ppp2ppp/2np4/4p3/2B1P3/5N2/PPnP1PPP/R1BQK2R w KQkq - 0 6",
+    "sideToMove": "w",
+    "theme": "fork",
+    "atRiskSquare": "a1",
+    "prompt": "A knight on c2 forks your king and rook — check captures first.",
+    "solution": [
+      "d1c2"
+    ],
+    "note": "Qxc2 takes the checking knight immediately so both your king and rook stay safe.",
+    "expectedDropCp": 500,
+    "acceptable": [
+      "d1c2"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-fork-02",
+    "fen": "r1bqkb1r/ppp2ppp/2np4/4p3/2B1P3/8/PPPP1nPP/RNBQK2R w KQkq - 0 6",
+    "sideToMove": "w",
+    "theme": "fork",
+    "atRiskSquare": "d1",
+    "prompt": "A knight on f2 forks your queen and rook — look at king captures too.",
+    "solution": [
+      "e1f2"
+    ],
+    "note": "Kxf2 captures the undefended forking knight right away so both your queen and rook stay safe.",
+    "expectedDropCp": 500,
+    "acceptable": [
+      "e1f2"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-fork-03",
+    "fen": "r1bqk2r/ppNpbppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/R1BQK2R b KQkq - 0 6",
+    "sideToMove": "b",
+    "theme": "fork",
+    "atRiskSquare": "a8",
+    "prompt": "White’s knight checks your king and forks your rook on a8.",
+    "solution": [
+      "d8c7"
+    ],
+    "note": "Qxc7 takes the checking knight immediately instead of running with the king and dropping a8.",
+    "expectedDropCp": 500,
+    "acceptable": [
+      "d8c7"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-fork-04",
+    "fen": "r1bqk1nr/ppp2Npp/2np4/2b1p3/4P3/3P4/PPP2PPP/RNBQKB1R b KQkq - 0 5",
+    "sideToMove": "b",
+    "theme": "fork",
+    "atRiskSquare": "d8",
+    "prompt": "White’s knight jumped into f7 forking your queen and rook.",
+    "solution": [
+      "e8f7",
+      "c5b4"
+    ],
+    "note": "The knight on f7 has no defender. Kxf7 captures it right away so both your queen and rook stay safe.",
+    "expectedDropCp": 500,
+    "acceptable": [
+      "e8f7",
+      "c5b4"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-pin-01",
+    "fen": "r2r2k1/pb2qppp/1p3n2/n1bpN1B1/8/1PN3P1/P1Q1PPBP/R4RK1 w - - 0 15",
+    "sideToMove": "w",
+    "theme": "pin",
+    "atRiskSquare": "f2",
+    "prompt": "Black’s bishop on c5 pins f2 to your king — watch the e5 knight too.",
+    "solution": [
+      "g5f6",
+      "c2f5",
+      "e5d3",
+      "e5f3",
+      "g5f4"
+    ],
+    "note": "Keep everything guarded while f2 is pinned. Retreating the knight (Nf3 or Nd3) or trading Bxf6 keeps you safe.",
+    "expectedDropCp": 300,
+    "acceptable": [
+      "g5f6",
+      "c2f5",
+      "e5d3",
+      "e5f3",
+      "g5f4"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-pin-02",
+    "fen": "r1bqr1k1/ppp2ppp/2n5/8/4N3/8/PPPP1PPP/R1BQKB1R w KQ - 0 9",
+    "sideToMove": "w",
+    "theme": "pin",
+    "atRiskSquare": "e4",
+    "prompt": "Your king is still in the center and Re8 pins your knight on e4.",
+    "solution": [
+      "d1e2",
+      "d1f3",
+      "d2d3",
+      "f1d3",
+      "f2f3"
+    ],
+    "note": "The knight on e4 is pinned to Ke1. Defend it right away with d3, Qe2, or Bd3.",
+    "expectedDropCp": 300,
+    "acceptable": [
+      "d1e2",
+      "d1f3",
+      "d2d3",
+      "f1d3",
+      "f2f3"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-pin-03",
+    "fen": "r1bqk2r/ppp2ppp/2n5/3p4/1b1Pn3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 2 7",
+    "sideToMove": "w",
+    "theme": "pin",
+    "atRiskSquare": "c3",
+    "prompt": "Your knight on c3 is pinned to your king and attacked twice.",
+    "solution": [
+      "c1d2",
+      "d1d3",
+      "d1e2"
+    ],
+    "note": "Bb4 pins c3 while Ne4 adds a second attacker. Play Bd2, Qd3, or Qe2 to answer the pin cleanly.",
+    "expectedDropCp": 300,
+    "acceptable": [
+      "c1d2",
+      "d1d3",
+      "d1e2"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-pin-04",
+    "fen": "r1bqk2r/ppp2ppp/2n2n2/1B1p4/4P3/5N2/PPP2PPP/RNBQ1RK1 b kq - 2 6",
+    "sideToMove": "b",
+    "theme": "pin",
+    "atRiskSquare": "c6",
+    "prompt": "White’s bishop pins c6 to your king while e4 aims at the center.",
+    "solution": [
+      "d5e4",
+      "f6e4",
+      "a7a5",
+      "a7a6",
+      "a8b8",
+      "c8e6",
+      "c8g4",
+      "d8d6"
+    ],
+    "note": "Your knight on c6 is pinned to Ke8. Answer the center pressure with dxe4, Nxe4, or Be6.",
+    "expectedDropCp": 300,
+    "acceptable": [
+      "d5e4",
+      "f6e4",
+      "a7a5",
+      "a7a6",
+      "a8b8",
+      "c8e6",
+      "c8g4",
+      "d8d6"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-back-01",
+    "fen": "r3r1k1/ppqn1ppp/1bp2n2/3p4/3P4/RBP5/PPQ2PPP/6K1 w - - 0 16",
+    "sideToMove": "w",
+    "theme": "back_rank",
+    "atRiskSquare": "g1",
+    "prompt": "Check the open e-file before developing — Black threatens Re1#.",
+    "solution": [
+      "c2b1",
+      "c2c1",
+      "c2d1",
+      "c2d2",
+      "c2d3",
+      "f2f3",
+      "g2g3"
+    ],
+    "note": "Re1# is mate in one on the back rank. Give your king air with g3 or f3, or cover the first rank with Qd1 or Qc1.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "c2b1",
+      "c2c1",
+      "c2d1",
+      "c2d2",
+      "c2d3",
+      "f2f3",
+      "g2g3"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-back-02",
+    "fen": "6k1/ppq2ppp/rbp5/3p4/3P4/1BP2N2/PPQN1PPP/R3R1K1 b - - 0 16",
+    "sideToMove": "b",
+    "theme": "back_rank",
+    "atRiskSquare": "g8",
+    "prompt": "White’s rook owns the open e-file — stop Re8#.",
+    "solution": [
+      "c7b8",
+      "c7c8",
+      "c7d6",
+      "c7d7",
+      "c7d8",
+      "f7f6",
+      "g7g6"
+    ],
+    "note": "Re8# is mate in one. Give your king air with g6 or f6, or cover the eighth rank with Qd8 or Qc8.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "c7b8",
+      "c7c8",
+      "c7d6",
+      "c7d7",
+      "c7d8",
+      "f7f6",
+      "g7g6"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-back-03",
+    "fen": "r2r2k1/pb3ppp/1pn1pn2/2pq4/NQ6/R1P5/PB3PPP/6K1 w - - 0 17",
+    "sideToMove": "w",
+    "theme": "back_rank",
+    "atRiskSquare": "g1",
+    "prompt": "Black’s queen and rook threaten Qd1# while c5 hits your queen.",
+    "solution": [
+      "b4b3",
+      "b4b5"
+    ],
+    "note": "Moving the queen to b3 or b5 saves her while also blocking or covering the back-rank mate threat.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "b4b3",
+      "b4b5"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-back-04",
+    "fen": "6k1/pbr2ppp/nqp1p3/1p6/8/1PN2N2/PBP1QPPP/3R2K1 b - - 0 18",
+    "sideToMove": "b",
+    "theme": "back_rank",
+    "atRiskSquare": "g8",
+    "prompt": "Even with plenty of pieces left, check your back rank — stop Rd8#.",
+    "solution": [
+      "g8f8",
+      "b6c5",
+      "c7c8",
+      "c7e7",
+      "g7g6",
+      "h7h5",
+      "h7h6"
+    ],
+    "note": "Rd8# is mate in one. Give your king air with g6 or h6, step Kf8, or cover the eighth rank with Rc8.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "g8f8",
+      "b6c5",
+      "c7c8",
+      "c7e7",
+      "g7g6",
+      "h7h5",
+      "h7h6"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-mate-01",
+    "fen": "r1bq1rk1/ppp2ppp/2np4/2b1P2Q/8/2NB4/PPP2PPP/R1B2RK1 b - - 0 10",
+    "sideToMove": "b",
+    "theme": "missed_mate",
+    "atRiskSquare": "g8",
+    "prompt": "Check their queen-and-bishop battery — White threatens Qxh7#.",
+    "solution": [
+      "f7f5",
+      "g7g6",
+      "h7h6"
+    ],
+    "note": "White’s queen on h5 and bishop on d3 aim straight at h7. Play g6, h6, or f5 to stop Qxh7#.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "f7f5",
+      "g7g6",
+      "h7h6"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-mate-02",
+    "fen": "r4rk1/pbpn1ppp/4p3/6q1/3P4/2N5/PPP2PPP/R2Q1RK1 w - - 0 13",
+    "sideToMove": "w",
+    "theme": "missed_mate",
+    "atRiskSquare": "g1",
+    "prompt": "Check the long diagonal — Black threatens Qxg2#.",
+    "solution": [
+      "f2f3",
+      "g2g3",
+      "g2g4"
+    ],
+    "note": "Black’s queen and b7 bishop both aim at g2. Play g3, f3, or g4 to stop Qxg2#.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "f2f3",
+      "g2g3",
+      "g2g4"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-mate-03",
+    "fen": "r1b2rk1/ppp1bppp/2np4/8/4P1nq/2NP4/PPP2PPP/R1BQ1RK1 w - - 0 10",
+    "sideToMove": "w",
+    "theme": "missed_mate",
+    "atRiskSquare": "g1",
+    "prompt": "Check their forcing moves first — Black threatens Qxh2#.",
+    "solution": [
+      "c1f4",
+      "h2h3"
+    ],
+    "note": "Black’s queen and knight combine on h2. Play h3 or Bf4 to stop Qxh2# right away.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "c1f4",
+      "h2h3"
+    ],
+    "traps": []
+  },
+  {
+    "id": "guide-mate-04",
+    "fen": "r1b1r1k1/ppp2ppp/2np3B/4p1Q1/4P3/2NB1N2/PPP2PPP/R4RK1 b - - 0 11",
+    "sideToMove": "b",
+    "theme": "missed_mate",
+    "atRiskSquare": "g8",
+    "prompt": "White’s queen and bishop line up on g7 — stop Qxg7#.",
+    "solution": [
+      "g7g6"
+    ],
+    "note": "Qxg7# is mate in one. Play g6 to block the g-file and attack White’s bishop on h6.",
+    "expectedDropCp": 10000,
+    "acceptable": [
+      "g7g6"
+    ],
+    "traps": []
+  },
+  {
     "id": "bank-hang-01",
     "fen": "r1bqkb1r/pp1p2p1/n4n1p/2p1pp2/1PP2P2/3PPN1P/P2N2P1/R1BQKB1R b KQkq - 0 8",
     "sideToMove": "b",
@@ -999,7 +1441,7 @@
       "a6b4",
       "c5b4"
     ],
-    "note": "The pawn on e5 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The pawn on f4 targets your pawn on e5. Try exf4 or e4 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "e5f4",
@@ -1023,7 +1465,7 @@
       "f3h2",
       "f3g1"
     ],
-    "note": "One enemy piece attacks your pawn on d3 and something else. Save the piece you would lose.",
+    "note": "The pawn on e4 forks your pawn on d3 and a second target. dxe4 or Nxe5 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "d3e4",
@@ -1051,7 +1493,7 @@
       "a2a3",
       "a2a4"
     ],
-    "note": "The pawn on c3 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on c3 is pinned to your king and cannot step off the line. cxb4 or Nxe5 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "c3b4",
@@ -1077,7 +1519,7 @@
       "h4g5",
       "f3g5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qxc1# on the back rank. Stop it with Rxc3 or hxg5.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c1c3",
@@ -1099,7 +1541,7 @@
       "c4c3",
       "c4d4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qd2# next move. Check their checks first — Nxg5 or Qxc8+ stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h3g5",
@@ -1126,7 +1568,7 @@
       "f8d6",
       "f8b4"
     ],
-    "note": "The pawn on e5 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The pawn on d4 targets your pawn on e5. Try exd4 or e4 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "e5d4",
@@ -1156,7 +1598,7 @@
       "g4e6",
       "g4c8"
     ],
-    "note": "One enemy piece attacks your pawn on d6 and something else. Save the piece you would lose.",
+    "note": "The pawn on e5 forks your pawn on d6 and a second target. Bxd1 or Qd7 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "g4d1",
@@ -1186,7 +1628,7 @@
       "c2c3",
       "c2c4"
     ],
-    "note": "The knight on f3 sits in front of your king. Do not step it off that line.",
+    "note": "Your knight on f3 is pinned to your king and cannot step off the line. hxg4 or exd5 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "h3g4",
@@ -1211,7 +1653,7 @@
       "c1d2",
       "b5a7"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qf2# on the back rank. Stop it with Bxd2 or Nxa7+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c1d2",
@@ -1232,7 +1674,7 @@
       "c2d3",
       "d1d3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxf2# next move. Check their checks first — Nxh4 or Bxd3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f3h4",
@@ -1257,7 +1699,7 @@
       "d7d6",
       "f7f6"
     ],
-    "note": "The pawn on e5 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The knight on f3 targets your pawn on e5. Try Nc6 or Qe7 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "b8c6",
@@ -1279,7 +1721,7 @@
     "solution": [
       "a1a2"
     ],
-    "note": "One enemy piece attacks your pawn on c2 and something else. Save the piece you would lose.",
+    "note": "The rook on a2 forks your pawn on c2 and a second target. Rxa2 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "a1a2"
@@ -1297,7 +1739,7 @@
       "g4h3",
       "g8g5"
     ],
-    "note": "The bishop on g4 sits in front of your king. Do not step it off that line.",
+    "note": "Your bishop on g4 is pinned to your king and cannot step off the line. Bxh3 or Rxg5 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "g4h3",
@@ -1316,7 +1758,7 @@
       "e4d6",
       "f7f5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with Nxd6 or f5.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e4d6",
@@ -1335,7 +1777,7 @@
       "e7g6",
       "g7g6"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qxf7# next move. Check their checks first — Ng6 or g6 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e7g6",
@@ -1356,7 +1798,7 @@
       "a7a6",
       "c7c6"
     ],
-    "note": "The pawn on b5 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The knight on a3 targets your pawn on b5. Try b4 or Ba6 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "b5b4",
@@ -1378,7 +1820,7 @@
       "g8e7",
       "d8e7"
     ],
-    "note": "One enemy piece attacks your pawn on c5 and something else. Save the piece you would lose.",
+    "note": "The bishop on e7 forks your pawn on c5 and a second target. Kxe7 or Nxe7 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "e8e7",
@@ -1404,7 +1846,7 @@
       "b3c2",
       "b3d1"
     ],
-    "note": "The pawn on f2 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f2 is pinned to your king and cannot step off the line. Nb5+ or Nc4+ keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "a3b5",
@@ -1428,7 +1870,7 @@
     "solution": [
       "f7e6"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qe8# on the back rank. Stop it with fxe6.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f7e6"
@@ -1445,7 +1887,7 @@
     "solution": [
       "b8e5"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Nxf7# next move. Check their checks first — Qxe5 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "b8e5"
@@ -1468,7 +1910,7 @@
       "e7f8",
       "e7f6"
     ],
-    "note": "The pawn on g7 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The bishop on h6 targets your pawn on g7. Try gxh6 or g6 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "g7h6",
@@ -1494,7 +1936,7 @@
       "d8c8",
       "b8b7"
     ],
-    "note": "One enemy piece attacks your pawn on a7 and something else. Save the piece you would lose.",
+    "note": "The rook on b7 forks your pawn on a7 and a second target. dxc4 or Rxc8 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "d5c4",
@@ -1516,7 +1958,7 @@
       "g7h5",
       "g7f5"
     ],
-    "note": "The bishop on d3 sits in front of your king. Do not step it off that line.",
+    "note": "Your bishop on d3 is pinned to your king and cannot step off the line. Bxb5 or Nh5 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "d3b5",
@@ -1538,7 +1980,7 @@
       "c2d3",
       "e2d3"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qe1# on the back rank. Stop it with Bxf2 or Qxd3.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c5f2",
@@ -1559,7 +2001,7 @@
       "d1g4",
       "g5f3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxf2# next move. Check their checks first — Qxg4 or Nf3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d1g4",
@@ -1579,7 +2021,7 @@
       "c2c3",
       "a1b1"
     ],
-    "note": "The pawn on b4 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The knight on c6 targets your pawn on b4. Try b5 or c3 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "b4b5",
@@ -1605,7 +2047,7 @@
       "d4c5",
       "d4e5"
     ],
-    "note": "One enemy piece attacks your bishop on c4 and something else. Save the piece you would lose.",
+    "note": "The queen on d5 forks your bishop on c4 and a second target. Bxd5 or Bb3 saves material.",
     "expectedDropCp": 300,
     "acceptable": [
       "c4d5",
@@ -1632,7 +2074,7 @@
       "h2g2",
       "g1f3"
     ],
-    "note": "The pawn on f2 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f2 is pinned to your king and cannot step off the line. fxg3 or Rh1 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "f2g3",
@@ -1652,7 +2094,7 @@
     "solution": [
       "c3e2"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with Nxe2+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c3e2"
@@ -1669,7 +2111,7 @@
     "solution": [
       "h3g4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxe2# next move. Check their checks first — hxg4 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h3g4"
@@ -1692,7 +2134,7 @@
       "g1e2",
       "g1f3"
     ],
-    "note": "The queen on d1 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The bishop on g4 targets your queen on d1. Try Qxg4 or Qc1 to stay safe.",
     "expectedDropCp": 900,
     "acceptable": [
       "d1g4",
@@ -1719,7 +2161,7 @@
       "f6g4",
       "h6g4"
     ],
-    "note": "One enemy piece attacks your queen on c7 and something else. Save the piece you would lose.",
+    "note": "The knight on b5 forks your queen on c7 and a second target. Qb6+ or cxb5 saves material.",
     "expectedDropCp": 900,
     "acceptable": [
       "c7b6",
@@ -1747,7 +2189,7 @@
       "a2a4",
       "b2b3"
     ],
-    "note": "The pawn on c3 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on c3 is pinned to your king and cannot step off the line. cxb4 or dxe5 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "c3b4",
@@ -1774,7 +2216,7 @@
       "c2d3",
       "e2d3"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qe1# on the back rank. Stop it with Bxf2 or Qxd3.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c5f2",
@@ -1801,7 +2243,7 @@
       "d7a4",
       "e7e6"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Nxd6# next move. Check their checks first — Qc7 or Qb6 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d8c7",
@@ -1828,7 +2270,7 @@
       "e4e5",
       "d1h5"
     ],
-    "note": "The pawn on e4 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The pawn on d5 targets your pawn on e4. Try exd5 or exf5 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "e4d5",
@@ -1855,7 +2297,7 @@
       "e4e5",
       "f3d4"
     ],
-    "note": "One enemy piece attacks your pawn on h3 and something else. Save the piece you would lose.",
+    "note": "The bishop on g4 forks your pawn on h3 and a second target. hxg4 or h4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "h3g4",
@@ -1886,7 +2328,7 @@
       "c2c3",
       "c2c4"
     ],
-    "note": "The knight on f3 sits in front of your king. Do not step it off that line.",
+    "note": "Your knight on f3 is pinned to your king and cannot step off the line. hxg4 or exd5 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "h3g4",
@@ -1917,7 +2359,7 @@
       "c8d7",
       "c8c7"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxc8# on the back rank. Stop it with Kd8 or Qxg4.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e8d8",
@@ -1943,7 +2385,7 @@
       "c1d2",
       "c1d1"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxe2# next move. Check their checks first — f3 or Qd2 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f2f3",
@@ -1969,7 +2411,7 @@
       "f1d3",
       "f1b5"
     ],
-    "note": "The pawn on e4 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The pawn on d5 targets your pawn on e4. Try exd5 or e5 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "e4d5",
@@ -1993,7 +2435,7 @@
     "solution": [
       "h1h2"
     ],
-    "note": "One enemy piece attacks your pawn on a3 and something else. Save the piece you would lose.",
+    "note": "The bishop on d6 forks your pawn on a3 and a second target. Rxh2 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "h1h2"
@@ -2017,7 +2459,7 @@
       "e2e3",
       "g2g3"
     ],
-    "note": "The pawn on f2 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f2 is pinned to your king and cannot step off the line. Nb5 or Nc2 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "a3b5",
@@ -2042,7 +2484,7 @@
       "b7c6",
       "f3f1"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Rc8# on the back rank. Stop it with bxc6 or Rxf1+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "b7c6",
@@ -2062,7 +2504,7 @@
       "b5a7",
       "c1e3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qf2# next move. Check their checks first — Rxa2 or Nxa7+ stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "a1a2",
@@ -2084,7 +2526,7 @@
       "h6d2",
       "h6c1"
     ],
-    "note": "The bishop on h6 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The pawn on g7 targets your bishop on h6. Try Bxg7 or Be3 to stay safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "h6g7",
@@ -2108,7 +2550,7 @@
       "c5d6",
       "c5b4"
     ],
-    "note": "One enemy piece attacks your pawn on e5 and something else. Save the piece you would lose.",
+    "note": "The pawn on d4 forks your pawn on e5 and a second target. exd4 or bxa4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "e5d4",
@@ -2132,7 +2574,7 @@
       "g7h5",
       "g7f5"
     ],
-    "note": "The bishop on d3 sits in front of your king. Do not step it off that line.",
+    "note": "Your bishop on d3 is pinned to your king and cannot step off the line. Bxb5 or Nxb5 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "d3b5",
@@ -2152,7 +2594,7 @@
     "solution": [
       "a6b5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qxg1# on the back rank. Stop it with Bb5+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "a6b5"
@@ -2170,7 +2612,7 @@
       "c5e3",
       "f2e3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxg2# next move. Check their checks first — Bxe3 or fxe3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c5e3",
@@ -2190,7 +2632,7 @@
       "b7c6",
       "c7c6"
     ],
-    "note": "The pawn on b5 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The knight on c3 targets your pawn on b5. Try b4 or Bc6 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "b5b4",
@@ -2210,7 +2652,7 @@
       "h3g2",
       "e5d3"
     ],
-    "note": "One enemy piece attacks your pawn on b7 and something else. Save the piece you would lose.",
+    "note": "The bishop on g2 forks your pawn on b7 and a second target. Bxg2 or Nd3+ saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "h3g2",
@@ -2231,7 +2673,7 @@
       "f6g5",
       "d5g5"
     ],
-    "note": "The knight on f7 sits in front of your king. Do not step it off that line.",
+    "note": "Your knight on f7 is pinned to your king and cannot step off the line. Qxd3+ or Rxg5 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "d5d3",
@@ -2254,7 +2696,7 @@
       "b4c2",
       "f8f5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxf8# on the back rank. Stop it with Qxe7 or Bxe7.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d7e7",
@@ -2275,7 +2717,7 @@
       "d2e3",
       "f2e3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens exf2# next move. Check their checks first — Bxe3 or fxe3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d2e3",
@@ -2298,7 +2740,7 @@
       "e5g4",
       "e5d3"
     ],
-    "note": "The pawn on h5 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The queen on d1 targets your pawn on h5. Try g6 or Ng8 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "g7g6",
@@ -2324,7 +2766,7 @@
       "h3f4",
       "c2c4"
     ],
-    "note": "One enemy piece attacks your pawn on e2 and something else. Save the piece you would lose.",
+    "note": "The bishop on g4 forks your pawn on e2 and a second target. Ndf4 or Nc3 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "d5f4",
@@ -2349,7 +2791,7 @@
       "f5g6",
       "f5g4"
     ],
-    "note": "The knight on d7 sits in front of your king. Do not step it off that line.",
+    "note": "Your knight on d7 is pinned to your king and cannot step off the line. Bxe4 or Bxh3 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "f5e4",
@@ -2372,7 +2814,7 @@
       "b4d2",
       "c8b7"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with Nxc7 or Bxd2+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "a6c7",
@@ -2391,7 +2833,7 @@
     "solution": [
       "e2f3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxg2# next move. Check their checks first — Bxf3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e2f3"
@@ -2414,7 +2856,7 @@
       "d1d2",
       "d1b1"
     ],
-    "note": "The pawn on b4 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The bishop on d6 targets your pawn on b4. Try Bc5 or Bd2 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "e3c5",
@@ -2444,7 +2886,7 @@
       "g2g3",
       "g2g4"
     ],
-    "note": "One enemy piece attacks your pawn on b4 and something else. Save the piece you would lose.",
+    "note": "The knight on a6 forks your pawn on b4 and a second target. bxc5 or b5 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "b4c5",
@@ -2475,7 +2917,7 @@
       "d8f6",
       "d8d7"
     ],
-    "note": "The knight on c6 sits in front of your king. Do not step it off that line.",
+    "note": "Your knight on c6 is pinned to your king and cannot step off the line. axb5 or dxe4 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "a6b5",
@@ -2506,7 +2948,7 @@
       "d8c8",
       "d8b8"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxd8# on the back rank. Stop it with Ke7 or Ke8.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f8e7",
@@ -2532,7 +2974,7 @@
       "g7f6",
       "e7f8"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qxe7# next move. Check their checks first — Bxd6 or gxf6 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e7d6",
@@ -2553,7 +2995,7 @@
       "d7d5",
       "f7f5"
     ],
-    "note": "The pawn on e4 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The pawn on f3 targets your pawn on e4. Try exf3 or d5 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "e4f3",
@@ -2573,7 +3015,7 @@
       "h3g4",
       "f2f4"
     ],
-    "note": "One enemy piece attacks your queen on d1 and something else. Save the piece you would lose.",
+    "note": "The bishop on g4 forks your queen on d1 and a second target. Bxg4+ or f4 saves material.",
     "expectedDropCp": 900,
     "acceptable": [
       "h3g4",
@@ -2598,7 +3040,7 @@
       "h3h4",
       "b2b3"
     ],
-    "note": "The pawn on e4 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on e4 is pinned to your king and cannot step off the line. a5 or Nd4 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "a4a5",
@@ -2622,7 +3064,7 @@
     "solution": [
       "a4d7"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qc8# on the back rank. Stop it with Bd7.",
     "expectedDropCp": 10000,
     "acceptable": [
       "a4d7"
@@ -2641,7 +3083,7 @@
       "h5g7",
       "d8f6"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qxf7# next move. Check their checks first — Bxg7 or Nxg7 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f8g7",
@@ -2664,7 +3106,7 @@
       "f7f6",
       "h7h6"
     ],
-    "note": "The pawn on g5 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The knight on f3 targets your pawn on g5. Try g4 or Bh6 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "g5g4",
@@ -2686,7 +3128,7 @@
       "d8a5",
       "e8f7"
     ],
-    "note": "One enemy piece attacks your queen on d8 and something else. Save the piece you would lose.",
+    "note": "The knight on f7 forks your queen on d8 and a second target. Qa5+ or Kxf7 saves material.",
     "expectedDropCp": 900,
     "acceptable": [
       "d8a5",
@@ -2711,7 +3153,7 @@
       "h8h6",
       "h8g8"
     ],
-    "note": "The knight on f6 sits in front of your king. Do not step it off that line.",
+    "note": "Your knight on f6 is pinned to your king and cannot step off the line. Bxf5 or bxa3 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "d7f5",
@@ -2738,7 +3180,7 @@
       "f4d3",
       "d8d3"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxd8# on the back rank. Stop it with Kxe7 or Bxd3.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e8e7",
@@ -2761,7 +3203,7 @@
       "f2e3",
       "g6e7"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxe2# next move. Check their checks first — Bxe3 or Rxe3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h6e3",
@@ -2788,7 +3230,7 @@
       "d3e2",
       "d3f1"
     ],
-    "note": "The pawn on d4 can be taken for more than it is worth. Move it, defend it, or take the attacker.",
+    "note": "The pawn on c5 targets your pawn on d4. Try dxe5 or dxc5 to stay safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "d4e5",
@@ -2815,7 +3257,7 @@
       "g8g7",
       "f7g7"
     ],
-    "note": "One enemy piece attacks your pawn on d5 and something else. Save the piece you would lose.",
+    "note": "The pawn on e4 forks your pawn on d5 and a second target. Bxd3+ or Bxg7 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "b5d3",
@@ -2836,7 +3278,7 @@
       "a6c4",
       "d5c4"
     ],
-    "note": "The pawn on f7 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f7 is pinned to your king and cannot step off the line. Bxc4 or dxc4 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "a6c4",
@@ -2854,7 +3296,7 @@
     "solution": [
       "c6d5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with cxd5.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c6d5"
@@ -2875,7 +3317,7 @@
       "c7c5",
       "e7d6"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qe6# next move. Check their checks first — Kc6 or Qf8 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d7c6",
@@ -2903,7 +3345,7 @@
       "f3f4",
       "h3f2"
     ],
-    "note": "One enemy piece attacks your pawn on b2 and something else. Save the piece you would lose.",
+    "note": "The queen on b6 forks your pawn on b2 and a second target. b3 or b4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "b2b3",
@@ -2928,7 +3370,7 @@
       "c6d4",
       "c5a3"
     ],
-    "note": "The pawn on e5 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on e5 is pinned to your king and cannot step off the line. Nxd4 or Bxa3 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "c6d4",
@@ -2950,7 +3392,7 @@
       "h3g4",
       "c4b5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qf2# on the back rank. Stop it with Bxd4 or Qxh8+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e5d4",
@@ -2974,7 +3416,7 @@
       "b2c3",
       "a3c4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qd2# next move. Check their checks first — Nxg5 or Qxc3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h3g5",
@@ -3000,7 +3442,7 @@
       "g1f3",
       "g1h3"
     ],
-    "note": "One enemy piece attacks your pawn on g3 and something else. Save the piece you would lose.",
+    "note": "The queen on h4 forks your pawn on g3 and a second target. gxh4 or Rxh4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "g3h4",
@@ -3023,7 +3465,7 @@
     "solution": [
       "e4c3"
     ],
-    "note": "The pawn on f2 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f2 is pinned to your king and cannot step off the line. Nc3 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "e4c3"
@@ -3046,7 +3488,7 @@
       "f8d6",
       "f8b4"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxd8# on the back rank. Stop it with Qxd3 or Nc6.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d8d3",
@@ -3071,7 +3513,7 @@
       "c2d3",
       "d1d3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxf2# next move. Check their checks first — Nxh4 or cxd3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f3h4",
@@ -3097,7 +3539,7 @@
       "g3g4",
       "b2b3"
     ],
-    "note": "One enemy piece attacks your pawn on c2 and something else. Save the piece you would lose.",
+    "note": "The knight on d4 forks your pawn on c2 and a second target. c3 or c4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "c2c3",
@@ -3128,7 +3570,7 @@
       "c7d7",
       "c7c6"
     ],
-    "note": "The pawn on d6 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on d6 is pinned to your king and cannot step off the line. Bxf3 or cxd4 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "g4f3",
@@ -3153,7 +3595,7 @@
       "h6g4",
       "h5g4"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxc8# on the back rank. Stop it with Nxg4 or hxg4.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h6g4",
@@ -3172,7 +3614,7 @@
       "f8h6",
       "d5e4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Nf6# next move. Check their checks first — Bxh6 or dxe4 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f8h6",
@@ -3197,7 +3639,7 @@
       "b7b5",
       "d7d6"
     ],
-    "note": "One enemy piece attacks your pawn on a7 and something else. Save the piece you would lose.",
+    "note": "The bishop on c5 forks your pawn on a7 and a second target. Nxc5 or Qc7 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "a6c5",
@@ -3228,7 +3670,7 @@
       "f8d6",
       "f8c5"
     ],
-    "note": "The pawn on f7 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f7 is pinned to your king and cannot step off the line. Rb8 or Qe7 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "a8b8",
@@ -3252,7 +3694,7 @@
     "solution": [
       "a4b5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with Bxb5+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "a4b5"
@@ -3269,7 +3711,7 @@
     "solution": [
       "f6e5"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Nxf7# next move. Check their checks first — fxe5 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f6e5"
@@ -3293,7 +3735,7 @@
       "d1b3",
       "d1e2"
     ],
-    "note": "One enemy piece attacks your pawn on c3 and something else. Save the piece you would lose.",
+    "note": "The bishop on b4 forks your pawn on c3 and a second target. cxb4 or Bxb4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "c3b4",
@@ -3320,7 +3762,7 @@
       "b7d5",
       "b7b5"
     ],
-    "note": "The pawn on f7 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f7 is pinned to your king and cannot step off the line. fxg6 or cxd4 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "f7g6",
@@ -3340,7 +3782,7 @@
     "solution": [
       "h8h7"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxh8# on the back rank. Stop it with Rxh7.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h8h7"
@@ -3358,7 +3800,7 @@
       "d1g4",
       "g5f3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxf2# next move. Check their checks first — Qxg4 or Nf3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d1g4",
@@ -3380,7 +3822,7 @@
       "a6e2",
       "a6f1"
     ],
-    "note": "One enemy piece attacks your pawn on c2 and something else. Save the piece you would lose.",
+    "note": "The knight on b4 forks your pawn on c2 and a second target. Bb5 or Bc4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "a6b5",
@@ -3408,7 +3850,7 @@
       "h2h3",
       "h2h4"
     ],
-    "note": "The pawn on d2 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on d2 is pinned to your king and cannot step off the line. Nc3 or a3 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "a4c3",
@@ -3433,7 +3875,7 @@
       "e6d5",
       "g3d6"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with exd5 or Qd6.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e6d5",
@@ -3451,7 +3893,7 @@
     "solution": [
       "e2d4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxe2# next move. Check their checks first — Nxd4 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e2d4"
@@ -3475,7 +3917,7 @@
       "d8e8",
       "f8g8"
     ],
-    "note": "One enemy piece attacks your pawn on a6 and something else. Save the piece you would lose.",
+    "note": "The bishop on b5 forks your pawn on a6 and a second target. axb5 or a5 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "a6b5",
@@ -3506,7 +3948,7 @@
       "e8f7",
       "e8e7"
     ],
-    "note": "The queen on d7 sits in front of your king. Do not step it off that line.",
+    "note": "Your queen on d7 is pinned to your king and cannot step off the line. Qxa4 or Qc6 keeps you safe.",
     "expectedDropCp": 900,
     "acceptable": [
       "d7a4",
@@ -3531,7 +3973,7 @@
       "d1c2",
       "b2c2"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qxd1# on the back rank. Stop it with Qxc2 or Rxc2.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d1c2",
@@ -3550,7 +3992,7 @@
       "e4d6",
       "e4f6"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qd7# next move. Check their checks first — Nxd6 or Nf6 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e4d6",
@@ -3570,7 +4012,7 @@
       "a6b5",
       "d1h5"
     ],
-    "note": "One enemy piece attacks your pawn on e4 and something else. Save the piece you would lose.",
+    "note": "The bishop on g2 forks your pawn on e4 and a second target. Kxg2 or Bb5+ saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "g1g2",
@@ -3596,7 +4038,7 @@
       "g8f6",
       "a7a6"
     ],
-    "note": "The knight on d7 sits in front of your king. Do not step it off that line.",
+    "note": "Your knight on d7 is pinned to your king and cannot step off the line. Rb8 or Rc8 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "a8b8",
@@ -3621,7 +4063,7 @@
       "e7d5",
       "d8d5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qxd8# on the back rank. Stop it with Nxd5 or Qxd5.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e7d5",
@@ -3641,7 +4083,7 @@
       "d3e3",
       "f2e3"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxe2# next move. Check their checks first — Bxe3 or Rxe3 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h6e3",
@@ -3662,7 +4104,7 @@
       "d8f6",
       "c8e6"
     ],
-    "note": "One enemy piece attacks your queen on d8 and something else. Save the piece you would lose.",
+    "note": "The knight on e6 forks your queen on d8 and a second target. Qe7 or Qf6 saves material.",
     "expectedDropCp": 900,
     "acceptable": [
       "d8e7",
@@ -3683,7 +4125,7 @@
       "e1f2",
       "h1g1"
     ],
-    "note": "The pawn on d2 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on d2 is pinned to your king and cannot step off the line. g4 or Kf2 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "g3g4",
@@ -3704,7 +4146,7 @@
       "d1f3",
       "a6b5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qxd1# on the back rank. Stop it with gxf3 or Qxf3.",
     "expectedDropCp": 10000,
     "acceptable": [
       "g2f3",
@@ -3727,7 +4169,7 @@
       "c7c5",
       "e7d6"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qe6# next move. Check their checks first — Kc6 or Qf8 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d7c6",
@@ -3748,7 +4190,7 @@
     "solution": [
       "h3g4"
     ],
-    "note": "One enemy piece attacks your pawn on f2 and something else. Save the piece you would lose.",
+    "note": "The knight on g4 forks your pawn on f2 and a second target. hxg4 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "h3g4"
@@ -3772,7 +4214,7 @@
       "d8c7",
       "d8b6"
     ],
-    "note": "The pawn on f7 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on f7 is pinned to your king and cannot step off the line. fxg6 or hxg6 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "f7g6",
@@ -3801,7 +4243,7 @@
       "e6c7",
       "b5c7"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qxd1# on the back rank. Stop it with Nxd6+ or exd6.",
     "expectedDropCp": 10000,
     "acceptable": [
       "b5d6",
@@ -3823,7 +4265,7 @@
     "solution": [
       "c3e4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qd2# next move. Check their checks first — Nxe4 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c3e4"
@@ -3843,7 +4285,7 @@
       "d7e7",
       "d7e6"
     ],
-    "note": "One enemy piece attacks your pawn on g6 and something else. Save the piece you would lose.",
+    "note": "The knight on e5 forks your pawn on g6 and a second target. dxe5 or Qd8 saves material.",
     "expectedDropCp": 100,
     "acceptable": [
       "d6e5",
@@ -3870,7 +4312,7 @@
       "c2c3",
       "g2g3"
     ],
-    "note": "The pawn on d2 sits in front of your king. Do not step it off that line.",
+    "note": "Your pawn on d2 is pinned to your king and cannot step off the line. fxg5 or Nxg5 keeps you safe.",
     "expectedDropCp": 100,
     "acceptable": [
       "f4g5",
@@ -3894,7 +4336,7 @@
     "solution": [
       "d3b5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qxh1# on the back rank. Stop it with Qb5+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "d3b5"
@@ -3912,7 +4354,7 @@
       "e2g4",
       "c2a4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "Black threatens Qxg2# next move. Check their checks first — Bxg4 or Qa4+ stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e2g4",
@@ -3936,7 +4378,7 @@
       "g8e7",
       "d7d6"
     ],
-    "note": "The bishop on c5 sits in front of your king. Do not step it off that line.",
+    "note": "Your bishop on c5 is pinned to your king and cannot step off the line. Bxa3 or dxc3 keeps you safe.",
     "expectedDropCp": 300,
     "acceptable": [
       "c5a3",
@@ -3959,7 +4401,7 @@
     "solution": [
       "g4g5"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with Qxg5.",
     "expectedDropCp": 10000,
     "acceptable": [
       "g4g5"
@@ -3982,7 +4424,7 @@
       "b6a5",
       "b5b4"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qxe7# next move. Check their checks first — Bxd6 or Qxd6 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "e7d6",
@@ -4006,7 +4448,7 @@
       "h1h2",
       "h1g1"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "Black threatens Qxh1# on the back rank. Stop it with Rxh2 or Rg1.",
     "expectedDropCp": 10000,
     "acceptable": [
       "h1h2",
@@ -4031,7 +4473,7 @@
       "g7g6",
       "h7h6"
     ],
-    "note": "Mate in one is on the board. Stop that check. A longer mate is not the task.",
+    "note": "White threatens Qg5# next move. Check their checks first — Ke7 or Rxg8 stops mate.",
     "expectedDropCp": 10000,
     "acceptable": [
       "f6e7",
@@ -4055,7 +4497,7 @@
     "solution": [
       "c3e2"
     ],
-    "note": "A rook or queen can mate on the back rank. Make luft, or put something in the way.",
+    "note": "White threatens Qd8# on the back rank. Stop it with Nxe2+.",
     "expectedDropCp": 10000,
     "acceptable": [
       "c3e2"
