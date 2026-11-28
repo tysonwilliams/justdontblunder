@@ -89,6 +89,7 @@ export function DrillsPrompt() {
   useKeyboardShortcuts(
     { Escape: () => (phase === 'done' ? play() : skipDrillsPrompt()) },
     visible,
+    { modal: true },
   );
 
   if (!visible) return null;

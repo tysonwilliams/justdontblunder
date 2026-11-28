@@ -70,16 +70,18 @@ describe('progress sync gate', () => {
     stop();
   });
 
-  it('merges local progress when a session exists and the flag is unset', async () => {
+  it('merges once on sign-in and pushes subsequent local edits without reverting them', async () => {
     await useProgressStore.persist.rehydrate();
     const mergeOnSignIn = vi.fn(async () => ({}));
-    createSupabaseProgressRepo.mockReturnValue({ mergeOnSignIn });
+    const push = vi.fn(async () => undefined);
+    createSupabaseProgressRepo.mockReturnValue({ mergeOnSignIn, push });
     getSupabase.mockReturnValue(authClient({ user: { id: 'user-1' } }));
     vi.useFakeTimers();
     const stop = startProgressSync();
     await vi.advanceTimersByTimeAsync(1600);
     expect(createSupabaseProgressRepo).toHaveBeenCalledWith(expect.anything(), 'user-1', expect.anything());
     expect(mergeOnSignIn).toHaveBeenCalledOnce();
+    expect(push).not.toHaveBeenCalled();
     expect(mergeOnSignIn).toHaveBeenCalledWith(
       expect.objectContaining({
         progress: expect.objectContaining({
@@ -87,6 +89,12 @@ describe('progress sync gate', () => {
         }),
       }),
     );
+
+    // A later local edit (e.g. saving a review card) must push, never re-merge against stale remote.
+    useProgressStore.getState().markDrillResult(true, 'hanging');
+    await vi.advanceTimersByTimeAsync(1600);
+    expect(mergeOnSignIn).toHaveBeenCalledOnce();
+    expect(push).toHaveBeenCalledOnce();
     stop();
   });
 

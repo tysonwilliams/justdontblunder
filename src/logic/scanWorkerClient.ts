@@ -111,8 +111,7 @@ function askWorker(
     };
     const timer = setTimeout(() => {
       if (!pending.has(id)) return;
-      workerBroken = true;
-      settle(new Error('Blunder scan worker timed out'));
+      failWorker(new Error('Blunder scan worker timed out'));
     }, GAME_TIMEOUT_MS);
     if (signal) signal.addEventListener('abort', onAbort, { once: true });
     pending.set(id, {

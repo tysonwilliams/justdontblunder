@@ -43,11 +43,13 @@ function safeClient(): ReturnType<typeof getSupabase> {
 
 function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSupabase>>): () => void {
   let userId: string | null = null;
+  let mergedUserId: string | null = null;
   let writing = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
   let syncing = false;
   let again = false;
+  let unsubHydration: (() => void) | null = null;
 
   const local = createLocalProgressRepo({
     read: () => partializeProgress(useProgressStore.getState()),
@@ -81,11 +83,17 @@ function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSu
     ) {
       return;
     }
-    const repo = createSupabaseProgressRepo(client, userId, local);
-    const guest = snapshotFromProgress(partializeProgress(current), { timezone: deviceTimeZone() });
+    const activeUserId = userId;
+    const repo = createSupabaseProgressRepo(client, activeUserId, local);
+    const snapshot = snapshotFromProgress(partializeProgress(current), { timezone: deviceTimeZone() });
+    const needsMerge = mergedUserId !== activeUserId;
     syncing = true;
-    void repo
-      .mergeOnSignIn(guest)
+    const op = needsMerge
+      ? repo.mergeOnSignIn(snapshot).then(() => {
+          if (userId === activeUserId) mergedUserId = activeUserId;
+        })
+      : repo.push(snapshot);
+    void op
       .catch(() => undefined)
       .finally(() => {
         syncing = false;
@@ -109,10 +117,12 @@ function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSu
     schedule();
   });
 
-  let waitingForStore = false;
-
   const { data } = supabase.auth.onAuthStateChange((event, session) => {
-    userId = session?.user.id ?? null;
+    const nextUserId = session?.user.id ?? null;
+    if (nextUserId !== userId) {
+      mergedUserId = null;
+    }
+    userId = nextUserId;
     if (!userId) {
       if (timer) clearTimeout(timer);
       return;
@@ -122,9 +132,10 @@ function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSu
       schedule();
       return;
     }
-    if (waitingForStore) return;
-    waitingForStore = true;
-    useProgressStore.persist.onFinishHydration(() => {
+    if (unsubHydration) return;
+    unsubHydration = useProgressStore.persist.onFinishHydration(() => {
+      unsubHydration?.();
+      unsubHydration = null;
       if (!stopped) schedule();
     });
   });
@@ -132,6 +143,8 @@ function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSu
   return () => {
     stopped = true;
     if (timer) clearTimeout(timer);
+    unsubHydration?.();
+    unsubHydration = null;
     unsubStore();
     data.subscription.unsubscribe();
   };

@@ -14,7 +14,7 @@ type Props = {
 
 export function Dialog({ visible, onClose, children }: Props) {
   useTheme();
-  useKeyboardShortcuts({ Escape: onClose }, visible && Boolean(onClose));
+  useKeyboardShortcuts({ Escape: onClose }, visible, { modal: true });
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.backdrop}>

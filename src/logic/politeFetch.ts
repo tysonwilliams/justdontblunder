@@ -119,10 +119,11 @@ export async function politeFetch(input: {
 }
 
 /**
- * Node sends Accept and User-Agent. A browser cannot: User-Agent is forbidden,
- * and Accept: application/json makes Chess.com's preflight fail (it only allows
- * Origin). A browser request stays a simple GET. A throw outside the browser is
- * retried once with no custom headers.
+ * Node sends Accept and User-Agent. A browser cannot send User-Agent, and
+ * Accept: application/json makes Chess.com's preflight fail (it only allows
+ * Origin). Lichess requires Accept: application/x-ndjson (a CORS-safelisted
+ * header) or it returns raw PGN instead of NDJSON. A throw outside the browser
+ * is retried once with no custom headers.
  */
 async function fetchOnce(input: {
   url: string;
@@ -135,7 +136,13 @@ async function fetchOnce(input: {
   const unreachable = gaveUpMessage(input.site, 'offline');
   const browser = typeof window !== 'undefined';
   try {
-    if (browser) return await callFetch(input.fetchImpl, input.url, { signal: input.signal });
+    if (browser) {
+      const init: RequestInit =
+        input.site === 'lichess'
+          ? { headers: { Accept: input.accept }, signal: input.signal }
+          : { signal: input.signal };
+      return await callFetch(input.fetchImpl, input.url, init);
+    }
     return await callFetch(input.fetchImpl, input.url, {
       headers: { Accept: input.accept, 'User-Agent': input.userAgent },
       signal: input.signal,

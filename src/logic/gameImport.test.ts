@@ -9,11 +9,12 @@ import {
   LICHESS_PAGE_SIZE,
   loadPublicGames,
   pastedGameDrills,
+  recordsFromChessCom,
   type GameRecord,
 } from '@/src/logic/gameImport';
 import { FETCH_ATTEMPTS, RETRY_BACKOFF_MS } from '@/src/logic/politeFetch';
 import { abortError } from '@/src/logic/scanAbort';
-import type { ScanCursor } from '@/src/logic/scanCursor';
+import { monthsToRead, type ScanCursor } from '@/src/logic/scanCursor';
 import { fenKey } from '@/src/logic/reviewPile';
 
 function queenHang(second: string): string {
@@ -411,6 +412,64 @@ describe('game import', () => {
     });
     expect(calls.length).toBeGreaterThan(1);
     expect(calls[1]).toContain('until=8970');
+  });
+
+  it('sends Accept: application/x-ndjson for Lichess in browsers and flags unexpected non-JSON responses', async () => {
+    vi.stubGlobal('window', {});
+    const headersSeen: (HeadersInit | undefined)[] = [];
+    try {
+      const games = await loadPublicGames('lichess', 'Me', async (_url, init) => {
+        headersSeen.push(init?.headers);
+        return ndjson(lichessGame('ok1', 5000, queenHang('a3')));
+      });
+      expect(games).toHaveLength(1);
+      expect(headersSeen[0]).toEqual({ Accept: 'application/x-ndjson' });
+
+      await expect(
+        loadPublicGames('lichess', 'Me', async () => ndjson('[Event "Live Chess"]\n1. e4 e5 1-0')),
+      ).rejects.toThrow(/unexpected format/i);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('skips Chess.com variants and rechecks the prior month on month rollover', () => {
+    const records = recordsFromChessCom('Me', [
+      {
+        pgn: '1. e4 e5',
+        rules: 'chess960',
+        time_class: 'rapid',
+        end_time: 100,
+        white: { username: 'Me' },
+        black: { username: 'them' },
+      },
+      {
+        pgn: '1. e4 e5',
+        rules: 'chess',
+        time_class: 'rapid',
+        end_time: 101,
+        white: { username: 'Me' },
+        black: { username: 'them' },
+      },
+    ]);
+    expect(records).toHaveLength(1);
+    expect(records[0]?.playedAt).toBe(101_000);
+
+    const dec = 'https://api.chess.com/pub/player/me/games/2026/12';
+    const nov = 'https://api.chess.com/pub/player/me/games/2026/11';
+    const oct = 'https://api.chess.com/pub/player/me/games/2026/10';
+    const cursor: ScanCursor = {
+      site: 'chesscom',
+      username: 'Me',
+      seen: [],
+      newestMs: Date.UTC(2026, 10, 25), // Nov 25, 2026
+      doneArchives: [nov, oct],
+      lichessUntil: null,
+      backfillDone: true,
+      games: 10,
+      resume: false,
+    };
+    expect(monthsToRead([dec, nov, oct], cursor)).toEqual([dec, nov]);
   });
 });
 

@@ -72,7 +72,7 @@ export function stageMetrics(
     const isTablet = !topNav && !isPhone;
     // Keep the square full width on standard phones, while yielding on very short
     // viewports (such as Mobile Safari on compact phones) so the header and tray never clip.
-    const reserve = isPhone ? PHONE_LEAD + PHONE_FOOT_MIN : 96;
+    const reserve = isPhone ? PHONE_LEAD + PHONE_FOOT_MIN : 160;
     const heightCap = Math.max(220, contentHeight - turnRow - reserve);
     const boardWidth = Math.round(Math.min(contentW, heightCap));
     const chromeBudget = contentHeight - boardWidth - turnRow;

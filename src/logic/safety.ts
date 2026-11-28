@@ -1,4 +1,4 @@
-import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js';
+import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'chess.js';
 
 const VAL: Record<PieceSymbol, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
 
@@ -63,15 +63,43 @@ export function materialIsReachable(fen: string): boolean {
   return true;
 }
 
-function balance(game: Chess, side: Color): number {
-  let total = 0;
-  for (const row of game.board()) {
-    for (const piece of row) {
-      if (!piece || piece.type === 'k') continue;
-      total += piece.color === side ? VAL[piece.type] : -VAL[piece.type];
+function captureGain(move: Pick<Move, 'captured' | 'promotion'>): number {
+  let gain = move.captured ? VAL[move.captured] : 0;
+  if (move.promotion) gain += VAL[move.promotion] - VAL.p;
+  return gain;
+}
+
+function seeOnGame(game: Chess, square: Square, precomputed?: readonly Move[]): number {
+  let moves: readonly Move[];
+  if (precomputed) {
+    moves = precomputed;
+  } else {
+    const attackers = game.attackers(square, game.turn());
+    if (attackers.length === 0) return 0;
+    const subset: Move[] = [];
+    for (const from of attackers) {
+      for (const move of game.moves({ square: from, verbose: true })) {
+        if (move.to === square && move.captured) subset.push(move);
+      }
     }
+    moves = subset;
   }
-  return total;
+  let best = 0;
+  for (const move of moves) {
+    if (move.to !== square || !move.captured) continue;
+    if (move.san.endsWith('#')) return 100;
+    const played = game.move(move);
+    if (!played || !played.captured) continue;
+    let gain: number;
+    if (game.isCheckmate()) {
+      gain = 100;
+    } else {
+      gain = captureGain(played) - seeOnGame(game, square);
+    }
+    game.undo();
+    if (gain > best) best = gain;
+  }
+  return best;
 }
 
 /**
@@ -82,24 +110,12 @@ function balance(game: Chess, side: Color): number {
 export function see(fen: string, square: Square, capturer: Color): number {
   const game = new Chess(fen);
   if (game.turn() !== capturer) return 0;
-  const captures = game.moves({ verbose: true }).filter((move) => move.to === square && move.captured);
-  let best = 0;
-  for (const move of captures) {
-    const next = new Chess(fen);
-    const played = next.move(move);
-    if (!played || !played.captured) continue;
-    let gain = VAL[played.captured];
-    if (played.promotion) gain += VAL[played.promotion] - VAL.p;
-    gain -= see(next.fen(), square, opposite(capturer));
-    if (gain > best) best = gain;
-  }
-  return best;
+  return seeOnGame(game, square);
 }
 
 function fenWithTurn(fen: string, turn: Color): string | null {
-  const game = new Chess(fen);
-  if (game.turn() === turn) return fen;
   const parts = fen.split(' ');
+  if (parts[1] === turn) return fen;
   parts[1] = turn;
   parts[3] = '-';
   try {
@@ -111,9 +127,21 @@ function fenWithTurn(fen: string, turn: Color): string | null {
 
 /** How much material the opponent wins by taking on this square (0 when they cannot). */
 export function hangingGain(fen: string, square: Square, victim: Color): number {
-  const probe = fenWithTurn(fen, opposite(victim));
+  const opp = opposite(victim);
+  const probe = fenWithTurn(fen, opp);
   if (!probe) return 0;
-  return see(probe, square, opposite(victim));
+  const game = new Chess(probe);
+  const moves = game.moves({ verbose: true });
+  let best = seeOnGame(game, square, moves);
+  // Check if an en passant capture removes a pawn standing on `square`.
+  for (const move of moves) {
+    if (!move.isEnPassant()) continue;
+    const victimSq = `${move.to[0]}${move.from[1]}` as Square;
+    if (victimSq === square) {
+      best = Math.max(best, seeOnGame(game, move.to, moves));
+    }
+  }
+  return best;
 }
 
 export type HangingPiece = {
@@ -124,45 +152,42 @@ export type HangingPiece = {
 };
 
 export function listHangingPieces(fen: string, side: Color): HangingPiece[] {
-  const game = new Chess(fen);
+  const opp = opposite(side);
+  const probe = fenWithTurn(fen, opp);
+  if (!probe) return [];
+  const game = new Chess(probe);
+  const moves = game.moves({ verbose: true });
+  const byTarget = new Map<Square, Move[]>();
+  for (const move of moves) {
+    if (!move.captured) continue;
+    const list = byTarget.get(move.to);
+    if (list) list.push(move);
+    else byTarget.set(move.to, [move]);
+  }
   const found: HangingPiece[] = [];
-  const board = game.board();
-  for (let rank = 0; rank < 8; rank += 1) {
-    for (let file = 0; file < 8; file += 1) {
-      const piece = board[rank]?.[file];
-      if (!piece || piece.color !== side || piece.type === 'k') continue;
-      const square = `${'abcdefgh'[file]}${'87654321'[rank]}` as Square;
-      const gain = hangingGain(fen, square, side);
-      if (gain <= 0) continue;
-      found.push({
-        square,
-        type: piece.type,
-        gain,
-        attacker: attackerOf(fen, square, opposite(side)),
-      });
-    }
+  for (const [target, captures] of byTarget) {
+    const sample = captures[0]!;
+    const victimSq = sample.isEnPassant() ? (`${target[0]}${sample.from[1]}` as Square) : target;
+    const victim = game.get(victimSq);
+    if (!victim || victim.color !== side || victim.type === 'k') continue;
+    const gain = seeOnGame(game, target, moves);
+    if (gain <= 0) continue;
+    captures.sort((a, b) => VAL[a.piece] - VAL[b.piece]);
+    found.push({
+      square: victimSq,
+      type: victim.type,
+      gain,
+      attacker: captures[0]?.from ?? null,
+    });
   }
   found.sort((a, b) => b.gain - a.gain || VAL[b.type] - VAL[a.type]);
   return found;
 }
 
-function attackerOf(fen: string, square: Square, by: Color): Square | null {
-  const probe = fenWithTurn(fen, by);
-  if (!probe) return null;
-  const game = new Chess(probe);
-  const captures = game
-    .moves({ verbose: true })
-    .filter((move) => move.to === square && move.captured)
-    .sort((a, b) => VAL[a.piece] - VAL[b.piece]);
-  return captures[0]?.from ?? null;
-}
-
 export function opponentThreatensMateInOne(fen: string): boolean {
   const game = new Chess(fen);
   for (const move of game.moves({ verbose: true })) {
-    const next = new Chess(fen);
-    next.move(move);
-    if (next.isCheckmate()) return true;
+    if (move.san.endsWith('#')) return true;
   }
   return false;
 }
@@ -173,31 +198,32 @@ export type Punishment = {
   to: Square;
   captured: PieceSymbol;
   mate: boolean;
+  promotion?: 'q' | 'r' | 'b' | 'n';
 };
 
 /** The capture or mate the opponent can play right now that hurts the most. */
 export function bestPunishment(fen: string): Punishment | null {
   const game = new Chess(fen);
+  const moves = game.moves({ verbose: true });
   let mate: Punishment | null = null;
   let best: { gain: number; punishment: Punishment } | null = null;
-  for (const move of game.moves({ verbose: true })) {
-    const next = new Chess(fen);
-    const played = next.move(move);
-    if (!played) continue;
-    if (next.isCheckmate()) {
+  for (const move of moves) {
+    if (move.san.endsWith('#')) {
       mate = {
-        san: played.san,
-        from: played.from,
-        to: played.to,
-        captured: played.captured ?? 'k',
+        san: move.san,
+        from: move.from,
+        to: move.to,
+        captured: move.captured ?? 'k',
         mate: true,
+        ...(move.promotion ? { promotion: move.promotion as 'q' | 'r' | 'b' | 'n' } : {}),
       };
       continue;
     }
-    if (!played.captured) continue;
-    let gain = VAL[played.captured];
-    if (played.promotion) gain += VAL[played.promotion] - VAL.p;
-    gain -= see(next.fen(), played.to, opposite(game.turn()));
+    if (!move.captured) continue;
+    const played = game.move(move);
+    if (!played || !played.captured) continue;
+    const gain = captureGain(played) - seeOnGame(game, played.to);
+    game.undo();
     if (gain <= 0) continue;
     if (!best || gain > best.gain) {
       best = {
@@ -208,6 +234,7 @@ export function bestPunishment(fen: string): Punishment | null {
           to: played.to,
           captured: played.captured,
           mate: false,
+          ...(played.promotion ? { promotion: played.promotion as 'q' | 'r' | 'b' | 'n' } : {}),
         },
       };
     }
@@ -227,8 +254,6 @@ export function moveOutcome(
   side: Color,
   promotion: 'q' | 'r' | 'b' | 'n' = 'q',
 ): number | null {
-  const before = new Chess(fen);
-  const start = balance(before, side);
   const after = new Chess(fen);
   let played;
   try {
@@ -238,17 +263,16 @@ export function moveOutcome(
   }
   if (!played) return null;
   if (after.isCheckmate()) return 100;
-  if (opponentThreatensMateInOne(after.fen())) return -100;
-  const gained = balance(after, side) - start;
+  const replies = after.moves({ verbose: true });
+  const captureSquares = new Set<Square>();
+  for (const reply of replies) {
+    if (reply.san.endsWith('#')) return -100;
+    if (reply.captured) captureSquares.add(reply.to);
+  }
+  const gained = captureGain(played);
   let punishment = 0;
-  const board = after.board();
-  for (let rank = 0; rank < 8; rank += 1) {
-    for (let file = 0; file < 8; file += 1) {
-      const piece = board[rank]?.[file];
-      if (!piece || piece.color !== side || piece.type === 'k') continue;
-      const square = `${'abcdefgh'[file]}${'87654321'[rank]}` as Square;
-      punishment = Math.max(punishment, see(after.fen(), square, opposite(side)));
-    }
+  for (const square of captureSquares) {
+    punishment = Math.max(punishment, seeOnGame(after, square, replies));
   }
   return gained - punishment;
 }

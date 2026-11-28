@@ -603,9 +603,9 @@ function ChessBoardView({
           const touch = event.changedTouches[0] ?? event.allTouches[0];
           if (touch == null) return;
           const point = pointerToBoard(touch.x, touch.y);
-          const boardSize = sizeSV.value;
-          if (boardSize <= 0) return;
-          const square = pointToSquare(point.x, point.y, boardSize, orientSV.value);
+          const squarePx = sizeSV.value;
+          if (squarePx <= 0) return;
+          const square = pointToSquare(point.x, point.y, squarePx, orientSV.value);
           if (!square) return;
           runOnJS(previewSelectionJS)(square);
         })
@@ -613,12 +613,12 @@ function ChessBoardView({
           'worklet';
           dragSettled.value = 0;
           const point = pointerToBoard(event.x, event.y);
-          const boardSize = sizeSV.value;
-          if (boardSize <= 0) return;
-          const square = pointToSquare(point.x, point.y, boardSize, orientSV.value);
+          const squarePx = sizeSV.value;
+          if (squarePx <= 0) return;
+          const square = pointToSquare(point.x, point.y, squarePx, orientSV.value);
           if (!square) return;
           const isTouch = event.pointerType === PointerType.TOUCH;
-          const offset = isTouch ? Math.min(34, boardSize * 0.58) : 0;
+          const offset = isTouch ? Math.min(34, squarePx * 0.58) : 0;
           touchOffsetY.value = offset;
           runOnJS(startDragJS)(square, point.x, Math.max(0, point.y - offset));
         })
@@ -629,8 +629,8 @@ function ChessBoardView({
           const liftedY = point.y - touchOffsetY.value;
           dragX.value = point.x;
           dragY.value = liftedY;
-          const boardSize = sizeSV.value;
-          const square = boardSize > 0 ? pointToSquare(point.x, liftedY, boardSize, orientSV.value) : null;
+          const squarePx = sizeSV.value;
+          const square = squarePx > 0 ? pointToSquare(point.x, liftedY, squarePx, orientSV.value) : null;
           if (square !== hoverSV.value) {
             hoverSV.value = square;
             runOnJS(hoverJS)(square);
@@ -680,7 +680,7 @@ function ChessBoardView({
       if (current.from === lastMove.from && current.square === lastMove.to) return current;
       return null;
     });
-  }, [lastMove]);
+  }, [lastMove, activeFen]);
 
   useEffect(() => {
     if (!rejectedFrom) return;
@@ -707,7 +707,7 @@ function ChessBoardView({
       const rect = node.getBoundingClientRect();
       const x = event.clientX - rect.left - BOARD_BORDER;
       const y = event.clientY - rect.top - BOARD_BORDER;
-      return pointToSquare(x, y, now.squareSize * 8, now.orientation);
+      return pointToSquare(x, y, now.squareSize, now.orientation);
     };
 
     const onContextMenu = (event: MouseEvent) => {

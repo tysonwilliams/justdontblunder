@@ -36,27 +36,51 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
   useKeyboardShortcuts(
     {
       '1': () => {
-        if (session.round === 'playing') session.choose('A');
+        if (session.round !== 'playing') return false;
+        session.choose('A');
+        return true;
       },
       a: () => {
-        if (session.round === 'playing') session.choose('A');
+        if (session.round !== 'playing') return false;
+        session.choose('A');
+        return true;
       },
       '2': () => {
-        if (session.round === 'playing') session.choose('B');
+        if (session.round !== 'playing') return false;
+        session.choose('B');
+        return true;
       },
       b: () => {
-        if (session.round === 'playing') session.choose('B');
+        if (session.round !== 'playing') return false;
+        session.choose('B');
+        return true;
       },
       Enter: () => {
-        if (session.round === 'correct') session.next();
-        else if (session.round === 'retry' && session.replyReady) session.tryAgain();
+        if (session.round === 'correct') {
+          session.next();
+          return true;
+        }
+        if (session.round === 'retry' && session.replyReady) {
+          session.tryAgain();
+          return true;
+        }
+        return false;
       },
       ' ': () => {
-        if (session.round === 'correct') session.next();
-        else if (session.round === 'retry' && session.replyReady) session.tryAgain();
+        if (session.round === 'correct') {
+          session.next();
+          return true;
+        }
+        if (session.round === 'retry' && session.replyReady) {
+          session.tryAgain();
+          return true;
+        }
+        return false;
       },
       r: () => {
-        if (session.round === 'retry' && session.replyReady) session.tryAgain();
+        if (session.round !== 'retry' || !session.replyReady) return false;
+        session.tryAgain();
+        return true;
       },
     },
     !session.done && Boolean(session.drill && session.presented),

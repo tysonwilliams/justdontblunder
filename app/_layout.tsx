@@ -99,6 +99,16 @@ export default function RootLayout() {
   }, [themeReady]);
 
   useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const events: (keyof WindowEventMap)[] = ['pointerup', 'touchend', 'click', 'keydown'];
+    const listener = () => unlockFeedback();
+    for (const type of events) window.addEventListener(type, listener, { passive: true });
+    return () => {
+      for (const type of events) window.removeEventListener(type, listener);
+    };
+  }, []);
+
+  useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
     document.getElementById('boot')?.remove();
     const wantedPath = window.location.pathname;
