@@ -220,6 +220,14 @@ export function doneCopy(id: LessonId): string {
       return 'Always scan the diagonals, files, and ranks behind a piece before you step it out of the way.';
     case 'quiet_trap':
       return 'Even normal developing moves and castling can cut off or abandon a key defender. Do one quick scan first.';
+    case 'routine':
+      return 'Before every move: check their last move, scan loose pieces, check their forcing replies, and verify your move before letting go.';
+    case 'opening_traps':
+      return 'Count defenders before grabbing early pawns, keep your king safe, and drop opening autopilot the moment your opponent deviates.';
+    case 'counterplay':
+      return 'Never fall in love with your own attack or recapture on reflex — check your opponent’s sharpest reply first.';
+    case 'endgame_safety':
+      return 'Fewer pieces raise the stakes. Keep passed pawns defended, put rooks behind them, and give your king air before racing to queen.';
     default: {
       const _exhaustive: never = id;
       return _exhaustive;
@@ -238,6 +246,10 @@ export const LESSON_INDEX: Record<LessonId, number> = {
   overloaded: 2,
   discovered: 3,
   quiet_trap: 4,
+  routine: 1,
+  opening_traps: 2,
+  counterplay: 3,
+  endgame_safety: 4,
 };
 
 export function lessonTrack(id: LessonId): { label: string; total: number } {
@@ -247,6 +259,11 @@ export function lessonTrack(id: LessonId): { label: string; total: number } {
     case 'discovered':
     case 'quiet_trap':
       return { label: 'Club', total: 4 };
+    case 'routine':
+    case 'opening_traps':
+    case 'counterplay':
+    case 'endgame_safety':
+      return { label: 'Habit', total: 4 };
     default:
       return { label: 'Lesson', total: 6 };
   }

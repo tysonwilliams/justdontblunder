@@ -10,15 +10,15 @@ const bank = bankJson as SeedPuzzle[];
 
 describe('puzzle seed', () => {
   it('writes an idempotent upsert for every starter position', () => {
-    expect(bank).toHaveLength(160);
+    expect(bank).toHaveLength(180);
     const sql = buildPuzzleSeedSql(bank);
     const file = fs.readFileSync(path.join(process.cwd(), 'supabase/seeds/puzzles.sql'), 'utf8');
     expect(file).toBe(sql);
     expect(sql).toContain('on conflict (id) do update set');
     expect(sql).not.toContain('created_at = excluded.created_at');
-    expect(sql.split(`'${PUZZLE_SOURCE}'`).length - 1).toBe(160);
+    expect(sql.split(`'${PUZZLE_SOURCE}'`).length - 1).toBe(180);
     expect(sql).toContain(`'${PUZZLE_LICENSE}'`);
     expect(sql).toContain("pawn''s");
-    expect(new Set(bank.map((puzzle) => puzzle.id)).size).toBe(160);
+    expect(new Set(bank.map((puzzle) => puzzle.id)).size).toBe(180);
   });
 });

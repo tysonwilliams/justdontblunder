@@ -1,6 +1,8 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { AboutFooter } from '@/src/components/legal/AboutFooter';
+import { PreMoveChecklist } from '@/src/components/learn/PreMoveChecklist';
+import { TrainingRoadmap } from '@/src/components/learn/TrainingRoadmap';
 import { MenuButton } from '@/src/components/SettingsMenu';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
@@ -14,6 +16,7 @@ import { useLayout } from '@/src/components/ui/useLayout';
 import {
   ALL_LESSONS,
   CLUB_LESSONS,
+  HABIT_LESSONS,
   LESSONS,
   lessonById,
   nextCourseLessonId,
@@ -40,7 +43,7 @@ export function LessonList({ onOpen }: Props) {
   const nextId = nextCourseLessonId(completed);
   const nextLesson = nextId ? lessonById(nextId) : null;
 
-  const renderSection = (lessons: readonly Lesson[], club = false) =>
+  const renderSection = (lessons: readonly Lesson[], accentBadge = false) =>
     ready
       ? lessons.map((lesson, index) => {
           const complete = done.has(lesson.id);
@@ -60,11 +63,11 @@ export function LessonList({ onOpen }: Props) {
                   (hovered || state.pressed) && styles.rowOn,
                 ];
               }}>
-              <View style={[styles.index, club && styles.indexClub, upNext && styles.indexUpNext]}>
+              <View style={[styles.index, accentBadge && styles.indexClub, upNext && styles.indexUpNext]}>
                 <Text
                   style={[
                     styles.indexText,
-                    club && styles.indexClubText,
+                    accentBadge && styles.indexClubText,
                     upNext && styles.indexUpNextText,
                   ]}>
                   {index + 1}
@@ -120,7 +123,7 @@ export function LessonList({ onOpen }: Props) {
             </View>
             <Text style={split ? text.display : text.title}>Learn</Text>
             <Text style={text.muted}>
-              Six core lessons plus four club tactics. Step through each example at your own pace, then try it yourself.
+              Six foundations, four club tactics, and four blunder-proof habits. Step through each example at your own pace, then try it yourself.
             </Text>
             {ready ? (
               <View style={styles.courseProgress}>
@@ -140,6 +143,7 @@ export function LessonList({ onOpen }: Props) {
                 ) : null}
               </View>
             ) : null}
+            <PreMoveChecklist onPractice={() => onOpen('routine')} />
           </View>
           <View style={styles.tracks}>
             <View style={styles.list}>
@@ -153,6 +157,14 @@ export function LessonList({ onOpen }: Props) {
               </View>
               {renderSection(CLUB_LESSONS, true)}
             </View>
+            <View style={styles.list} testID="habit-track">
+              <View style={styles.trackHeader}>
+                <Text style={text.eyebrow}>Blunder-proof habits · Real games</Text>
+                <Text style={text.muted}>Pre-move routine, opening discipline, counterplay, and endgame focus.</Text>
+              </View>
+              {renderSection(HABIT_LESSONS, true)}
+            </View>
+            <TrainingRoadmap onOpenLesson={onOpen} />
           </View>
         </View>
         <AboutFooter />

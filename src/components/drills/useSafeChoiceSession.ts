@@ -14,7 +14,7 @@ import {
   type DrillPosition,
   type DrillSession as DrillSessionData,
 } from '@/src/logic/drills';
-import { buildPoolForTheme } from '@/src/logic/puzzlePool';
+import { buildPoolForTheme, orderPoolWithOwnFirst } from '@/src/logic/puzzlePool';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
 import { presentSafeChoice, safeChoiceFor, type PresentedSafeChoice } from '@/src/logic/safeChoice';
@@ -50,10 +50,11 @@ export function useSafeChoiceSession(theme: ThemeFilter, source: DrillSourceFilt
   const { colors, scheme } = useTheme();
   const { state, dispatch } = useTrainerRound();
   const hydrated = useHydrated(useProgressStore.persist);
+  const restartCount = useRef(0);
   const [session, setSession] = useState<DrillSessionData>(() =>
     sessionForTheme(
       theme,
-      buildPoolForTheme(useProgressStore.getState().ownDrills, theme, undefined, { ownOnly: source === 'own' }),
+      orderPoolWithOwnFirst(useProgressStore.getState().ownDrills, theme, { ownOnly: source === 'own' }),
     ),
   );
   const started = useRef(false);
@@ -212,13 +213,18 @@ export function useSafeChoiceSession(theme: ThemeFilter, source: DrillSourceFilt
     next,
     tryAgain,
     begin,
-    restart: () =>
+    restart: () => {
+      restartCount.current += 1;
       begin(
         sessionForTheme(
           theme,
-          buildPoolForTheme(useProgressStore.getState().ownDrills, theme, undefined, { ownOnly: source === 'own' }),
+          orderPoolWithOwnFirst(useProgressStore.getState().ownDrills, theme, {
+            ownOnly: source === 'own',
+            restartCount: restartCount.current,
+          }),
         ),
-      ),
+      );
+    },
   };
 }
 

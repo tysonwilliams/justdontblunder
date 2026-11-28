@@ -120,6 +120,67 @@ export function rotateList<T>(items: readonly T[], offset: number): T[] {
   return [...items.slice(shift), ...items.slice(0, shift)];
 }
 
+/**
+ * Order a drill session so personal blunders ALWAYS take precedence over built-in
+ * starter puzzles — even in Streak shuffles or after hitting Restart.
+ * Built-in starters only lead when the player has no personal blunders for the filter.
+ */
+export function orderPoolWithOwnFirst(
+  own: readonly DrillPosition[],
+  theme: 'all' | DrillTheme,
+  options: {
+    starter?: readonly DrillPosition[];
+    ownOnly?: boolean;
+    sudden?: boolean;
+    seed?: number;
+    restartCount?: number;
+    drillsCompleted?: number;
+  } = {},
+): DrillPosition[] {
+  const starter = options.starter ?? getAllDrills();
+  const seen = new Set<string>();
+  const personal: DrillPosition[] = [];
+  for (const drill of own) {
+    if (theme !== 'all' && drill.theme !== theme) continue;
+    const key = fenKey(drill.fen);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    personal.push(drill);
+  }
+  const builtIn: DrillPosition[] = [];
+  if (!options.ownOnly) {
+    for (const drill of starter) {
+      if (theme !== 'all' && drill.theme !== theme) continue;
+      const key = fenKey(drill.fen);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      builtIn.push(drill);
+    }
+  }
+
+  if (options.sudden) {
+    const baseSeed = options.seed ?? 1;
+    const shuffledOwn = shuffleWithSeed(personal, baseSeed);
+    const shuffledBuiltIn = shuffleWithSeed(builtIn, (baseSeed ^ 0x9e3779b9) >>> 0);
+    return [...shuffledOwn, ...shuffledBuiltIn];
+  }
+
+  const restartCount = options.restartCount ?? 0;
+  if (restartCount > 0) {
+    const rotatedOwn = rotateList(personal, restartCount);
+    const rotatedBuiltIn = rotateList(builtIn, restartCount * 11);
+    return [...rotatedOwn, ...rotatedBuiltIn];
+  }
+
+  // Keep drillsCompleted === 0 in canonical order so first-visit Play starts on hang-q-01.
+  const drillsCompleted = options.drillsCompleted ?? 0;
+  if (!options.ownOnly && personal.length === 0 && drillsCompleted > 0) {
+    return rotateList(builtIn, drillsCompleted);
+  }
+
+  return [...personal, ...builtIn];
+}
+
 /** Newest first, one per position, at most `limit`. */
 export function keepOwnDrills(incoming: readonly DrillPosition[], limit = PUZZLE_POOL_SIZE): DrillPosition[] {
   const out: DrillPosition[] = [];

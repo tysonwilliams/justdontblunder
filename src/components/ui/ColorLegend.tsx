@@ -7,6 +7,7 @@ import { Sheet } from '@/src/components/ui/Sheet';
 import { text } from '@/src/components/ui/text';
 import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { useLayout } from '@/src/components/ui/useLayout';
+import { PRE_MOVE_STEPS, TIME_TROUBLE_CHECK } from '@/src/logic/antiBlunderGuide';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { fonts, fontSizes, lineHeights, radii, spacing } from '@/src/theme';
@@ -23,8 +24,8 @@ const SHORTCUTS: readonly { key: string; action: string }[] = [
 ];
 
 /**
- * Quiet "?" trigger that opens the board color guide (and desktop shortcuts)
- * in a clean sheet, keeping board screens uncluttered.
+ * Quiet "?" trigger that opens the board color guide, 4-step pre-move check,
+ * and desktop shortcuts in a clean sheet, keeping board screens uncluttered.
  */
 export function ColorLegend({ compact = false }: { compact?: boolean }) {
   const { colors } = useTheme();
@@ -50,7 +51,7 @@ export function ColorLegend({ compact = false }: { compact?: boolean }) {
   return (
     <>
       <Pressable
-        {...controlA11y('button', 'Board color guide and shortcuts', open)}
+        {...controlA11y('button', 'Board color guide and pre-move checklist', open)}
         testID="color-legend-trigger"
         hitSlop={spacing.xs}
         onPress={() => setOpen(true)}
@@ -77,6 +78,26 @@ export function ColorLegend({ compact = false }: { compact?: boolean }) {
               </View>
             </View>
           ))}
+        </View>
+        <View style={styles.section} testID="board-guide-checklist">
+          <Text style={text.section}>Before every move</Text>
+          <View style={styles.checkList}>
+            {PRE_MOVE_STEPS.map((step) => (
+              <View key={step.number} style={styles.checkRow}>
+                <View style={styles.checkBadge}>
+                  <Text style={styles.checkBadgeText}>{step.number}</Text>
+                </View>
+                <Text style={styles.checkText}>
+                  <Text style={styles.checkTitle}>{step.title}: </Text>
+                  {step.detail}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.blitzNote}>
+            <Text style={styles.checkTitle}>{TIME_TROUBLE_CHECK.title}: </Text>
+            {TIME_TROUBLE_CHECK.summary}
+          </Text>
         </View>
         {!phone ? (
           <View style={styles.shortcuts} testID="keyboard-shortcuts-guide">
@@ -118,8 +139,8 @@ const styles = themedStyleSheet((colors) => ({
     opacity: 0.78,
   },
   list: {
-    gap: spacing[14],
-    paddingBottom: spacing.xs,
+    gap: spacing[10],
+    paddingBottom: spacing[2],
   },
   item: {
     flexDirection: 'row',
@@ -148,6 +169,53 @@ const styles = themedStyleSheet((colors) => ({
     color: colors.textMuted,
     fontSize: fontSizes[14],
     lineHeight: lineHeights[20],
+  },
+  section: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing[12],
+    gap: spacing[8],
+  },
+  checkList: {
+    gap: spacing[6],
+  },
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[8],
+  },
+  checkBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: radii.badge,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing[1],
+    flexShrink: 0,
+  },
+  checkBadgeText: {
+    fontFamily: fonts.bodyExtra,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.accent,
+  },
+  checkText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSizes[13],
+    lineHeight: lineHeights[18],
+    color: colors.textMuted,
+  },
+  checkTitle: {
+    fontFamily: fonts.bodyBold,
+    color: colors.text,
+  },
+  blitzNote: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textDim,
   },
   shortcuts: {
     borderTopWidth: 1,

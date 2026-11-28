@@ -13,7 +13,11 @@ export type LessonId =
   | 'counting'
   | 'overloaded'
   | 'discovered'
-  | 'quiet_trap';
+  | 'quiet_trap'
+  | 'routine'
+  | 'opening_traps'
+  | 'counterplay'
+  | 'endgame_safety';
 
 export type BeatTone = 'setup' | 'blunder' | 'punishment' | 'ok';
 
@@ -958,7 +962,335 @@ export const CLUB_LESSONS: readonly Lesson[] = [
   },
 ];
 
-export const ALL_LESSONS: readonly Lesson[] = [...LESSONS, ...CLUB_LESSONS];
+export const HABIT_LESSONS: readonly Lesson[] = [
+  {
+    id: 'routine',
+    title: 'The 4-step blunder check',
+    summary: 'Check their last move, loose pieces, forcing replies, and your move’s fallout.',
+    practice: 'all',
+    cards: [
+      {
+        id: 'routine-last-move',
+        title: '1. Read their last move',
+        fen: 'rnb1kb1r/ppppqppp/5n2/4N3/4P3/8/PPPP1PPP/RNBQKB1R w KQkq - 1 4',
+        sideToMove: 'w',
+        arrows: [{ from: 'e7', to: 'e5' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Black just played Qe7. Step 1: ask what their last move changed — the queen now attacks your undefended knight on e5.',
+          },
+          { tone: 'blunder', uci: 'f1c4', text: 'Bc4 develops on autopilot and ignores Black’s last move.' },
+          {
+            tone: 'punishment',
+            uci: 'e7e5',
+            text: 'Qxe5 wins the knight for nothing. Always ask what your opponent’s last move threatens first.',
+          },
+        ],
+      },
+      {
+        id: 'routine-forcing',
+        title: '2 & 3. Loose pieces and forcing moves',
+        fen: 'r1b2rk1/ppp2ppp/2np4/4N3/4P1nq/2N5/PPP2PPP/R1BQ1RK1 w - - 0 10',
+        sideToMove: 'w',
+        arrows: [
+          { from: 'h4', to: 'h2' },
+          { from: 'g4', to: 'h2' },
+        ],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Before grabbing material, run Step 3: checks, captures, threats. Black’s queen and knight both aim at h2.',
+          },
+          { tone: 'blunder', uci: 'e5c6', text: 'Nxc6 grabs a knight without checking if Black has a checkmate.' },
+          {
+            tone: 'punishment',
+            uci: 'h4h2',
+            text: 'Qxh2# is checkmate. Scan their forcing moves first, especially checks.',
+          },
+        ],
+      },
+      {
+        id: 'routine-verify',
+        title: '4. Verify before you let go',
+        fen: 'r1b2rk1/ppp2ppp/2np4/4N3/4P1nq/2N5/PPP2PPP/R1BQ1RK1 w - - 0 10',
+        sideToMove: 'w',
+        arrows: [{ from: 'e5', to: 'g4' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Same board — now run Step 4 before moving. Compare a defensive candidate: Nxg4 removes the mate helper.',
+          },
+          { tone: 'ok', uci: 'e5g4', text: 'Nxg4 trades off the knight supporting h2.' },
+          {
+            tone: 'ok',
+            uci: 'c8g4',
+            text: 'Black recaptures with Bxg4. It is an even trade, and the mate threat is gone.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      puzzle({
+        id: 'lesson-routine-last-move',
+        fen: 'rnb1kb1r/ppp2ppp/5n2/3qN3/8/8/PPPP1PPP/RNBQKB1R w KQkq - 0 5',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'e5',
+        prompt: 'Black just played Qxd5. Save your loose knight.',
+        note: 'Qxd5 attacks e5 along the fifth rank. Nf3, d4, or Qe2 keeps you from dropping the knight.',
+        solution: ['e5f3', 'd2d4', 'd1e2'],
+        coach: 'Step 1: check what their queen on d5 hits. Your knight on e5 has no defender.',
+        blunder: 'f1c4',
+        kind: 'hanging',
+      }),
+      puzzle({
+        id: 'lesson-routine-verify',
+        fen: 'r1b2rk1/ppp2ppp/2np4/4N3/4P1nq/2N5/PPP2PPP/R1BQ1RK1 w - - 0 10',
+        side: 'w',
+        theme: 'missed_mate',
+        atRisk: 'g1',
+        prompt: 'Run your 4-step check. Stop mate on h2.',
+        note: 'Nxg4 trades off the knight supporting h2, and Nf3 retreats to guard h2 while attacking the queen.',
+        solution: ['e5g4', 'e5f3'],
+        coach: 'Ignore c6 for a moment — check Black’s forcing mate threat on h2 first.',
+        blunder: 'e5c6',
+        kind: 'missed_mate',
+      }),
+    ],
+  },
+  {
+    id: 'opening_traps',
+    title: 'Opening traps & greed',
+    summary: 'Early pawn grabs, center pins, and stopping autopilot when they deviate.',
+    practice: 'hanging',
+    cards: [
+      {
+        id: 'opening-greed',
+        title: 'The poisoned pawn grab',
+        fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',
+        sideToMove: 'w',
+        arrows: [{ from: 'c6', to: 'e5' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'The e5 pawn looks tempting in the opening, but Black’s knight on c6 guards it.',
+          },
+          { tone: 'blunder', uci: 'f3e5', text: 'Nxe5 grabs the pawn without counting who defends e5.' },
+          {
+            tone: 'punishment',
+            uci: 'c6e5',
+            text: 'Nxe5 wins your knight for a pawn. Never grab an early pawn before checking its defenders.',
+          },
+        ],
+      },
+      {
+        id: 'opening-deviate',
+        title: 'When they break your script',
+        fen: 'rnb1kb1r/pp2pppp/2p2n2/q5B1/2pP4/2N1P3/PP3PPP/R2QKBNR w KQkq - 1 6',
+        sideToMove: 'w',
+        arrows: [{ from: 'a5', to: 'g5' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Black broke the script with Qa5. Your bishop on g5 is undefended across the open fifth rank.',
+          },
+          {
+            tone: 'blunder',
+            uci: 'f1c4',
+            text: 'Bxc4 wins the pawn back on autopilot while forgetting g5.',
+          },
+          {
+            tone: 'punishment',
+            uci: 'a5g5',
+            text: 'Qxg5 takes the bishop for free. Pause your opening plan whenever the opponent deviates.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      puzzle({
+        id: 'lesson-opening-deviate',
+        fen: 'rnb1kb1r/pp2pppp/2p2n2/q5B1/2pP4/2N1P3/PP3PPP/R2QKBNR w KQkq - 1 6',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'g5',
+        prompt: 'Black deviated with Qa5. Save your bishop on g5.',
+        note: 'Bxf6 trades the bishop cleanly, Nf3 develops while defending g5, and Bh4 retreats to safety.',
+        solution: ['g5f6', 'g1f3', 'g5h4'],
+        coach: 'Do not rush to recapture on c4 — Black’s queen attacks g5 across the fifth rank.',
+        blunder: 'f1c4',
+        kind: 'hanging',
+      }),
+      puzzle({
+        id: 'lesson-opening-pin',
+        fen: 'rnbqkb1r/ppp2ppp/3p4/8/4n3/5N2/PPPPQPPP/RNB1KB1R b KQkq - 1 5',
+        side: 'b',
+        theme: 'pin',
+        atRisk: 'e4',
+        prompt: 'Your king is still in the center and e4 is pinned. Defend it.',
+        note: 'Qe7, d5, or f5 defends the pinned knight on e4 so Qxe4+ does not win a free piece.',
+        solution: ['d8e7', 'd6d5', 'f7f5'],
+        coach: 'Your knight on e4 cannot move off the e-file while your king sits on e8. Guard it right away.',
+        blunder: 'b8c6',
+        kind: 'pin',
+      }),
+    ],
+  },
+  {
+    id: 'counterplay',
+    title: 'Tunnel vision & counterplay',
+    summary: 'Watch their threats while attacking, and never play recaptures on autopilot.',
+    practice: 'fork',
+    cards: [
+      {
+        id: 'counterplay-tunnel',
+        title: 'Falling in love with your attack',
+        fen: 'r1r3k1/p4ppp/4p3/q2p4/6Q1/2N5/P4PPP/R3R1K1 w - - 0 16',
+        sideToMove: 'w',
+        arrows: [{ from: 'a5', to: 'c3' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'You want to swing Re3 and Rg3 at Black’s king. Stop and check their counterplay: the queen on a5 attacks your loose knight on c3.',
+          },
+          { tone: 'blunder', uci: 'e1e3', text: 'Re3 chases your own attack with tunnel vision.' },
+          {
+            tone: 'punishment',
+            uci: 'a5c3',
+            text: 'Qxc3 takes the knight for free and hits your rooks. Check their threats before pushing your attack.',
+          },
+        ],
+      },
+      {
+        id: 'counterplay-recapture',
+        title: 'No automatic recaptures',
+        fen: '4r1k1/5ppp/8/8/3b4/1N6/PP3PPP/3Q2K1 w - - 0 25',
+        sideToMove: 'w',
+        arrows: [
+          { from: 'e8', to: 'e1' },
+          { from: 'd1', to: 'e1' },
+        ],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Black just captured on d4. Both your queen and your knight can take back — do not recapture on reflex.',
+          },
+          { tone: 'blunder', uci: 'd1d4', text: 'Qxd4 recaptures automatically and leaves the first rank unguarded.' },
+          {
+            tone: 'punishment',
+            uci: 'e8e1',
+            text: 'Re1# is checkmate. Even an obvious recapture deserves a one-second blunder check.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      puzzle({
+        id: 'lesson-counterplay-recapture',
+        fen: '4r1k1/5ppp/8/8/3n4/1N6/PP3PPP/3Q2K1 w - - 0 25',
+        side: 'w',
+        theme: 'back_rank',
+        atRisk: 'g1',
+        prompt: 'Recapture on d4 without allowing back-rank mate.',
+        note: 'Nxd4 takes the knight while your queen keeps guarding e1. Qxd4 walks straight into Re1#.',
+        solution: ['b3d4'],
+        coach: 'Pause before recapturing with your queen — check what she is guarding on the first rank.',
+        blunder: 'd1d4',
+        kind: 'back_rank',
+      }),
+      puzzle({
+        id: 'lesson-counterplay-tunnel',
+        fen: 'r1r3k1/p4ppp/4p3/q2p4/6Q1/2N5/P4PPP/R3R1K1 w - - 0 16',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'c3',
+        prompt: 'Pause the kingside attack. Keep your knight on c3 safe.',
+        note: 'Both Qa5 and Rc8 attack c3. Ne2 gets your knight safely out of the line of fire while keeping your back rank guarded.',
+        solution: ['c3e2'],
+        coach: 'Two pieces — Qa5 and Rc8 — target c3. Move the knight out of danger before attacking.',
+        blunder: 'e1e3',
+        kind: 'hanging',
+      }),
+    ],
+  },
+  {
+    id: 'endgame_safety',
+    title: 'Endgame traps & loose pawns',
+    summary: 'Fewer pieces raise the stakes — watch loose pawns and back-rank traps.',
+    practice: 'back_rank',
+    cards: [
+      {
+        id: 'endgame-loose-pawn',
+        title: 'Relaxing in a simple endgame',
+        fen: '8/5pk1/6p1/P2r3p/8/5P2/4R1PP/6K1 w - - 0 38',
+        sideToMove: 'w',
+        arrows: [{ from: 'd5', to: 'a5' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'The endgame looks simple, so it is easy to relax. Black’s rook aims across the fifth rank at your passed pawn on a5.',
+          },
+          { tone: 'blunder', uci: 'g1f2', text: 'Kf2 activates the king on autopilot and leaves a5 loose.' },
+          {
+            tone: 'punishment',
+            uci: 'd5a5',
+            text: 'Rxa5 takes your passed pawn for free. In endgames, every single pawn can decide the game.',
+          },
+        ],
+      },
+      {
+        id: 'endgame-backrank',
+        title: 'Promotion tunnel vision',
+        fen: '4r1k1/1R3ppp/P7/8/8/8/5PPP/6K1 w - - 0 39',
+        sideToMove: 'w',
+        arrows: [{ from: 'e8', to: 'e1' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Your passed pawn on a6 is almost a queen. Before pushing it, check your own king: Black’s rook threatens Re1#.',
+          },
+          { tone: 'blunder', uci: 'a6a7', text: 'a7 races to promote while leaving the king boxed in.' },
+          {
+            tone: 'punishment',
+            uci: 'e8e1',
+            text: 'Re1# ends the game on the spot. Always give your king air before pushing for promotion.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      puzzle({
+        id: 'lesson-endgame-pawn',
+        fen: '8/5pk1/6p1/P2r3p/8/5P2/4R1PP/6K1 w - - 0 38',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'a5',
+        prompt: 'Keep your passed pawn on a5 safe.',
+        note: 'Ra2 puts your rook behind the passed pawn to defend it. a6 also steps off the fifth rank.',
+        solution: ['e2a2', 'a5a6'],
+        coach: 'Put your rook behind the passed pawn — or push it off Black’s rook rank.',
+        blunder: 'g1f2',
+        kind: 'hanging',
+      }),
+      puzzle({
+        id: 'lesson-endgame-backrank',
+        fen: '4r1k1/1R3ppp/P7/8/8/8/5PPP/6K1 w - - 0 39',
+        side: 'w',
+        theme: 'back_rank',
+        atRisk: 'g1',
+        prompt: 'Do not rush the a-pawn yet. Stop back-rank mate first.',
+        note: 'h3, g3, or Kf1 stops Re1# so your passed pawn stays completely safe next turn.',
+        solution: ['h2h3', 'g2g3', 'g1f1'],
+        coach: 'Your king has no escape square. Make luft or step the king out before pushing a7.',
+        blunder: 'a6a7',
+        kind: 'back_rank',
+      }),
+    ],
+  },
+];
+
+export const ALL_LESSONS: readonly Lesson[] = [...LESSONS, ...CLUB_LESSONS, ...HABIT_LESSONS];
 
 export function parseLessonId(value: string | undefined): LessonId | null {
   if (!value) return null;
@@ -973,6 +1305,10 @@ export function parseLessonId(value: string | undefined): LessonId | null {
     case 'overloaded':
     case 'discovered':
     case 'quiet_trap':
+    case 'routine':
+    case 'opening_traps':
+    case 'counterplay':
+    case 'endgame_safety':
       return value;
     default:
       return null;
