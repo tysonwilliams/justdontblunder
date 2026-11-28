@@ -44,8 +44,9 @@ export function useSystemScheme(): ResolvedScheme | null {
 
 export function useTheme(): Theme {
   const preference = useThemePreference((state) => state.preference);
+  const boardTheme = useThemePreference((state) => state.boardTheme);
   const system = useSystemScheme();
-  const theme = themeFor(resolveColorScheme(preference, system));
+  const theme = themeFor(resolveColorScheme(preference, system), boardTheme);
   setActivePalette(theme.colors);
   return theme;
 }

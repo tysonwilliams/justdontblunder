@@ -19,7 +19,7 @@ import { useLayout } from '@/src/components/ui/useLayout';
 import { drillHref } from '@/src/logic/drillLink';
 import { themeLabel, weakestTheme, type DrillTheme } from '@/src/logic/drills';
 import { dueTodayCount, dueTodayLabel } from '@/src/logic/reviewSchedule';
-import { LESSONS } from '@/src/logic/lessons';
+import { ALL_LESSONS } from '@/src/logic/lessons';
 import { drillsDoneCount } from '@/src/store/drillStats';
 import { activeDailyStreak } from '@/src/store/slices/training';
 import { useProgressStore } from '@/src/store/progress';
@@ -103,7 +103,7 @@ export default function ProgressScreen() {
               </View>
               {showAllStats ? (
                 <View style={styles.extraStats}>
-                  <ExtraStat label="Lessons" value={`${completedLessons.length}/${LESSONS.length}`} />
+                  <ExtraStat label="Lessons" value={`${completedLessons.length}/${ALL_LESSONS.length}`} />
                   <ExtraStat label="Drills done" value={String(drillsDoneCount(drillsCompleted))} />
                   <ExtraStat label="Saves" value={String(blundersAvoided)} />
                   <ExtraStat label="Blunders" value={String(blundersMade)} />

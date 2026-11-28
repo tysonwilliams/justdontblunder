@@ -9,7 +9,7 @@ import { forceSkeleton } from '@/src/components/ui/skeletonMode';
 import { Screen } from '@/src/components/ui/Screen';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
-import { LESSONS, type LessonId } from '@/src/logic/lessons';
+import { CLUB_LESSONS, LESSONS, type Lesson, type LessonId } from '@/src/logic/lessons';
 import { useProgressStore } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
@@ -27,6 +27,55 @@ export function LessonList({ onOpen }: Props) {
   const { split, phone, topNav } = useLayout();
   const done = new Set(completed);
 
+  const renderSection = (lessons: readonly Lesson[], club = false) =>
+    ready
+      ? lessons.map((lesson, index) => {
+          const complete = done.has(lesson.id);
+          const label = `${lesson.title}${complete ? ', done' : ''}`;
+          return (
+            <Pressable
+              key={lesson.id}
+              {...controlA11y('button', label, complete)}
+              accessibilityState={{ selected: complete, checked: complete }}
+              aria-checked={complete}
+              testID={`lesson-open-${lesson.id}`}
+              onPress={() => onOpen(lesson.id)}
+              style={(state) => {
+                const hovered = 'hovered' in state && Boolean(state.hovered);
+                return [styles.row, (hovered || state.pressed) && styles.rowOn];
+              }}>
+              <View style={[styles.index, club && styles.indexClub]}>
+                <Text style={[styles.indexText, club && styles.indexClubText]}>{index + 1}</Text>
+              </View>
+              <View style={styles.copy}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {lesson.title}
+                </Text>
+                <Text style={text.muted} numberOfLines={1}>
+                  {lesson.summary}
+                </Text>
+              </View>
+              {complete ? (
+                <View style={styles.check}>
+                  <IconCheck color={colors.accent} size={18} />
+                </View>
+              ) : (
+                <View style={styles.checkSlot} />
+              )}
+            </Pressable>
+          );
+        })
+      : lessons.map((lesson) => (
+          <View key={lesson.id} style={styles.row}>
+            <Bone width={28} height={28} radius={radii.badge} />
+            <View style={styles.copy}>
+              <Bone width="52%" height={16} />
+              <Bone width="88%" height={14} />
+            </View>
+            <Bone width={18} height={18} />
+          </View>
+        ));
+
   return (
     <Screen variant="page">
       <View style={styles.stack}>
@@ -38,57 +87,21 @@ export function LessonList({ onOpen }: Props) {
             </View>
             <Text style={split ? text.display : text.title}>Learn</Text>
             <Text style={text.muted}>
-              Six short lessons on blunders. About two minutes each. Any lesson is open.
+              Six core lessons plus four club tactics. About two minutes each. Any lesson is open.
             </Text>
           </View>
-          <View style={styles.list}>
-            {ready
-              ? LESSONS.map((lesson, index) => {
-                  const complete = done.has(lesson.id);
-                  const label = `${lesson.title}${complete ? ', done' : ''}`;
-                  return (
-                    <Pressable
-                      key={lesson.id}
-                      {...controlA11y('button', label, complete)}
-                      accessibilityState={{ selected: complete, checked: complete }}
-                      aria-checked={complete}
-                      testID={`lesson-open-${lesson.id}`}
-                      onPress={() => onOpen(lesson.id)}
-                      style={(state) => {
-                        const hovered = 'hovered' in state && Boolean(state.hovered);
-                        return [styles.row, (hovered || state.pressed) && styles.rowOn];
-                      }}>
-                      <View style={styles.index}>
-                        <Text style={styles.indexText}>{index + 1}</Text>
-                      </View>
-                      <View style={styles.copy}>
-                        <Text style={styles.title} numberOfLines={1}>
-                          {lesson.title}
-                        </Text>
-                        <Text style={text.muted} numberOfLines={1}>
-                          {lesson.summary}
-                        </Text>
-                      </View>
-                      {complete ? (
-                        <View style={styles.check}>
-                          <IconCheck color={colors.accent} size={18} />
-                        </View>
-                      ) : (
-                        <View style={styles.checkSlot} />
-                      )}
-                    </Pressable>
-                  );
-                })
-              : LESSONS.map((lesson) => (
-                  <View key={lesson.id} style={styles.row}>
-                    <Bone width={28} height={28} radius={radii.badge} />
-                    <View style={styles.copy}>
-                      <Bone width="52%" height={16} />
-                      <Bone width="88%" height={14} />
-                    </View>
-                    <Bone width={18} height={18} />
-                  </View>
-                ))}
+          <View style={styles.tracks}>
+            <View style={styles.list}>
+              <Text style={text.eyebrow}>Foundations</Text>
+              {renderSection(LESSONS)}
+            </View>
+            <View style={styles.list}>
+              <View style={styles.trackHeader}>
+                <Text style={text.eyebrow}>Club tactics · 900–1600</Text>
+                <Text style={text.muted}>Subtler blunders once one-move drops are rare.</Text>
+              </View>
+              {renderSection(CLUB_LESSONS, true)}
+            </View>
           </View>
         </View>
         <AboutFooter />
@@ -125,9 +138,16 @@ const styles = themedStyleSheet((colors) => ({
     flexShrink: 0,
     paddingTop: spacing.xs,
   },
-  list: {
+  tracks: {
     flex: 1,
     minWidth: 0,
+    gap: spacing.lg,
+  },
+  trackHeader: {
+    gap: spacing[2],
+  },
+  list: {
+    width: '100%',
     gap: spacing.sm,
   },
   row: {
@@ -154,11 +174,17 @@ const styles = themedStyleSheet((colors) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  indexClub: {
+    backgroundColor: colors.accentSoft,
+  },
   indexText: {
     fontFamily: fonts.bodyExtra,
     color: colors.text,
     fontSize: fontSizes[14],
     lineHeight: lineHeights[18],
+  },
+  indexClubText: {
+    color: colors.accent,
   },
   copy: {
     flex: 1,

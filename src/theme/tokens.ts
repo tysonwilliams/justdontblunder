@@ -174,6 +174,83 @@ const lightPalette = {
   blackPiece: '#0B1018',
 } satisfies Palette;
 
+export const BOARD_THEMES = ['classic', 'walnut', 'slate', 'paper'] as const;
+export type BoardTheme = (typeof BOARD_THEMES)[number];
+
+export type BoardThemeSwatch = {
+  id: BoardTheme;
+  label: string;
+  light: string;
+  dark: string;
+  frameDark: string;
+  frameLight: string;
+  frameBgDark: string;
+  frameBgLight: string;
+  coordOnLight: string;
+  coordOnDark: string;
+  legalOnLight: string;
+  legalOnDark: string;
+};
+
+export const boardThemeSwatches: Record<BoardTheme, BoardThemeSwatch> = {
+  classic: {
+    id: 'classic',
+    label: 'Classic',
+    light: '#F6EFE0',
+    dark: '#58763E',
+    frameDark: '#24301C',
+    frameLight: '#3E5632',
+    frameBgDark: '#1A2218',
+    frameBgLight: '#F8F4EA',
+    coordOnLight: '#1E2C16',
+    coordOnDark: '#F7F6EF',
+    legalOnLight: 'rgba(30, 44, 22, 0.66)',
+    legalOnDark: 'rgba(247, 246, 239, 0.94)',
+  },
+  walnut: {
+    id: 'walnut',
+    label: 'Walnut',
+    light: '#F0DEC0',
+    dark: '#8C5C38',
+    frameDark: '#3A2618',
+    frameLight: '#6B452B',
+    frameBgDark: '#26180F',
+    frameBgLight: '#F7EFE2',
+    coordOnLight: '#3D2514',
+    coordOnDark: '#FFF8EE',
+    legalOnLight: 'rgba(61, 37, 20, 0.62)',
+    legalOnDark: 'rgba(255, 248, 238, 0.92)',
+  },
+  slate: {
+    id: 'slate',
+    label: 'Slate',
+    light: '#E8EFF6',
+    dark: '#4A6A8A',
+    frameDark: '#1F2C3B',
+    frameLight: '#3E5975',
+    frameBgDark: '#16202B',
+    frameBgLight: '#F2F6FA',
+    coordOnLight: '#1E3144',
+    coordOnDark: '#F4F8FC',
+    legalOnLight: 'rgba(30, 49, 68, 0.64)',
+    legalOnDark: 'rgba(244, 248, 252, 0.94)',
+  },
+  paper: {
+    id: 'paper',
+    label: 'Paper',
+    light: '#F5F1E6',
+    dark: '#746958',
+    frameDark: '#2E2B26',
+    frameLight: '#5C5447',
+    frameBgDark: '#211E1A',
+    frameBgLight: '#FAF7F0',
+    coordOnLight: '#2E2A23',
+    coordOnDark: '#FAF7F0',
+    legalOnLight: 'rgba(46, 42, 35, 0.62)',
+    legalOnDark: 'rgba(250, 247, 240, 0.92)',
+  },
+};
+
 export const palettes: { dark: Palette; light: Palette } = {
   dark: darkPalette,
   light: lightPalette,
@@ -489,14 +566,45 @@ const themeBase = {
   layout,
 } as const;
 
+function withBoardTheme(base: Palette, scheme: ColorScheme, boardTheme: BoardTheme): Palette {
+  if (boardTheme === 'classic') return base;
+  const swatch = boardThemeSwatches[boardTheme];
+  return {
+    ...base,
+    boardLight: swatch.light,
+    boardDark: swatch.dark,
+    boardFrame: scheme === 'dark' ? swatch.frameDark : swatch.frameLight,
+    boardFrameBg: scheme === 'dark' ? swatch.frameBgDark : swatch.frameBgLight,
+    boardCoordOnLight: swatch.coordOnLight,
+    boardCoordOnDark: swatch.coordOnDark,
+    boardLegalOnLight: swatch.legalOnLight,
+    boardLegalOnDark: swatch.legalOnDark,
+  };
+}
+
 const themes = {
-  dark: { scheme: 'dark' as const, colors: palettes.dark, ...themeBase },
-  light: { scheme: 'light' as const, colors: palettes.light, ...themeBase },
+  dark: { scheme: 'dark' as const, boardTheme: 'classic' as BoardTheme, colors: palettes.dark, ...themeBase },
+  light: { scheme: 'light' as const, boardTheme: 'classic' as BoardTheme, colors: palettes.light, ...themeBase },
 };
 
-/** Stable object per scheme, so style caches and effects can depend on it. */
-export function themeFor(scheme: ColorScheme): Theme {
-  return themes[scheme];
+const boardThemeCache: Record<ColorScheme, Record<BoardTheme, Theme>> = {
+  dark: {
+    classic: themes.dark,
+    walnut: { scheme: 'dark', boardTheme: 'walnut', colors: withBoardTheme(palettes.dark, 'dark', 'walnut'), ...themeBase },
+    slate: { scheme: 'dark', boardTheme: 'slate', colors: withBoardTheme(palettes.dark, 'dark', 'slate'), ...themeBase },
+    paper: { scheme: 'dark', boardTheme: 'paper', colors: withBoardTheme(palettes.dark, 'dark', 'paper'), ...themeBase },
+  },
+  light: {
+    classic: themes.light,
+    walnut: { scheme: 'light', boardTheme: 'walnut', colors: withBoardTheme(palettes.light, 'light', 'walnut'), ...themeBase },
+    slate: { scheme: 'light', boardTheme: 'slate', colors: withBoardTheme(palettes.light, 'light', 'slate'), ...themeBase },
+    paper: { scheme: 'light', boardTheme: 'paper', colors: withBoardTheme(palettes.light, 'light', 'paper'), ...themeBase },
+  },
+};
+
+/** Stable object per scheme and board theme, so style caches and effects can depend on it. */
+export function themeFor(scheme: ColorScheme, boardTheme: BoardTheme = 'classic'): Theme {
+  return boardThemeCache[scheme][boardTheme] ?? themes[scheme];
 }
 
 export const theme = themes.dark;

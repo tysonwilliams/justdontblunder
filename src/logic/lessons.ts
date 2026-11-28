@@ -3,7 +3,17 @@ import { Chess, type Square } from 'chess.js';
 import { drillHref, type ThemeFilter } from '@/src/logic/drillLink';
 import type { DrillPosition, DrillTheme } from '@/src/logic/drills';
 
-export type LessonId = 'blunder' | 'hanging' | 'fork' | 'pin' | 'back_rank' | 'mate';
+export type LessonId =
+  | 'blunder'
+  | 'hanging'
+  | 'fork'
+  | 'pin'
+  | 'back_rank'
+  | 'mate'
+  | 'counting'
+  | 'overloaded'
+  | 'discovered'
+  | 'quiet_trap';
 
 export type BeatTone = 'setup' | 'blunder' | 'punishment' | 'ok';
 
@@ -629,6 +639,326 @@ export const LESSONS: readonly Lesson[] = [
   },
 ];
 
+export const CLUB_LESSONS: readonly Lesson[] = [
+  {
+    id: 'counting',
+    title: 'Counting defenders',
+    summary: 'Two attackers beat one defender, and value beats count.',
+    practice: 'hanging',
+    cards: [
+      {
+        id: 'counting-two-on-one',
+        title: 'Two attackers, one defender',
+        fen: 'r1bqk2r/pppp1ppp/2n2n2/2b5/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6',
+        sideToMove: 'w',
+        arrows: [
+          { from: 'c6', to: 'd4' },
+          { from: 'c5', to: 'd4' },
+        ],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Your queen defends d4, so the knight feels safe. Count again: both the c6 knight and the c5 bishop attack d4.',
+          },
+          { tone: 'blunder', uci: 'f1b5', text: 'Bb5 develops and leaves d4 outgunned two to one.' },
+          {
+            tone: 'punishment',
+            uci: 'c6d4',
+            text: 'Black wins the knight. If you recapture with the queen, the bishop takes her. Always count attackers and defenders.',
+          },
+        ],
+      },
+      {
+        id: 'counting-value',
+        title: 'Value beats count',
+        fen: '6k1/5ppp/8/1b6/8/8/P3RPPP/4K3 w - - 0 1',
+        sideToMove: 'w',
+        arrows: [{ from: 'b5', to: 'e2' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Count is one attacker versus one defender, since your king defends e2. Value still matters: a bishop attacking a rook wins the exchange.',
+          },
+          { tone: 'blunder', uci: 'a2a3', text: 'a3 ignores the bishop on the diagonal.' },
+          {
+            tone: 'punishment',
+            uci: 'b5e2',
+            text: 'Bxe2 wins a rook for a bishop. Defending a pricier piece is not enough when a cheaper piece attacks it.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      {
+        ...puzzle({
+          id: 'lesson-count-d4',
+          fen: 'r1bqk2r/pppp1ppp/2n2n2/2b5/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6',
+          side: 'w',
+          theme: 'hanging',
+          atRisk: 'd4',
+          prompt: 'd4 is attacked twice and defended once. Fix the count.',
+          note: 'Be3 adds a second defender. Nxc6 removes an attacker, and Nf3 steps away safely.',
+          solution: ['c1e3', 'd4c6', 'd4f3'],
+          coach: 'Two pieces attack d4 and only your queen defends it. Defend it again, trade, or move it.',
+          blunder: 'f1b5',
+          kind: 'hanging',
+        }),
+      },
+      {
+        ...puzzle({
+          id: 'lesson-count-exchange',
+          fen: '6k1/5ppp/8/1b6/8/8/P3RPPP/4K3 w - - 0 1',
+          side: 'w',
+          theme: 'hanging',
+          atRisk: 'e2',
+          prompt: 'A bishop attacks your rook. Save the exchange.',
+          note: 'Your king defends e2, but losing a rook for a bishop drops two points. Move the rook off the diagonal.',
+          solution: ['e2e5', 'e2b2'],
+          coach: 'A cheaper piece attacks your rook. Move the rook to a safe square.',
+          blunder: 'a2a3',
+          kind: 'hanging',
+        }),
+      },
+    ],
+  },
+  {
+    id: 'overloaded',
+    title: 'Overloaded pieces',
+    summary: 'One defender cannot guard two threats at once.',
+    practice: 'fork',
+    cards: [
+      {
+        id: 'overload-backrank',
+        title: 'Leaving your post',
+        fen: '4r1k1/5ppp/8/3b4/8/8/5PPP/3R2K1 w - - 0 1',
+        sideToMove: 'w',
+        arrows: [
+          { from: 'd1', to: 'e1' },
+          { from: 'e8', to: 'e1' },
+        ],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'The bishop on d5 looks completely free. Before you grab it, ask what your rook on d1 is guarding: the back rank.',
+          },
+          { tone: 'blunder', uci: 'd1d5', text: 'Rxd5 takes the bishop and leaves e1 unguarded.' },
+          {
+            tone: 'punishment',
+            uci: 'e8e1',
+            text: 'Re1 is checkmate. Never move a sole defender off its job without checking the threat it holds back.',
+          },
+        ],
+      },
+      {
+        id: 'overload-queen',
+        title: 'Tied down to a teammate',
+        fen: '2r3k1/5p1p/6p1/4p3/8/8/2R1QPPP/6K1 w - - 0 1',
+        sideToMove: 'w',
+        arrows: [
+          { from: 'e2', to: 'c2' },
+          { from: 'c8', to: 'c2' },
+        ],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Your queen on e2 is the only defender of the rook on c2. The pawn on e5 is bait.',
+          },
+          { tone: 'blunder', uci: 'e2e5', text: 'Qxe5 grabs the pawn and pulls the queen off the second rank.' },
+          {
+            tone: 'punishment',
+            uci: 'c8c2',
+            text: 'Rxc2 wins a full rook. Check what a piece defends before using it to capture.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      puzzle({
+        id: 'lesson-overload-queen',
+        fen: '2r3k1/5p1p/6p1/8/6b1/8/2R1QPPP/6K1 w - - 0 1',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'e2',
+        prompt: 'The bishop attacks your queen, and she guards c2. Keep both safe.',
+        note: 'Qd2 or Qd3 saves the queen while still defending c2. f3 blocks the diagonal and attacks the bishop.',
+        solution: ['e2d2', 'e2d3', 'f2f3'],
+        coach: 'Save the queen without dropping the rook on c2.',
+        blunder: 'e2e3',
+        kind: 'hanging',
+      }),
+      puzzle({
+        id: 'lesson-overload-backrank',
+        fen: '4r1k1/5ppp/8/8/6b1/8/5PPP/3R2K1 w - - 0 1',
+        side: 'w',
+        theme: 'back_rank',
+        atRisk: 'd1',
+        prompt: 'The bishop attacks your rook, and it guards e1.',
+        note: 'Slide the rook along the first rank — Rf1, Rc1, or Rb1 saves the rook and still prevents Re1#.',
+        solution: ['d1f1', 'd1c1', 'd1b1'],
+        coach: 'Save the rook without leaving the back rank open to mate.',
+        blunder: 'd1d2',
+        kind: 'back_rank',
+      }),
+    ],
+  },
+  {
+    id: 'discovered',
+    title: 'Discovered threats',
+    summary: 'Moving a shield uncovers the slider hiding behind it.',
+    practice: 'pin',
+    cards: [
+      {
+        id: 'discovered-diag',
+        title: 'The sniper on the long diagonal',
+        fen: '6k1/5pbp/6p1/8/3N4/1P6/P4PPP/R5K1 w - - 0 1',
+        sideToMove: 'w',
+        arrows: [{ from: 'g7', to: 'a1' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Black’s bishop on g7 aims all the way to your rook on a1. Your knight on d4 is the only shield on that diagonal.',
+          },
+          { tone: 'blunder', uci: 'd4f3', text: 'Nf3 steps off the diagonal.' },
+          {
+            tone: 'punishment',
+            uci: 'g7a1',
+            text: 'Bxa1 takes the rook across the entire board. Scan behind any piece before you move it.',
+          },
+        ],
+      },
+      {
+        id: 'discovered-file',
+        title: 'Opening a file onto your queen',
+        fen: '4r1k1/1p3ppp/8/8/4B3/8/4QPPP/6K1 w - - 0 1',
+        sideToMove: 'w',
+        arrows: [{ from: 'e8', to: 'e2' }],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Black’s rook on e8 X-rays your queen on e2 through your bishop on e4. The b7 pawn looks tempting.',
+          },
+          { tone: 'blunder', uci: 'e4b7', text: 'Bxb7 steps off the e-file to grab a pawn.' },
+          {
+            tone: 'punishment',
+            uci: 'e8e2',
+            text: 'Rxe2 wins your queen. Never uncover a rook or queen lined up against a bigger piece.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      puzzle({
+        id: 'lesson-disc-diag',
+        fen: '6k1/5pbp/6p1/8/3N4/1P6/P1P2PPP/R5K1 w - - 0 1',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'd4',
+        prompt: 'The bishop attacks d4 and X-rays a1 behind it.',
+        note: 'c3 defends the knight and blocks the diagonal. Rd1 saves the rook and defends d4 at the same time.',
+        solution: ['c2c3', 'a1d1'],
+        coach: 'Moving the knight uncovers your rook on a1. Keep both safe.',
+        blunder: 'd4f3',
+        kind: 'hanging',
+      }),
+      puzzle({
+        id: 'lesson-disc-file',
+        fen: '4r1k1/5ppp/5n2/8/4B3/8/4QPPP/6K1 w - - 0 1',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'e4',
+        prompt: 'e4 is attacked twice, and your bishop shields your queen.',
+        note: 'f3 adds a second defender so the bishop can stay right on e4 blocking the e-file.',
+        solution: ['f2f3'],
+        coach: 'Do not move the bishop off the e-file. Add a defender to e4.',
+        blunder: 'e4f5',
+        kind: 'hanging',
+      }),
+    ],
+  },
+  {
+    id: 'quiet_trap',
+    title: 'Quiet blunders',
+    summary: 'Normal developing moves that cut off or abandon a defender.',
+    practice: 'all',
+    cards: [
+      {
+        id: 'quiet-interfere',
+        title: 'Blocking your own defender',
+        fen: 'rnb1kbnr/pp1p1ppp/1q2p3/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 1 5',
+        sideToMove: 'w',
+        arrows: [
+          { from: 'd1', to: 'd4' },
+          { from: 'b6', to: 'd4' },
+        ],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Black’s queen attacks your knight on d4, and your queen on d1 defends it along the d-file.',
+          },
+          { tone: 'blunder', uci: 'c1d2', text: 'Bd2 looks like natural development, but it steps between your queen and knight.' },
+          {
+            tone: 'punishment',
+            uci: 'b6d4',
+            text: 'Qxd4 wins a free knight. Check that a developing move does not block your own defense.',
+          },
+        ],
+      },
+      {
+        id: 'quiet-castle',
+        title: 'Castling off a loose piece',
+        fen: '4r1k1/ppp2ppp/2n5/8/8/5N2/PPP1BPPP/R3K2R w KQ - 0 12',
+        sideToMove: 'w',
+        arrows: [
+          { from: 'e1', to: 'e2' },
+          { from: 'e8', to: 'e2' },
+        ],
+        beats: [
+          {
+            tone: 'setup',
+            text: 'Castling feels automatically safe. Here your king on e1 is the only piece defending the bishop on e2.',
+          },
+          { tone: 'blunder', uci: 'e1g1', text: 'O-O moves the king away and leaves the bishop undefended.' },
+          {
+            tone: 'punishment',
+            uci: 'e8e2',
+            text: 'Rxe2 wins the bishop for free. Even castling deserves a one-second blunder check.',
+          },
+        ],
+      },
+    ],
+    tries: [
+      puzzle({
+        id: 'lesson-quiet-interfere',
+        fen: 'r1b1kbnr/pp1ppppp/1qn5/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 1 5',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'd4',
+        prompt: 'd4 is attacked twice. Do not block your own queen.',
+        note: 'Nb3 steps to safety, Nxc6 trades an attacker, and c3 adds a defender. Bd2 would cut off Qd1.',
+        solution: ['d4b3', 'd4c6', 'c2c3'],
+        coach: 'Save d4 without cutting off your queen’s line.',
+        blunder: 'c1d2',
+        kind: 'hanging',
+      }),
+      puzzle({
+        id: 'lesson-quiet-castle',
+        fen: '4r1k1/ppp2ppp/8/8/6b1/8/PPP1BPPP/R3K2R w KQ - 0 12',
+        side: 'w',
+        theme: 'hanging',
+        atRisk: 'e2',
+        prompt: 'Your bishop on e2 is under pressure. Do not blindly castle.',
+        note: 'f3 blocks the bishop diagonal and drives Bg4 back while your king stays defending e2.',
+        solution: ['f2f3'],
+        coach: 'Castling drops e2 right away. Block the second attacker instead.',
+        blunder: 'e1g1',
+        kind: 'hanging',
+      }),
+    ],
+  },
+];
+
+export const ALL_LESSONS: readonly Lesson[] = [...LESSONS, ...CLUB_LESSONS];
+
 export function parseLessonId(value: string | undefined): LessonId | null {
   if (!value) return null;
   switch (value) {
@@ -638,6 +968,10 @@ export function parseLessonId(value: string | undefined): LessonId | null {
     case 'pin':
     case 'back_rank':
     case 'mate':
+    case 'counting':
+    case 'overloaded':
+    case 'discovered':
+    case 'quiet_trap':
       return value;
     default:
       return null;
@@ -645,7 +979,7 @@ export function parseLessonId(value: string | undefined): LessonId | null {
 }
 
 export function lessonById(id: LessonId): Lesson {
-  const lesson = LESSONS.find((item) => item.id === id);
+  const lesson = ALL_LESSONS.find((item) => item.id === id);
   if (!lesson) throw new Error(`missing lesson ${id}`);
   return lesson;
 }

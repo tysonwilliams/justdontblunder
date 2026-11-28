@@ -36,6 +36,14 @@ export function doneCopy(id: LessonId): string {
       return 'A king behind its own pawns needs a square, or a piece covering the first rank.';
     case 'mate':
       return 'Look for every check they have. Stop mate in one before you do anything else.';
+    case 'counting':
+      return 'Count attackers versus defenders, and remember that a cheaper piece attacking a pricier one still wins material.';
+    case 'overloaded':
+      return 'Before moving a defender to grab material or retreat, check every job it is currently doing.';
+    case 'discovered':
+      return 'Always scan the diagonals, files, and ranks behind a piece before you step it out of the way.';
+    case 'quiet_trap':
+      return 'Even normal developing moves and castling can cut off or abandon a key defender. Do one quick scan first.';
     default: {
       const _exhaustive: never = id;
       return _exhaustive;
@@ -50,7 +58,23 @@ export const LESSON_INDEX: Record<LessonId, number> = {
   pin: 4,
   back_rank: 5,
   mate: 6,
+  counting: 1,
+  overloaded: 2,
+  discovered: 3,
+  quiet_trap: 4,
 };
+
+export function lessonTrack(id: LessonId): { label: string; total: number } {
+  switch (id) {
+    case 'counting':
+    case 'overloaded':
+    case 'discovered':
+    case 'quiet_trap':
+      return { label: 'Club', total: 4 };
+    default:
+      return { label: 'Lesson', total: 6 };
+  }
+}
 
 export function squaresForBeat(beat: ResolvedBeat): { squares: Square[]; tone: 'danger' | 'success' } {
   if (!beat.lastMove) return { squares: [], tone: 'danger' };
