@@ -30,7 +30,7 @@ export function Welcome() {
   const skipWelcome = useProgressStore((state) => state.skipWelcome);
 
   const visible = shouldOfferWelcome({ hydrated, experience, welcomeSkipped }) && claimOnboarding('welcome');
-  useKeyboardShortcuts({ Escape: skipWelcome }, visible);
+  useKeyboardShortcuts({ Escape: skipWelcome }, visible, { modal: true });
 
   if (!visible) return null;
 

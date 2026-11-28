@@ -68,15 +68,43 @@ export function sameScan(cursor: ScanCursor | null, site: GameSite, username: st
   return cursor.site === site && cursor.username.toLowerCase() === username.toLowerCase();
 }
 
-/** Chess.com months still worth a request. The newest month is rechecked once a scan has settled. */
+function archiveMonthKey(url: string): number | null {
+  const match = url.match(/\/(\d{4})\/(\d{2})\/?$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return null;
+  return year * 100 + month;
+}
+
+function monthKeyFromMs(ms: number): number | null {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const d = new Date(ms);
+  return d.getUTCFullYear() * 100 + (d.getUTCMonth() + 1);
+}
+
+/**
+ * Chess.com months still worth a request. Once backfill has settled, recheck the newest month
+ * plus any archive down to the month of `cursor.newestMs` so end-of-month games aren't lost on rollover.
+ */
 export function monthsToRead(archivesNewestFirst: readonly string[], cursor: ScanCursor): string[] {
   const done = new Set(cursor.doneArchives);
   const newest = archivesNewestFirst[0];
+  const cutoffMonth = cursor.backfillDone ? monthKeyFromMs(cursor.newestMs) : null;
   const urls: string[] = [];
   for (const url of archivesNewestFirst) {
-    const recheckNewest = cursor.backfillDone && url === newest;
-    if (done.has(url) && !recheckNewest) continue;
-    if (cursor.backfillDone && url !== newest) continue;
+    if (cursor.backfillDone) {
+      if (url === newest) {
+        urls.push(url);
+        continue;
+      }
+      const key = archiveMonthKey(url);
+      if (cutoffMonth != null && key != null && (key === cutoffMonth || (!done.has(url) && key > cutoffMonth))) {
+        urls.push(url);
+      }
+      continue;
+    }
+    if (done.has(url)) continue;
     urls.push(url);
   }
   return urls;

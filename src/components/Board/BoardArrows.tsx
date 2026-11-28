@@ -31,9 +31,9 @@ export const BoardArrows = memo(function BoardArrows({ arrows, orientation, squa
   return (
     <>
       <Svg pointerEvents="none" width={inner} height={inner} style={styles.arrows} viewBox={`0 0 ${inner} ${inner}`}>
-        {arrows.map((arrow) => (
+        {arrows.map((arrow, index) => (
           <ArrowShape
-            key={`${arrow.from}${arrow.to}${arrow.label ?? ''}`}
+            key={`${index}-${arrow.from}${arrow.to}${arrow.label ?? ''}`}
             from={centerOf(arrow.from, orientation, squareSize)}
             to={centerOf(arrow.to, orientation, squareSize)}
             color={arrow.color ?? fallback}

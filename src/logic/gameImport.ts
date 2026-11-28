@@ -55,6 +55,7 @@ export type ChessComGame = {
   url?: string;
   uuid?: string;
   pgn?: string;
+  rules?: string;
   time_class?: string;
   end_time?: number;
   white?: { username?: string };
@@ -182,6 +183,7 @@ export function lichessGameId(game: LichessGame): string {
 export function recordsFromChessCom(username: string, games: readonly ChessComGame[]): GameRecord[] {
   const records: GameRecord[] = [];
   for (const game of games) {
+    if (game.rules && game.rules !== 'chess') continue;
     const speed = game.time_class ?? '';
     if (!CHESS_COM_SPEEDS.has(speed)) continue;
     if (!game.pgn) continue;
@@ -606,14 +608,19 @@ async function lichessPage(
   if (!res.ok) throw new ImportError('Lichess did not return games. Paste a PGN from one game.');
   const text = await res.text();
   const games: LichessGame[] = [];
+  let sawNonEmpty = false;
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
+    sawNonEmpty = true;
     try {
       games.push(JSON.parse(trimmed) as LichessGame);
     } catch {
       continue;
     }
+  }
+  if (sawNonEmpty && games.length === 0) {
+    throw new ImportError('Lichess returned an unexpected format. Try again or paste a PGN.');
   }
   return games;
 }

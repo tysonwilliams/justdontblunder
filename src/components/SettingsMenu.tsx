@@ -14,9 +14,13 @@ import { useMenuStore } from '@/src/components/ui/menuState';
 import { SettingSwitch } from '@/src/components/ui/SettingSwitch';
 import { Sheet } from '@/src/components/ui/Sheet';
 import { text } from '@/src/components/ui/text';
+import { signOutBeforeDeviceErase } from '@/src/auth/deviceSession';
 import { signOutCurrentAccount, useAccountStore } from '@/src/auth/session';
+import { authFrom } from '@/src/auth/supabaseAuth';
+import { getSupabase } from '@/src/data/supabase';
 import { playFeedback } from '@/src/feedback/playFeedback';
 import { clearOnboardingClaim } from '@/src/logic/onboardingPrompt';
+import { eraseDeviceData } from '@/src/store/eraseDeviceData';
 import { useFeedbackSettings } from '@/src/store/feedbackSettings';
 import { useProgressStore, type Experience } from '@/src/store/progress';
 import { useThemePreference } from '@/src/store/themePreference';
@@ -86,7 +90,6 @@ export function SettingsMenu() {
   const setHaptics = useFeedbackSettings((state) => state.setHaptics);
   const experience = useProgressStore((state) => state.experience);
   const setExperience = useProgressStore((state) => state.setExperience);
-  const resetProgress = useProgressStore((state) => state.resetProgress);
   const phase = useAccountStore((state) => state.phase);
   const configured = useAccountStore((state) => state.configured);
   const accountLabel = useAccountStore((state) => state.user?.label ?? null);
@@ -289,8 +292,17 @@ export function SettingsMenu() {
           label="Reset"
           variant="danger"
           onPress={() => {
-            resetProgress();
-            setConfirmReset(false);
+            void (async () => {
+              const client = getSupabase();
+              const ready = await signOutBeforeDeviceErase(client ? authFrom(client) : null);
+              if (ready === 'failed') {
+                setAccountStatus(SIGN_OUT_FAILED);
+                setConfirmReset(false);
+                return;
+              }
+              await eraseDeviceData();
+              setConfirmReset(false);
+            })();
           }}
         />
         <Button label="Cancel" variant="ghost" onPress={() => setConfirmReset(false)} />

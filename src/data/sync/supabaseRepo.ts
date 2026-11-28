@@ -69,14 +69,16 @@ export function createSupabaseProgressRepo(
 }
 
 async function readRemote(client: SyncClient, userId: string): Promise<RemoteRead> {
-  const profiles = await selectEq<ProfileRow>(client, 'profiles', PROFILE, 'id', userId);
+  const [profiles, linkedAccounts, scannedGames, userDrills, reviewEntries, attempts, streaks] = await Promise.all([
+    selectEq<ProfileRow>(client, 'profiles', PROFILE, 'id', userId),
+    selectEq<LinkedAccountRow>(client, 'linked_accounts', LINKED, 'user_id', userId),
+    selectEq<ScannedGameRow>(client, 'scanned_games', SCANNED, 'user_id', userId),
+    selectEq<UserDrillRow>(client, 'user_drills', USER_DRILL, 'user_id', userId),
+    selectEq<ReviewRow>(client, 'review_entries', REVIEW, 'user_id', userId),
+    selectEq<AttemptRow>(client, 'attempts', ATTEMPT, 'user_id', userId),
+    selectEq<StreakRow>(client, 'daily_streaks', STREAK, 'user_id', userId),
+  ]);
   const profile = profiles[0] ?? null;
-  const linkedAccounts = await selectEq<LinkedAccountRow>(client, 'linked_accounts', LINKED, 'user_id', userId);
-  const scannedGames = await selectEq<ScannedGameRow>(client, 'scanned_games', SCANNED, 'user_id', userId);
-  const userDrills = await selectEq<UserDrillRow>(client, 'user_drills', USER_DRILL, 'user_id', userId);
-  const reviewEntries = await selectEq<ReviewRow>(client, 'review_entries', REVIEW, 'user_id', userId);
-  const attempts = await selectEq<AttemptRow>(client, 'attempts', ATTEMPT, 'user_id', userId);
-  const streaks = await selectEq<StreakRow>(client, 'daily_streaks', STREAK, 'user_id', userId);
   const positionIds = unique([
     ...userDrills.map((row) => row.position_id),
     ...reviewEntries.map((row) => row.position_id),
@@ -87,8 +89,10 @@ async function readRemote(client: SyncClient, userId: string): Promise<RemoteRea
     ...reviewEntries.map((row) => row.puzzle_id),
     ...attempts.map((row) => row.puzzle_id),
   ]);
-  const positions = await selectIn<PositionRow>(client, 'positions', POSITION, 'id', positionIds);
-  const puzzles = await selectIn<PuzzleRow>(client, 'puzzles', PUZZLE, 'id', puzzleIds);
+  const [positions, puzzles] = await Promise.all([
+    selectIn<PositionRow>(client, 'positions', POSITION, 'id', positionIds),
+    selectIn<PuzzleRow>(client, 'puzzles', PUZZLE, 'id', puzzleIds),
+  ]);
   return {
     profile,
     linkedAccounts,
@@ -204,6 +208,27 @@ async function writeRemote(client: SyncClient, userId: string, rows: RemoteRows)
   await writeAttempts(client, userId, rows, positionId, knownPuzzles);
 }
 
+function reviewMatches(existing: ReviewRow, payload: {
+  user_drill_id: number | null;
+  saves: number;
+  miss_history: readonly string[];
+  due_on: string | null;
+  interval_days: number;
+  pile_index: number;
+}): boolean {
+  if ((existing.user_drill_id ?? null) !== payload.user_drill_id) return false;
+  if (existing.saves !== payload.saves) return false;
+  if ((existing.due_on ?? null) !== payload.due_on) return false;
+  if (existing.interval_days !== payload.interval_days) return false;
+  if (existing.pile_index !== payload.pile_index) return false;
+  const prev = Array.isArray(existing.miss_history) ? existing.miss_history : [];
+  if (prev.length !== payload.miss_history.length) return false;
+  for (let i = 0; i < prev.length; i += 1) {
+    if (prev[i] !== payload.miss_history[i]) return false;
+  }
+  return true;
+}
+
 async function writeReviews(
   client: SyncClient,
   userId: string,
@@ -216,6 +241,8 @@ async function writeReviews(
   const byPuzzle = new Map(existing.filter((row) => row.puzzle_id).map((row) => [row.puzzle_id, row]));
   const byPosition = new Map(existing.filter((row) => row.position_id != null).map((row) => [row.position_id, row]));
   const keep = new Set<number>();
+  const toUpdate: { id: number; payload: Record<string, unknown> }[] = [];
+  const toInsert: Record<string, unknown>[] = [];
   for (const row of rows.reviewEntries) {
     const position_id = row.fen_key ? (positionId.get(row.fen_key) ?? null) : null;
     if (row.puzzle_id && !knownPuzzles.has(row.puzzle_id)) {
@@ -240,10 +267,24 @@ async function writeReviews(
     const matchId = match ? num(match.id) : null;
     if (match && matchId != null) {
       keep.add(matchId);
-      await run(client.from('review_entries').update(payload).eq('id', matchId).eq('user_id', userId));
+      if (!reviewMatches(match, payload)) {
+        toUpdate.push({ id: matchId, payload });
+      }
     } else {
-      const inserted = await rowsOf(client.from('review_entries').insert(payload).select('id'));
-      const id = num(inserted[0]?.id);
+      toInsert.push(payload);
+    }
+  }
+  for (const group of chunks(toUpdate, 10)) {
+    await Promise.all(
+      group.map((item) =>
+        run(client.from('review_entries').update(item.payload).eq('id', item.id).eq('user_id', userId)),
+      ),
+    );
+  }
+  for (const group of chunks(toInsert, 100)) {
+    const inserted = await rowsOf(client.from('review_entries').insert(group).select('id'));
+    for (const row of inserted) {
+      const id = num(row.id);
       if (id != null) keep.add(id);
     }
   }

@@ -28,7 +28,7 @@ export function Sheet({ visible, onClose, title, subtitle, variant = 'sheet', te
   const [dragY, setDragY] = useState(0);
   const dragStartY = useRef<number | null>(null);
   const dragLastY = useRef(0);
-  useKeyboardShortcuts({ Escape: onClose }, visible);
+  useKeyboardShortcuts({ Escape: onClose }, visible, { modal: true });
 
   const onDragGrant = (event: GestureResponderEvent) => {
     dragStartY.current = event.nativeEvent.pageY;

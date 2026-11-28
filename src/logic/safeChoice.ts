@@ -61,51 +61,55 @@ function toChoice(move: Move): ChoiceMove {
   };
 }
 
-/** Passes the drill judge: no mate in 1 and no material loss. A two-move trap still passes. */
-function isReallySafe(drill: DrillPosition, from: Square, to: Square): boolean {
-  if (!isCorrectDrillMove(drill, from, to)) return false;
-  const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
-  return outcome !== null && outcome >= 0;
-}
-
-/** Fails the drill judge by hanging material or allowing mate in 1. */
-function isRealBlunder(drill: DrillPosition, from: Square, to: Square): boolean {
-  if (isCorrectDrillMove(drill, from, to)) return false;
-  const outcome = moveOutcome(drill.fen, from, to, drill.sideToMove);
-  return outcome !== null && outcome < 0;
-}
-
-function pickSafe(drill: DrillPosition, moves: Move[]): Move | null {
-  const preferred = [...drill.solution, ...(drill.acceptable ?? [])];
-  for (const uci of preferred) {
-    const move = findUci(moves, uci);
-    if (move && isReallySafe(drill, move.from, move.to) && !drillTrap(drill, move.from, move.to)) return move;
-  }
-  const clean = moves.find((move) => isReallySafe(drill, move.from, move.to) && !drillTrap(drill, move.from, move.to));
-  if (clean) return clean;
-  return moves.find((move) => isReallySafe(drill, move.from, move.to)) ?? null;
-}
-
-function pickBlunder(drill: DrillPosition, moves: Move[]): Move | null {
-  const fromRisk = moves.find(
-    (move) => move.from === drill.atRiskSquare && isRealBlunder(drill, move.from, move.to),
-  );
-  if (fromRisk) return fromRisk;
-  return moves.find((move) => isRealBlunder(drill, move.from, move.to)) ?? null;
-}
-
 /**
  * Two candidates for "pick the safe move".
  * Returns null when the position cannot show one passing move and one real blunder.
  */
 export function safeChoiceFor(drill: DrillPosition): SafeChoice | null {
   const moves = legalMoves(drill.fen);
-  const safe = pickSafe(drill, moves);
-  const blunder = pickBlunder(drill, moves);
+  const outcomes = new Map<string, number | null>();
+  const outcomeOf = (move: Move): number | null => {
+    const key = `${move.from}${move.to}`;
+    if (outcomes.has(key)) return outcomes.get(key) ?? null;
+    const score = moveOutcome(drill.fen, move.from, move.to, drill.sideToMove);
+    outcomes.set(key, score);
+    return score;
+  };
+  const safeCheck = (move: Move): boolean => {
+    const score = outcomeOf(move);
+    if (score === null || score < 0) return false;
+    return isCorrectDrillMove(drill, move.from, move.to);
+  };
+  const blunderCheck = (move: Move): boolean => {
+    const score = outcomeOf(move);
+    if (score === null || score >= 0) return false;
+    return !isCorrectDrillMove(drill, move.from, move.to);
+  };
+
+  let safe: Move | null = null;
+  const preferred = [...drill.solution, ...(drill.acceptable ?? [])];
+  for (const uci of preferred) {
+    const move = findUci(moves, uci);
+    if (move && !drillTrap(drill, move.from, move.to) && safeCheck(move)) {
+      safe = move;
+      break;
+    }
+  }
+  if (!safe) {
+    safe = moves.find((move) => !drillTrap(drill, move.from, move.to) && safeCheck(move)) ?? null;
+  }
+  if (!safe) {
+    safe = moves.find((move) => safeCheck(move)) ?? null;
+  }
+
+  let blunder: Move | null =
+    moves.find((move) => move.from === drill.atRiskSquare && blunderCheck(move)) ?? null;
+  if (!blunder) {
+    blunder = moves.find((move) => blunderCheck(move)) ?? null;
+  }
+
   if (!safe || !blunder) return null;
   if (`${safe.from}${safe.to}` === `${blunder.from}${blunder.to}`) return null;
-  if (!isReallySafe(drill, safe.from, safe.to)) return null;
-  if (!isRealBlunder(drill, blunder.from, blunder.to)) return null;
   return {
     drillId: drill.id,
     safe: toChoice(safe),

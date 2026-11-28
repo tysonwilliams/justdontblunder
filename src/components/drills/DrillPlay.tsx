@@ -45,36 +45,48 @@ export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) 
         if (session.round === 'correct' || session.round === 'revealed') {
           if (session.runOver) session.showRunSummary();
           else session.next();
-        } else if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
+          return true;
+        }
+        if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
           if (session.shownIdea) session.showRunSummary();
           else session.tryAgain();
+          return true;
         }
+        return false;
       },
       ' ': () => {
         if (session.round === 'correct' || session.round === 'revealed') {
           if (session.runOver) session.showRunSummary();
           else session.next();
-        } else if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
+          return true;
+        }
+        if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
           if (session.shownIdea) session.showRunSummary();
           else session.tryAgain();
+          return true;
         }
+        return false;
       },
       h: () => {
-        if (session.round === 'playing') {
-          if (session.unprompted && !session.streak) session.stepHint();
-          else session.revealIdea();
-        }
+        if (session.round !== 'playing') return false;
+        if (session.unprompted && !session.streak) session.stepHint();
+        else session.revealIdea();
+        return true;
       },
       r: () => {
         if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
           if (session.shownIdea) session.showRunSummary();
           else session.tryAgain();
+          return true;
         }
+        return false;
       },
       p: () => {
         if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady && session.hasReplay) {
           session.replayReply();
+          return true;
         }
+        return false;
       },
     },
     Boolean(drill),

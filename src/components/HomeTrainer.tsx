@@ -37,21 +37,41 @@ export function HomeTrainer() {
   useKeyboardShortcuts(
     {
       Enter: () => {
-        if (trainer.round === 'correct' || trainer.round === 'revealed') trainer.next();
-        else if (trainer.round === 'retry' && trainer.replyReady) trainer.tryAgain();
+        if (trainer.round === 'correct' || trainer.round === 'revealed') {
+          trainer.next();
+          return true;
+        }
+        if (trainer.round === 'retry' && trainer.replyReady) {
+          trainer.tryAgain();
+          return true;
+        }
+        return false;
       },
       ' ': () => {
-        if (trainer.round === 'correct' || trainer.round === 'revealed') trainer.next();
-        else if (trainer.round === 'retry' && trainer.replyReady) trainer.tryAgain();
+        if (trainer.round === 'correct' || trainer.round === 'revealed') {
+          trainer.next();
+          return true;
+        }
+        if (trainer.round === 'retry' && trainer.replyReady) {
+          trainer.tryAgain();
+          return true;
+        }
+        return false;
       },
       h: () => {
-        if (trainer.round === 'playing') trainer.revealIdea();
+        if (trainer.round !== 'playing') return false;
+        trainer.revealIdea();
+        return true;
       },
       r: () => {
-        if (trainer.round === 'retry' && trainer.replyReady) trainer.tryAgain();
+        if (trainer.round !== 'retry' || !trainer.replyReady) return false;
+        trainer.tryAgain();
+        return true;
       },
       p: () => {
-        if (trainer.round === 'retry' && trainer.replyReady && trainer.hasReplay) trainer.replayReply();
+        if (trainer.round !== 'retry' || !trainer.replyReady || !trainer.hasReplay) return false;
+        trainer.replayReply();
+        return true;
       },
     },
     !trainer.done && Boolean(drill),

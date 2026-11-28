@@ -6,6 +6,7 @@ import { getAllDrills, isCorrectDrillMove } from '@/src/logic/drills';
 import { missFeedback } from '@/src/logic/saveFeedback';
 import {
   hangingGain,
+  listHangingPieces,
   materialIsReachable,
   moveOutcome,
   opponentThreatensMateInOne,
@@ -90,5 +91,18 @@ describe('practice hanging scan', () => {
     const hanging = findHangingPieces(game.fen(), 'w');
     expect(hanging[0]?.message).toMatch(/queen/);
     expect(hangingGain(game.fen(), 'g4', 'w')).toBeGreaterThan(5);
+  });
+
+  it('catches en passant pawn blunders and allows forced checkmate recaptures', () => {
+    // e2-e4 hangs the pawn to dxe3 e.p.
+    const epFen = '4k3/8/8/8/3p4/8/4P3/4K3 w - - 0 1';
+    expect(moveOutcome(epFen, 'e2', 'e4', 'w')).toBe(-1);
+    const afterEp = new Chess(epFen);
+    afterEp.move({ from: 'e2', to: 'e4' });
+    expect(listHangingPieces(afterEp.fen(), 'w').map((p) => p.square)).toContain('e4');
+
+    // Qd8+! Rxd8 Rxd8# is a forced back-rank checkmate recapture, never a blunder.
+    const mateSacFen = 'r5k1/5ppp/8/8/8/8/3Q4/3R2K1 w - - 0 1';
+    expect(moveOutcome(mateSacFen, 'd2', 'd8', 'w')).toBeGreaterThanOrEqual(0);
   });
 });

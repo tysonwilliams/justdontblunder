@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { View, type LayoutChangeEvent } from 'react-native';
+import { ScrollView, View, type LayoutChangeEvent } from 'react-native';
 
 import { withBoardSize } from '@/src/components/Board/boardGeometry';
 import { phoneSlots } from '@/src/components/ui/phoneSlots';
@@ -86,12 +86,16 @@ export function BoardStage({ board, aside, intro, footer }: Props) {
   }
 
   return (
-    <View style={[styles.stack, { gap: metrics.gap }]} onLayout={onBox}>
+    <ScrollView
+      style={styles.stackScroll}
+      contentContainerStyle={[styles.stack, { gap: metrics.gap }]}
+      showsVerticalScrollIndicator={false}
+      onLayout={onBox}>
       {intro ? <View style={styles.full}>{intro}</View> : null}
       <View style={[styles.board, { width: boardWidth }]}>{withBoardSize(board, boardWidth)}</View>
       {aside ? <View style={styles.full}>{aside}</View> : null}
       {footer ? <View style={styles.full}>{footer}</View> : null}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -124,11 +128,15 @@ const styles = themedStyleSheet((colors) => ({
     alignItems: 'flex-start',
     maxWidth: '100%',
   },
-  stack: {
+  stackScroll: {
     flex: 1,
     width: '100%',
     minHeight: 0,
+  },
+  stack: {
+    width: '100%',
     alignItems: 'center',
+    paddingBottom: spacing.lg,
   },
   full: {
     width: '100%',
