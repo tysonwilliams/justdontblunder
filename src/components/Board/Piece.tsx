@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
@@ -13,7 +14,7 @@ type Props = {
 };
 
 /** Classic digital chess pieces (Cburnett / Lichess standard set). */
-export function Piece({ code, size }: Props) {
+export const Piece = memo(function Piece({ code, size }: Props) {
   const pad = size * 0.03;
   const draw = size - pad * 2;
 
@@ -22,7 +23,7 @@ export function Piece({ code, size }: Props) {
       <SvgXml xml={PIECE_SVG[code]} width={draw} height={draw} />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap: {

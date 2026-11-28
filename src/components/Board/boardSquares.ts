@@ -1,7 +1,7 @@
 import type { Chess, Square } from 'chess.js';
 
 import { squareAt } from '@/src/components/Board/boardCoords';
-import { squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
+import { legalMoveInk, squareBackground, type HighlightTone } from '@/src/components/Board/highlight';
 import { pieceCodeFrom, type PieceCode } from '@/src/components/Board/pieceCode';
 import { squareLabel } from '@/src/components/Board/squareLabel';
 import { pieceAt } from '@/src/logic/game';
@@ -11,6 +11,8 @@ export type BoardSquareModel = {
   square: Square;
   squareSize: number;
   backgroundColor: string;
+  legalInk: string;
+  selectionColor: string;
   pieceCode: PieceCode | null;
   isLegal: boolean;
   isDark: boolean;
@@ -41,6 +43,9 @@ export function buildBoardRows(input: {
   const highlights = new Set(input.highlightSquares);
   const attention = new Set(input.attentionSquares);
   const hidden = new Set(input.hiddenSquares ?? []);
+  const lightInk = legalMoveInk(false, palette);
+  const darkInk = legalMoveInk(true, palette);
+  const selectionColor = palette.boardCoordOnLight;
   const rows: BoardSquareModel[][] = [];
 
   for (let rankIndex = 0; rankIndex < 8; rankIndex += 1) {
@@ -69,6 +74,8 @@ export function buildBoardRows(input: {
           },
           palette,
         ),
+        legalInk: isDark ? darkInk : lightInk,
+        selectionColor,
         pieceCode: piece ? pieceCodeFrom(piece.color, piece.type) : null,
         isLegal: legal.has(square),
         isDark,
@@ -92,6 +99,8 @@ export function squareVisualKey(model: BoardSquareModel): string {
   return [
     model.squareSize,
     model.backgroundColor,
+    model.legalInk,
+    model.selectionColor,
     model.pieceCode ?? '',
     model.isLegal ? '1' : '0',
     model.isDark ? '1' : '0',

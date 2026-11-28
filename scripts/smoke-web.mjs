@@ -61,6 +61,7 @@ const files = [
   ['/robots.txt', 'text/plain', 'Sitemap: https://justdontblunder.com/sitemap.xml'],
   ['/sitemap.xml', 'xml', 'https://justdontblunder.com/drills'],
   ['/manifest.webmanifest', 'manifest', '"name": "Just Don\'t Blunder"'],
+  ['/sw.js', 'javascript', 'CACHE_NAME'],
   ['/og.png', 'image/png', null],
   ['/apple-touch-icon.png', 'image/png', null],
   ['/favicon.png', 'image/png', null],

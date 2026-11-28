@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
 
-import { authFrom } from '@/src/auth/supabaseAuth';
 import { deleteMyAccount } from '@/src/data/sync/account';
-import { getSupabase } from '@/src/data/supabase';
+import { loadSupabase, loadSupabaseAuth } from '@/src/data/supabaseLazy';
 import { eraseDeviceData } from '@/src/store/eraseDeviceData';
 
 export type AccountDeletionResult =
@@ -42,9 +41,8 @@ export async function deleteSignedInAccount(deps: {
 }
 
 export async function requestAccountDeletion(): Promise<AccountDeletionResult> {
-  const client = safeClient();
-  if (!client) return { status: 'guest' };
-  const api = authFrom(client);
+  const [client, api] = await Promise.all([loadSupabase(), loadSupabaseAuth()]);
+  if (!client || !api) return { status: 'guest' };
   return deleteSignedInAccount({
     getUserId: async () => (await api.getSession()).userId,
     deleteAccount: () => deleteMyAccount(client),
@@ -58,12 +56,4 @@ export async function requestAccountDeletion(): Promise<AccountDeletionResult> {
 
 export function useRequestAccountDeletion(): () => Promise<AccountDeletionResult> {
   return useCallback(() => requestAccountDeletion(), []);
-}
-
-function safeClient(): ReturnType<typeof getSupabase> {
-  try {
-    return getSupabase();
-  } catch {
-    return null;
-  }
 }

@@ -20,7 +20,7 @@ import { centerOf, squareOrigin } from '@/src/components/Board/boardCoords';
 import { boardStatusLine } from '@/src/components/Board/coordinates';
 import { MoveBadge, type MoveBadgeKind } from '@/src/components/Board/MoveBadge';
 import { chessBoardPropsEqual } from '@/src/components/Board/boardProps';
-import { buildBoardRows } from '@/src/components/Board/boardSquares';
+import { buildBoardRows, type BoardSquareModel } from '@/src/components/Board/boardSquares';
 import type { BoardArrow, BoardMoveEvent, ChessBoardProps } from '@/src/components/Board/boardTypes';
 import {
   DRAG_SCALE,
@@ -128,7 +128,7 @@ function ChessBoardView({
   const activeFen = fen ?? gameFen;
   const [trackedFen, setTrackedFen] = useState(activeFen);
   const game = useMemo(() => createGame(activeFen), [activeFen]);
-  const snap = snapshot(game);
+  const snap = useMemo(() => snapshot(game), [game]);
   const outer = size && size > 0 ? Math.round(size) : measured;
   const squareSize = squareSizeForFrame(outer);
 
@@ -779,11 +779,17 @@ function ChessBoardView({
     hiddenSquares.join(','),
     squareSize,
     scheme,
+    colors.boardLight,
     colors.boardDark,
+    colors.boardCoordOnLight,
   ].join('|');
-  const rows = useMemo(
-    () =>
-      buildBoardRows({
+  // rowKey digests every visual input. A new array with the same squares
+  // must not rebuild the grid.
+  const rowsCache = useRef<{ key: string; value: BoardSquareModel[][] } | null>(null);
+  if (rowsCache.current?.key !== rowKey) {
+    rowsCache.current = {
+      key: rowKey,
+      value: buildBoardRows({
         game,
         orientation,
         selected,
@@ -798,16 +804,22 @@ function ChessBoardView({
         squareSize,
         palette: colors,
       }),
-    // rowKey digests every visual input. A new array with the same squares
-    // must not rebuild the grid.
-    [rowKey],
-  );
+    };
+  }
+  const rows = rowsCache.current.value;
 
   const mergedArrows = userArrows.length ? [...arrows, ...userArrows] : arrows;
   const arrowKey = mergedArrows
     .map((arrow) => `${arrow.from}${arrow.to}${arrow.color ?? ''}${arrow.label ?? ''}`)
     .join('|');
-  const arrowDraw = useMemo(() => (mergedArrows.length ? mergedArrows : EMPTY_ARROWS), [arrowKey]);
+  const arrowCache = useRef<{ key: string; value: readonly BoardArrow[] } | null>(null);
+  if (arrowCache.current?.key !== arrowKey) {
+    arrowCache.current = {
+      key: arrowKey,
+      value: mergedArrows.length ? mergedArrows : EMPTY_ARROWS,
+    };
+  }
+  const arrowDraw = arrowCache.current.value;
 
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
   const dropOrigin =

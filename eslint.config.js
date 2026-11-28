@@ -19,13 +19,6 @@ module.exports = defineConfig([
     },
   },
   {
-    files: ['src/components/progress/GameImport.tsx'],
-    rules: {
-      // `usePgn` is a button handler, not a hook. The name trips the rule.
-      'react-hooks/rules-of-hooks': 'off',
-    },
-  },
-  {
     files: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       // Vitest mocks have to sit above the imports they replace.

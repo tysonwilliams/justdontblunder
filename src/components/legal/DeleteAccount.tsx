@@ -7,8 +7,7 @@ import { Dialog } from '@/src/components/ui/Dialog';
 import { liveA11y } from '@/src/components/ui/a11y';
 import { text } from '@/src/components/ui/text';
 import { signOutBeforeDeviceErase } from '@/src/auth/deviceSession';
-import { authFrom } from '@/src/auth/supabaseAuth';
-import { getSupabase } from '@/src/data/supabase';
+import { loadSupabaseAuth } from '@/src/data/supabaseLazy';
 import { useRequestAccountDeletion, type AccountDeletionResult } from '@/src/legal/requestAccountDeletion';
 import { eraseDeviceData } from '@/src/store/eraseDeviceData';
 import { useAccountStore } from '@/src/auth/session';
@@ -40,8 +39,8 @@ export function DeleteAccount() {
     if (working) return;
     setWorking(true);
     try {
-      const client = getSupabase();
-      const ready = await signOutBeforeDeviceErase(client ? authFrom(client) : null);
+      const api = await loadSupabaseAuth();
+      const ready = await signOutBeforeDeviceErase(api);
       if (ready === 'failed') {
         setDeviceStatus(ERASE_FAILED);
         setConfirm(null);

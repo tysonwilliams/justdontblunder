@@ -356,4 +356,44 @@ describe('progress migration', () => {
     expect(saved).not.toHaveProperty('scanPromptDismissed');
     expect(JSON.stringify(saved)).not.toContain('markDrillResult');
   });
+
+  it('persists Daily 7 completion and keeps dailyHistory capped to the latest 14 days', async () => {
+    const today = localDateKey();
+    useProgressStore.getState().markDrillResult(true, 'hanging');
+    useProgressStore.getState().markDrillResult(false, 'fork');
+    useProgressStore.getState().markDailyComplete([true, false, true, true, true, true, true]);
+    await flushCoalescedPersistForTests();
+
+    const state = useProgressStore.getState();
+    expect(state.dailyCompletedDate).toBe(today);
+    expect(state.dailyOutcomes).toEqual([true, false, true, true, true, true, true]);
+    expect(state.dailyHistory[today]).toEqual({ done: 2, correct: 1 });
+
+    const manyDays: Record<string, { done: number; correct: number }> = {};
+    for (let day = 1; day <= 20; day += 1) {
+      const key = `2026-10-${String(day).padStart(2, '0')}`;
+      manyDays[key] = { done: 3, correct: 2 };
+    }
+    const migrated = migrateProgress({ training: { dailyHistory: manyDays } }, PROGRESS_VERSION);
+    const history = migrated.training.dailyHistory ?? {};
+    expect(Object.keys(history)).toHaveLength(14);
+    expect(history['2026-10-01']).toBeUndefined();
+    expect(history['2026-10-20']).toEqual({ done: 3, correct: 2 });
+  });
+
+  it('deduplicates embedded ownDrills inside persisted review entries and rehydrates them on load', () => {
+    const drill = drillFromHang(HANGING_QUEEN);
+    expect(drill).toBeTruthy();
+    if (!drill) return;
+    useProgressStore.setState({
+      ownDrills: [drill],
+      review: [{ id: drill.id, saves: 1, intervalDays: 1, dueOn: localDateKey(), drill }],
+    });
+    const saved = partializeProgress(useProgressStore.getState());
+    expect(saved.review.review[0]?.drill).toBeUndefined();
+    expect(saved.library.ownDrills[0]?.id).toBe(drill.id);
+
+    const restored = migrateProgress(saved, PROGRESS_VERSION);
+    expect(restored.review.review[0]?.drill?.fen).toBe(drill.fen);
+  });
 });

@@ -11,8 +11,7 @@ import { text } from '@/src/components/ui/text';
 import { openPasswordUpdate, parseAuthQuery, shareAuthAttempt } from '@/src/auth/callback';
 import { changePassword } from '@/src/auth/password';
 import { browserAuthSearch, clearAuthSearch } from '@/src/auth/redirect';
-import { authFrom } from '@/src/auth/supabaseAuth';
-import { getSupabase } from '@/src/data/supabase';
+import { loadSupabaseAuth } from '@/src/data/supabaseLazy';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
 import { spacing } from '@/src/theme';
@@ -31,36 +30,39 @@ export function UpdatePasswordScreen() {
   const { busy, run } = useBusyAction();
 
   useEffect(() => {
-    const client = getSupabase();
-    if (!client) {
-      setPhase('missing');
-      setNotice('Sign-in is not available in this build.');
-      return;
-    }
     const search = browserAuthSearch();
-    const api = authFrom(client);
     let live = true;
-    void shareAuthAttempt(`password:${search}`, () => openPasswordUpdate(api, parseAuthQuery(search)))
-      .then((result) => {
-        if (search) clearAuthSearch();
+    void loadSupabaseAuth()
+      .then((api) => {
         if (!live) return;
-        switch (result.status) {
-          case 'ready':
-            setPhase('ready');
-            return;
-          case 'missing':
-            setPhase('missing');
-            setNotice(EXPIRED);
-            return;
-          case 'error':
-            setPhase('error');
-            setNotice(result.message);
-            return;
-          default: {
-            const _exhaustive: never = result;
-            setNotice(_exhaustive);
-          }
+        if (!api) {
+          setPhase('missing');
+          setNotice('Sign-in is not available in this build.');
+          return;
         }
+        return shareAuthAttempt(`password:${search}`, () => openPasswordUpdate(api, parseAuthQuery(search))).then(
+          (result) => {
+            if (search) clearAuthSearch();
+            if (!live) return;
+            switch (result.status) {
+              case 'ready':
+                setPhase('ready');
+                return;
+              case 'missing':
+                setPhase('missing');
+                setNotice(EXPIRED);
+                return;
+              case 'error':
+                setPhase('error');
+                setNotice(result.message);
+                return;
+              default: {
+                const _exhaustive: never = result;
+                setNotice(_exhaustive);
+              }
+            }
+          },
+        );
       })
       .catch(() => {
         if (search) clearAuthSearch();
@@ -107,10 +109,10 @@ export function UpdatePasswordScreen() {
               testID="update-password-save"
               onPress={() => {
                 void run(async () => {
-                  const client = getSupabase();
-                  if (!client) return;
+                  const api = await loadSupabaseAuth();
+                  if (!api) return;
                   try {
-                    const result = await changePassword(authFrom(client), { password, confirm });
+                    const result = await changePassword(api, { password, confirm });
                     switch (result.status) {
                       case 'updated':
                       case 'signed-in':

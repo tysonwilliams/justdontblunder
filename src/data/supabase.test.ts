@@ -15,6 +15,7 @@ import {
   isSyncEnabled,
   resetSupabaseForTests,
 } from '@/src/data/supabase';
+import { loadSupabase } from '@/src/data/supabaseLazy';
 
 function token(payload: Record<string, unknown>): string {
   const part = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -78,5 +79,12 @@ describe('getSupabase', () => {
       url: 'https://example.supabase.co',
       anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     });
+  });
+
+  it('defers loading until publishable config is present', async () => {
+    expect(await loadSupabase()).toBeNull();
+    process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'sb_publishable_test';
+    expect(await loadSupabase()).not.toBeNull();
   });
 });

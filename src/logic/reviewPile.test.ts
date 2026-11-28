@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { addLocalDays, localDateKey } from '@/src/logic/localDate';
 import { drillFromHang } from '@/src/logic/personalDrill';
 import {
+  capReviewEntries,
   enrollImportedReviews,
   installImported,
+  MAX_REVIEW_ENTRIES,
   noteSave,
   parseDrillList,
   rememberBankMiss,
@@ -171,5 +173,35 @@ describe('review pile', () => {
     };
     const [parsed] = parseDrillList([enriched]);
     expect(parsed?.source).toEqual(enriched.source);
+  });
+
+  it('caps the review pile at MAX_REVIEW_ENTRIES and evicts furthest-out mastered cards first', () => {
+    const entries = [
+      { id: 'due-card', saves: 0, intervalDays: 0, dueOn: TODAY },
+      ...Array.from({ length: 260 }, (_, index) => ({
+        id: `hang-${index}`,
+        saves: 5,
+        intervalDays: 35,
+        dueOn: addLocalDays(TODAY, 10 + index),
+      })),
+    ];
+    const capped = capReviewEntries(entries);
+    expect(capped).toHaveLength(MAX_REVIEW_ENTRIES);
+    expect(capped.some((entry) => entry.id === 'due-card')).toBe(true);
+    expect(capped.some((entry) => entry.id === 'hang-259')).toBe(false);
+  });
+
+  it('rehydrates a linked personal review card from ownDrills when drill payload is stripped', () => {
+    const hang = drillFromHang('rnbqkb1r/pppp1ppp/5n2/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3');
+    expect(hang).toBeTruthy();
+    if (!hang) return;
+    const restored = reviewFromSaved(
+      { review: [{ id: hang.id, saves: 1, intervalDays: 1, dueOn: addLocalDays(TODAY, 1) }] },
+      TODAY,
+      [hang],
+    );
+    expect(restored).toHaveLength(1);
+    expect(restored[0]?.drill?.fen).toBe(hang.fen);
+    expect(restored[0]?.saves).toBe(1);
   });
 });

@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  APP_VERSION,
   allowClientError,
   clientErrorRequest,
   clientRoute,
@@ -120,5 +125,11 @@ describe('client errors', () => {
     const send = vi.fn();
     reportClientError(new Error('nope'), { enabled: false, send, storage: null });
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it('keeps APP_VERSION aligned with package.json without bundling package.json', () => {
+    const pkgPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string };
+    expect(APP_VERSION).toBe(pkg.version);
   });
 });

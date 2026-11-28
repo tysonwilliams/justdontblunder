@@ -1,9 +1,12 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { snapshotFromProgress } from '@/src/data/sync/map';
 import { createLocalProgressRepo } from '@/src/data/sync/localRepo';
 import { createSupabaseProgressRepo } from '@/src/data/sync/supabaseRepo';
 import { deviceTimeZone } from '@/src/data/sync/dates';
 import type { SyncClient } from '@/src/data/sync/types';
-import { getSupabase, isSyncEnabled, syncClientFrom } from '@/src/data/supabase';
+import { getSupabasePublicConfig, isSyncEnabled } from '@/src/data/supabaseConfig';
+import { loadSupabase } from '@/src/data/supabaseLazy';
 import { ownScanRunning } from '@/src/store/ownGames';
 import { useProgressStore } from '@/src/store/progress';
 import { partializeProgress, type PersistedProgress } from '@/src/store/progressMigrate';
@@ -23,25 +26,26 @@ export function shouldSyncNow(input: {
 /**
  * Push local changes and pull on sign-in.
  * Returns immediately when EXPO_PUBLIC_SYNC_ENABLED is the string "false", or when no
- * publishable client exists. A guest session never calls the progress repo.
+ * publishable config exists. A guest session never calls the progress repo.
  */
 export function startProgressSync(): () => void {
-  if (!isSyncEnabled()) return () => undefined;
-  const supabase = safeClient();
-  if (!supabase) return () => undefined;
-  const client = syncClientFrom(supabase);
-  return watch(client, supabase);
+  if (!isSyncEnabled() || !getSupabasePublicConfig()) return () => undefined;
+  let stopped = false;
+  let stopWatch: (() => void) | null = null;
+  void loadSupabase()
+    .then((supabase) => {
+      if (stopped || !supabase) return;
+      stopWatch = watch(supabase as unknown as SyncClient, supabase);
+    })
+    .catch(() => undefined);
+  return () => {
+    stopped = true;
+    stopWatch?.();
+    stopWatch = null;
+  };
 }
 
-function safeClient(): ReturnType<typeof getSupabase> {
-  try {
-    return getSupabase();
-  } catch {
-    return null;
-  }
-}
-
-function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSupabase>>): () => void {
+function watch(client: SyncClient, supabase: SupabaseClient): () => void {
   let userId: string | null = null;
   let mergedUserId: string | null = null;
   let writing = false;
@@ -151,10 +155,16 @@ function watch(client: SyncClient, supabase: NonNullable<ReturnType<typeof getSu
 }
 
 function progressFields(progress: PersistedProgress) {
+  const ownById = new Map(progress.library.ownDrills.map((drill) => [drill.id, drill]));
+  const review = progress.review.review.map((entry) => {
+    if (entry.drill) return entry;
+    const linked = ownById.get(entry.id);
+    return linked ? { ...entry, drill: linked } : entry;
+  });
   return {
     ...progress.training,
     missedDate: progress.review.missedDate,
-    review: progress.review.review,
+    review,
     missedIds: progress.review.missedIds,
     ownDrills: progress.library.ownDrills,
     pastedIds: progress.library.pastedIds,

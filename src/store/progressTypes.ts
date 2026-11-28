@@ -7,6 +7,8 @@ export type Experience = 'new' | 'basics' | 'intermediate';
 
 export type ThemeTally = { attempts: number; correct: number };
 
+export type DailyTally = { done: number; correct: number };
+
 export type ScanPhase = 'idle' | 'scanning' | 'paused' | 'done' | 'error';
 
 export type ScanProgress = {
@@ -23,6 +25,10 @@ export type ScanProgress = {
 export type ProgressState = {
   dailyStreak: number;
   lastDrillDate: string | null;
+  dailyCompletedDate: string | null;
+  dailyOutcomes: boolean[];
+  /** Rolling 14-day drill volume and first-try accuracy keyed by YYYY-MM-DD. */
+  dailyHistory: Record<string, DailyTally>;
   drillsCompleted: number;
   drillsCorrect: number;
   blundersAvoided: number;
@@ -50,6 +56,7 @@ export type ProgressState = {
   /** The player started the drills behind the username prompt. The scan can keep running. */
   scanPromptDismissed: boolean;
   markDrillResult: (correct: boolean, theme: DrillTheme) => void;
+  markDailyComplete: (outcomes: readonly boolean[]) => void;
   awardXp: (safe: boolean) => void;
   completeLesson: (id: string) => void;
   recordPuzzleRun: (length: number) => void;
