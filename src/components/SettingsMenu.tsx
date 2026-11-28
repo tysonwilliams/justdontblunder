@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 
 import { PIECE_CREDIT } from '@/src/components/Board/pieceCredit';
+import { ChessAccountForm } from '@/src/components/chess/ChessAccountForm';
 import { BrandMark } from '@/src/components/ui/BrandMark';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { Button } from '@/src/components/ui/Button';
@@ -100,6 +101,18 @@ export function SettingsMenu() {
   return (
     <>
       <Sheet visible={open} onClose={closeMenu} title="Settings" variant="drawer" testID="settings-menu">
+        <View style={styles.section}>
+          <Text style={text.section}>Your chess games</Text>
+          <Text style={styles.note}>
+            Pull recent blunders from your public Chess.com or Lichess games into Drills and Review. No password.
+          </Text>
+          <ChessAccountForm
+            testIDPrefix="settings-chess"
+            onDrill={() => navigate('/drills' as Href)}
+            onOpenPgn={() => navigate('/progress' as Href)}
+          />
+        </View>
+
         <View style={styles.section}>
           <Text style={text.section}>Account</Text>
           {phase === 'signed-in' && accountLabel ? (

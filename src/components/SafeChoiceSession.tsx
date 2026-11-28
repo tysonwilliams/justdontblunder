@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { BlunderOverlay } from '@/src/components/Board/BlunderOverlay';
 import { ChessBoard } from '@/src/components/Board/ChessBoard';
 import { ChoiceButtons } from '@/src/components/drills/ChoiceButtons';
+import { DrillsImportNudge } from '@/src/components/drills/DrillsImportNudge';
 import { useSafeChoiceSession } from '@/src/components/drills/useSafeChoiceSession';
 import { DrillToolbar } from '@/src/components/DrillToolbar';
 import { BoardLead } from '@/src/components/ui/BoardLead';
@@ -73,6 +74,7 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
           </Text>
           <Text style={text.muted}>{pct}% safe on the first try</Text>
           <Button label="Play again" onPress={() => session.restart()} />
+          <DrillsImportNudge />
         </View>
       </ScoreFrame>
     );
@@ -160,8 +162,9 @@ export function SafeChoiceSession({ theme, onMode, onTheme }: Props) {
                 <ChoiceButtons presented={presented} onChoose={session.choose} compact={false} />
               </View>
             )
-          }
-        />
+          }>
+          <DrillsImportNudge compact={phone} />
+        </PhoneTray>
       }
     />
   );

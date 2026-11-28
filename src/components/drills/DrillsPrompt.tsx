@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Modal, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
 import { FilterChips } from '@/src/components/ui/Chip';
 import { text } from '@/src/components/ui/text';
+import { useKeyboardShortcuts } from '@/src/components/ui/useKeyboardShortcuts';
 import { playUnlocked } from '@/src/logic/earlyPlay';
 import { claimOnboarding, shouldOfferUsernameSheet } from '@/src/logic/onboardingPrompt';
 import { cleanUsername, type GameSite } from '@/src/logic/gameImport';
@@ -12,7 +13,7 @@ import { useProgressStore, type ScanProgress } from '@/src/store/progress';
 import { useHydrated } from '@/src/store/useHydrated';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, layout, radii, spacing } from '@/src/theme';
+import { fonts, fontSizes, layout, radii, shadows, spacing } from '@/src/theme';
 
 const SITES: readonly { id: GameSite; label: string; testID: string }[] = [
   { id: 'chesscom', label: 'Chess.com', testID: 'drills-chesscom' },
@@ -40,9 +41,9 @@ function statusCopy(phase: Phase, scan: ScanProgress): string {
 }
 
 /**
- * Asks for a public username. Sits over Drills and leaves the board where it is.
- * It waits until a drill is finished, and it stays hidden when this tab already
- * showed the welcome card.
+ * Asks for a public username. Renders in a viewport-centered Modal over Drills so
+ * desktop nav rail does not shift it off-center. Waits until a drill is finished,
+ * and stays hidden when this tab already showed the welcome card.
  */
 export function DrillsPrompt() {
   const { colors } = useTheme();
@@ -68,8 +69,8 @@ export function DrillsPrompt() {
     if (scan.phase === 'scanning') setPhase('scanning');
   }, [scan.phase]);
 
-  if (
-    !shouldOfferUsernameSheet({
+  const visible =
+    shouldOfferUsernameSheet({
       hydrated,
       skipped,
       closed,
@@ -78,11 +79,19 @@ export function DrillsPrompt() {
       phase,
       showingResult: showingResult.current,
       drillsCompleted,
-    })
-  ) {
-    return null;
-  }
-  if (!claimOnboarding('username')) return null;
+    }) && claimOnboarding('username');
+
+  const play = () => {
+    dismissScanPrompt();
+    setClosed(true);
+  };
+
+  useKeyboardShortcuts(
+    { Escape: () => (phase === 'done' ? play() : skipDrillsPrompt()) },
+    visible,
+  );
+
+  if (!visible) return null;
 
   const stop = () => {
     cancelOwnScan();
@@ -125,79 +134,78 @@ export function DrillsPrompt() {
     setPhase('ask');
   };
 
-  const play = () => {
-    dismissScanPrompt();
-    setClosed(true);
-  };
-
   return (
-    <View style={[styles.scrim, { backgroundColor: colors.overlay }]} testID="drills-prompt">
-      <View style={styles.card}>
-        <Text style={text.eyebrow}>Your games</Text>
-        <Text style={text.title}>Practice your own blunders</Text>
-        {phase === 'ask' ? (
-          <Text style={text.body}>
-            Add a Chess.com or Lichess username. Your recent mistakes become the puzzles. No password.
-          </Text>
-        ) : (
-          <Text style={text.body} testID="drills-status">
-            {statusCopy(phase, scan)}
-          </Text>
-        )}
-        {phase === 'ask' ? (
-          <>
-            <FilterChips options={SITES} value={site} onChange={setSite} />
-            <TextInput
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              spellCheck={false}
-              placeholder="Username"
-              placeholderTextColor={colors.textDim}
-              accessibilityLabel="Chess username"
-              testID="drills-username"
-              style={[styles.field, { color: colors.text }]}
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={() => (phase === 'done' ? play() : skipDrillsPrompt())}>
+      <View style={[styles.scrim, { backgroundColor: colors.overlay }]} testID="drills-prompt">
+        <View style={styles.card}>
+          <Text style={text.eyebrow}>Your games</Text>
+          <Text style={text.title}>Practice your own blunders</Text>
+          {phase === 'ask' ? (
+            <Text style={text.body}>
+              Add a Chess.com or Lichess username. Your recent mistakes become the puzzles. No password.
+            </Text>
+          ) : (
+            <Text style={text.body} testID="drills-status">
+              {statusCopy(phase, scan)}
+            </Text>
+          )}
+          {phase === 'ask' ? (
+            <>
+              <FilterChips options={SITES} value={site} onChange={setSite} />
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                onSubmitEditing={() => void submit()}
+                returnKeyType="go"
+                autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                placeholder="Username"
+                placeholderTextColor={colors.textDim}
+                accessibilityLabel="Chess username"
+                testID="drills-username"
+                style={[styles.field, { color: colors.text }]}
+              />
+            </>
+          ) : null}
+          {phase === 'ask' && (scan.phase === 'error' || scan.phase === 'paused') ? (
+            <Text style={text.body} testID="drills-status">
+              {scan.message}
+            </Text>
+          ) : null}
+          {showPlay ? (
+            <Button label="Play these" testID="drills-play" onPress={play} />
+          ) : (
+            <Button
+              label={live ? 'Stop' : 'Use my games'}
+              testID="drills-find"
+              onPress={() => {
+                if (live) {
+                  stop();
+                  return;
+                }
+                void submit();
+              }}
             />
-          </>
-        ) : null}
-        {phase === 'ask' && (scan.phase === 'error' || scan.phase === 'paused') ? (
-          <Text style={text.body} testID="drills-status">
-            {scan.message}
-          </Text>
-        ) : null}
-        {showPlay ? (
-          <Button label="Play these" testID="drills-play" onPress={play} />
-        ) : (
-          <Button
-            label={live ? 'Stop' : 'Use my games'}
-            testID="drills-find"
-            onPress={() => {
-              if (live) {
-                stop();
-                return;
-              }
-              void submit();
-            }}
-          />
-        )}
-        {showPlay && live ? <Button label="Stop" variant="ghost" testID="drills-stop" onPress={stop} /> : null}
-        {phase === 'done' ? null : (
-          <Button label="Not now" variant="ghost" testID="drills-skip" onPress={skipDrillsPrompt} />
-        )}
+          )}
+          {showPlay && live ? <Button label="Stop" variant="ghost" testID="drills-stop" onPress={stop} /> : null}
+          {phase === 'done' ? null : (
+            <Button label="Not now" variant="ghost" testID="drills-skip" onPress={skipDrillsPrompt} />
+          )}
+        </View>
       </View>
-    </View>
+    </Modal>
   );
 }
 
 const styles = themedStyleSheet((colors) => ({
   scrim: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    zIndex: 30,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: layout.gutter,
@@ -211,11 +219,12 @@ const styles = themedStyleSheet((colors) => ({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
+    ...shadows.dialog,
   },
   field: {
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: radii.md,
     paddingHorizontal: spacing[12],
     paddingVertical: spacing[10],
