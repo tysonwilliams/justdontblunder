@@ -283,7 +283,7 @@ function ReviewMasteryPips({ saves, ahead }: { saves: number; ahead: boolean }) 
         ))}
       </View>
       <Text style={styles.masteryText}>
-        {ahead ? `Box ${filled}/${total} · ahead` : `Box ${filled}/${total}`}
+        {ahead ? `Extra practice · ${filled}/${total}` : `Mastery ${filled}/${total}`}
       </Text>
     </View>
   );

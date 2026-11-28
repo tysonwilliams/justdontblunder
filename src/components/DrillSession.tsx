@@ -80,7 +80,9 @@ export function DrillSession({
         streak={streak}
         emptyReview={session.reviewing && session.session.positions.length === 0}
         emptyOwn={!session.reviewing && source === 'own' && session.session.positions.length === 0}
+        practicingAhead={session.practicingAhead}
         upcomingCount={session.upcomingCount}
+        upcomingNextDays={session.upcomingNextDays}
         correct={session.score.correct}
         total={session.score.total}
         best={shownBest(session.score.correct, session.bestPuzzleStreak)}

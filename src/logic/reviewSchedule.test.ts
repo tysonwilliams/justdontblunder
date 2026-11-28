@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { reviewForEntries, upcomingReviewCount } from '@/src/logic/drillLink';
-import { addLocalDays } from '@/src/logic/localDate';
+import { reviewForEntries, upcomingReviewCount, upcomingReviewSummary } from '@/src/logic/drillLink';
+import { addLocalDays, daysBetweenLocalDates } from '@/src/logic/localDate';
 import {
   INTERVAL_PACK,
   MAX_SAVES,
@@ -10,6 +10,7 @@ import {
   dueTodayCount,
   dueTodayLabel,
   filterDueEntries,
+  formatDueWhen,
   formatReviewGap,
   lapseSchedule,
   moreConservative,
@@ -131,20 +132,29 @@ describe('review schedule', () => {
     expect(packIntervalDays(capped)).toBeLessThanOrEqual(3650);
   });
 
-  it('filters Review to due cards by default while counting upcoming cards for Practice ahead', () => {
+  it('filters Review to due cards by default while reporting upcoming review count and soonest return timing', () => {
     const entries = [
       { id: 'hang-q-01', saves: 0, intervalDays: 0, dueOn: TODAY },
       { id: 'hang-q-02', saves: 2, intervalDays: 3, dueOn: addLocalDays(TODAY, 3) },
+      { id: 'hang-r-01', saves: 1, intervalDays: 1, dueOn: addLocalDays(TODAY, 1) },
     ];
     expect(filterDueEntries(entries, TODAY).map((e) => e.id)).toEqual(['hang-q-01']);
     expect(reviewForEntries(entries, 'all', TODAY).positions.map((p) => p.id)).toEqual(['hang-q-01']);
     expect(
       reviewForEntries(entries, 'all', TODAY, { includeAhead: true }).positions.map((p) => p.id),
-    ).toEqual(['hang-q-01', 'hang-q-02']);
-    expect(upcomingReviewCount(entries, 'all', TODAY)).toBe(1);
+    ).toEqual(['hang-q-01', 'hang-r-01', 'hang-q-02']);
+    expect(upcomingReviewCount(entries, 'all', TODAY)).toBe(2);
+    expect(upcomingReviewSummary(entries, 'all', TODAY)).toEqual({ count: 2, soonestDays: 1 });
+    expect(upcomingReviewSummary([entries[1]!], 'all', TODAY)).toEqual({ count: 1, soonestDays: 3 });
+    expect(upcomingReviewSummary([entries[0]!], 'all', TODAY)).toEqual({ count: 0, soonestDays: null });
+    expect(daysBetweenLocalDates(TODAY, addLocalDays(TODAY, 3))).toBe(3);
+    expect(daysBetweenLocalDates(TODAY, 'invalid')).toBeNull();
     expect(nextReviewGapDays(entries[0])).toBe(1);
     expect(nextReviewGapDays(entries[1])).toBe(7);
     expect(formatReviewGap(1)).toBe('1 day');
     expect(formatReviewGap(7)).toBe('7 days');
+    expect(formatDueWhen(0)).toBe('today');
+    expect(formatDueWhen(1)).toBe('tomorrow');
+    expect(formatDueWhen(3)).toBe('in 3 days');
   });
 });

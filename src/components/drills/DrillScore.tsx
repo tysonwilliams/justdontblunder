@@ -11,6 +11,10 @@ import { play } from '@/src/components/ui/playStyles';
 import { text } from '@/src/components/ui/text';
 import { useLayout } from '@/src/components/ui/useLayout';
 import { themeFilterLabel } from '@/src/logic/drillLink';
+import { formatDueWhen } from '@/src/logic/reviewSchedule';
+import { fonts, fontSizes, lineHeights, spacing } from '@/src/theme';
+import { themedStyleSheet } from '@/src/theme/themed';
+import { useTheme } from '@/src/theme/useTheme';
 
 type Toolbar = DrillToolbarProps;
 
@@ -71,7 +75,9 @@ export function DrillDone({
   streak,
   emptyReview,
   emptyOwn = false,
+  practicingAhead = false,
   upcomingCount = 0,
+  upcomingNextDays = null,
   correct,
   total,
   best,
@@ -83,16 +89,24 @@ export function DrillDone({
   streak: boolean;
   emptyReview: boolean;
   emptyOwn?: boolean;
+  practicingAhead?: boolean;
   upcomingCount?: number;
+  upcomingNextDays?: number | null;
   correct: number;
   total: number;
   best: number;
   onRestart: () => void;
   onPracticeAhead?: () => void;
 }) {
+  useTheme();
   const pct = total ? Math.round((correct / total) * 100) : 0;
   const { phone } = useLayout();
   const caughtUp = reviewing && !emptyReview;
+  const nextWhen = upcomingNextDays != null ? formatDueWhen(upcomingNextDays) : null;
+  const reviewButtonLabel = caughtUp
+    ? `Review again (${upcomingCount})`
+    : `Review early (${upcomingCount})`;
+
   return (
     <ScoreFrame toolbar={<DrillToolbar {...toolbar} />}>
       <View style={play.done}>
@@ -103,7 +117,9 @@ export function DrillDone({
             : emptyReview
               ? 'All caught up'
               : caughtUp
-                ? 'Reviews complete'
+                ? practicingAhead
+                  ? 'Extra practice complete'
+                  : 'Reviews complete'
                 : streak
                   ? 'Clean run'
                   : "That's the set"}
@@ -118,9 +134,13 @@ export function DrillDone({
           <Text style={[text.muted, phone && text.mutedPhone]} numberOfLines={phone ? 3 : undefined}>
             {toolbar.theme === 'all'
               ? upcomingCount > 0
-                ? `Nothing is due today. ${upcomingCount} ${upcomingCount === 1 ? 'position is' : 'positions are'} scheduled for later.`
-                : 'Nothing is due today. Misses from drills and games show up here automatically.'
-              : `No ${themeFilterLabel(toolbar.theme).toLowerCase()} puzzles are due right now.`}
+                ? nextWhen
+                  ? `Nothing due today. ${upcomingCount} ${upcomingCount === 1 ? 'position returns' : 'positions return'} ${nextWhen}.`
+                  : `Nothing due today. ${upcomingCount} ${upcomingCount === 1 ? 'position is' : 'positions are'} scheduled for later.`
+                : 'Nothing due today. Misses from drills and games show up here automatically.'
+              : upcomingCount > 0 && nextWhen
+                ? `No ${themeFilterLabel(toolbar.theme).toLowerCase()} puzzles due today. ${upcomingCount} ${upcomingCount === 1 ? 'returns' : 'return'} ${nextWhen}.`
+                : `No ${themeFilterLabel(toolbar.theme).toLowerCase()} puzzles are due right now.`}
           </Text>
         ) : (
           <>
@@ -129,7 +149,11 @@ export function DrillDone({
               {streak
                 ? `in a row · best ${best}`
                 : caughtUp
-                  ? `${pct}% saved on the first try · scheduled for later`
+                  ? practicingAhead
+                    ? `${pct}% saved on the first try · review schedule unchanged`
+                    : nextWhen
+                      ? `${pct}% saved on the first try · next review ${nextWhen}`
+                      : `${pct}% saved on the first try · scheduled for later`
                   : `${pct}% saved on the first try`}
             </Text>
           </>
@@ -150,13 +174,18 @@ export function DrillDone({
               onPress={() => toolbar.onMode('play')}
             />
             {upcomingCount > 0 && onPracticeAhead ? (
-              <Button
-                compact={phone}
-                variant="secondary"
-                label={`Practice ahead (${upcomingCount})`}
-                testID="review-practice-ahead"
-                onPress={onPracticeAhead}
-              />
+              <View style={styles.extraBlock}>
+                <Button
+                  compact={phone}
+                  variant="secondary"
+                  label={reviewButtonLabel}
+                  testID="review-practice-ahead"
+                  onPress={onPracticeAhead}
+                />
+                <Text style={styles.extraHint} numberOfLines={2}>
+                  Extra practice — won’t change your review schedule.
+                </Text>
+              </View>
             ) : null}
           </>
         ) : (
@@ -171,3 +200,17 @@ export function DrillDone({
     </ScoreFrame>
   );
 }
+
+const styles = themedStyleSheet((colors) => ({
+  extraBlock: {
+    width: '100%',
+    gap: spacing[6],
+  },
+  extraHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textDim,
+    textAlign: 'center',
+  },
+}));

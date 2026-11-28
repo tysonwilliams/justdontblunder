@@ -6,8 +6,8 @@ import {
   type DrillSession,
   type DrillTheme,
 } from '@/src/logic/drills';
-import { localDateKey } from '@/src/logic/localDate';
-import { filterDueEntries, orderForReview } from '@/src/logic/reviewSchedule';
+import { daysBetweenLocalDates, localDateKey } from '@/src/logic/localDate';
+import { filterDueEntries, isDue, orderForReview } from '@/src/logic/reviewSchedule';
 
 export type DrillMode = 'play' | 'pick' | 'review';
 
@@ -168,13 +168,33 @@ export function reviewForEntries(
   );
 }
 
+/** Count of scheduled review cards matching `theme` not due today, plus days until the soonest one returns. */
+export function upcomingReviewSummary(
+  entries: readonly { id: string; dueOn?: string; intervalDays?: number; drill?: DrillPosition }[],
+  theme: ThemeFilter,
+  today = localDateKey(),
+): { count: number; soonestDays: number | null } {
+  const upcomingEntries = entries.filter((entry) => !isDue(entry, today));
+  if (upcomingEntries.length === 0) return { count: 0, soonestDays: null };
+  const positions = reviewForEntries(upcomingEntries, theme, today, { includeAhead: true }).positions;
+  if (positions.length === 0) return { count: 0, soonestDays: null };
+  const activeIds = new Set(positions.map((item) => item.id));
+  let soonestDays: number | null = null;
+  for (const entry of upcomingEntries) {
+    if (!activeIds.has(entry.id) || !entry.dueOn) continue;
+    const diff = daysBetweenLocalDates(today, entry.dueOn);
+    if (diff != null && diff > 0 && (soonestDays == null || diff < soonestDays)) {
+      soonestDays = diff;
+    }
+  }
+  return { count: positions.length, soonestDays };
+}
+
 /** Count of scheduled review cards matching `theme` that are not due today yet. */
 export function upcomingReviewCount(
   entries: readonly { id: string; dueOn?: string; intervalDays?: number; drill?: DrillPosition }[],
   theme: ThemeFilter,
   today = localDateKey(),
 ): number {
-  const all = reviewForEntries(entries, theme, today, { includeAhead: true }).positions.length;
-  const due = reviewForEntries(entries, theme, today, { includeAhead: false }).positions.length;
-  return Math.max(0, all - due);
+  return upcomingReviewSummary(entries, theme, today).count;
 }
