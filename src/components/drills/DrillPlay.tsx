@@ -59,7 +59,10 @@ export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) 
         }
       },
       h: () => {
-        if (session.round === 'playing') session.revealIdea();
+        if (session.round === 'playing') {
+          if (session.unprompted && !session.streak) session.stepHint();
+          else session.revealIdea();
+        }
       },
       r: () => {
         if ((session.round === 'retry' || session.round === 'streakEnd') && session.replyReady) {
@@ -82,9 +85,13 @@ export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) 
       mode={session.mode}
       theme={session.theme}
       streak={session.streak}
+      unprompted={session.unprompted}
+      blitzTimer={session.blitzTimer}
       onMode={onMode}
       onTheme={onTheme}
       onStreak={onStreak}
+      onUnprompted={session.setUnprompted}
+      onBlitzTimer={session.setBlitzTimer}
     />
   );
 
@@ -123,7 +130,7 @@ export function DrillPlay({ session, onMode, onTheme, onStreak, phone }: Props) 
 function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode }) {
   const drill = session.drill;
   if (!drill) return null;
-  const title = session.guided ? drill.prompt : turnPrompt(drill.sideToMove);
+  const title = session.promptVisible ? drill.prompt : turnPrompt(drill.sideToMove);
   return (
     <BoardLead gap={spacing[6]}>
       {toolbar}
@@ -136,6 +143,17 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
         <View style={play.progressGrow}>
           <ProgressTrack progress={session.progress} />
         </View>
+        {session.blitzTimer && session.round === 'playing' ? (
+          <Text
+            testID="blitz-clock"
+            style={[
+              styles.clockPhone,
+              session.secondsLeft <= 5 && styles.clockWarnText,
+              session.secondsLeft <= 3 && styles.clockDangerText,
+            ]}>
+            {session.secondsLeft}s
+          </Text>
+        ) : null}
         <PuzzleCount
           index={session.index}
           total={session.session.positions.length}
@@ -151,12 +169,35 @@ function PhoneIntro({ session, toolbar }: { session: Session; toolbar: ReactNode
 function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode }) {
   const drill = session.drill;
   if (!drill) return null;
-  const task = session.guided ? drill.prompt : session.round === 'playing' ? turnPrompt(drill.sideToMove) : null;
+  const task = session.promptVisible ? drill.prompt : session.round === 'playing' ? turnPrompt(drill.sideToMove) : null;
   return (
     <BoardLead gap={spacing[10]}>
       {toolbar}
-      {session.sourceLabel || session.reviewing ? (
+      {session.sourceLabel || session.reviewing || session.difficulty || session.blitzTimer ? (
         <View style={styles.metaStrip}>
+          {session.difficulty ? (
+            <View style={styles.tierPill} testID="drill-difficulty">
+              <Text style={styles.tierText}>{session.difficulty}</Text>
+            </View>
+          ) : null}
+          {session.blitzTimer && session.round === 'playing' ? (
+            <View
+              testID="blitz-clock"
+              style={[
+                styles.clockPill,
+                session.secondsLeft <= 5 && styles.clockWarn,
+                session.secondsLeft <= 3 && styles.clockDanger,
+              ]}>
+              <Text
+                style={[
+                  styles.clockText,
+                  session.secondsLeft <= 5 && styles.clockWarnText,
+                  session.secondsLeft <= 3 && styles.clockDangerText,
+                ]}>
+                {session.secondsLeft === 0 ? "Time's up" : `${session.secondsLeft}s`}
+              </Text>
+            </View>
+          ) : null}
           {session.sourceLabel ? (
             <View style={styles.sourcePill} testID="drill-source">
               <Text style={styles.sourceText} numberOfLines={1}>
@@ -174,7 +215,7 @@ function DeskIntro({ session, toolbar }: { session: Session; toolbar: ReactNode 
           {task}
         </Text>
       ) : null}
-      {session.guided && session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
+      {session.promptVisible && session.round === 'playing' ? <Text style={text.habit}>{HABIT_PROMPT}</Text> : null}
       <View style={styles.progressRow}>
         <View style={play.progressGrow}>
           <ProgressTrack progress={session.progress} />
@@ -217,6 +258,9 @@ function DrillAside({ session, phone }: { session: Session; phone: boolean }) {
         phone={phone}
         theme={drill.theme}
         unprompted={session.unprompted}
+        hintStep={session.hintStep}
+        timeUp={session.blitzTimer && session.secondsLeft === 0}
+        onHint={session.stepHint}
         onReveal={session.revealIdea}
       />
     );
@@ -242,34 +286,75 @@ function GuidedAside({
   phone,
   theme,
   unprompted,
+  hintStep,
+  timeUp,
+  onHint,
   onReveal,
 }: {
   phone: boolean;
   theme: DrillTheme;
   unprompted: boolean;
+  hintStep: number;
+  timeUp: boolean;
+  onHint: () => void;
   onReveal: () => void;
 }) {
+  const hintLabel =
+    hintStep === 0 ? 'Hint (1/3)' : hintStep === 1 ? 'Hint (2/3)' : 'Show the idea';
+  const unpromptedCopy = timeUp
+    ? "Time's up — check their threats first, then play."
+    : hintStep === 0
+      ? 'Scan the board yourself and play any safe move.'
+      : hintStep === 1
+        ? 'Check the amber piece under fire.'
+        : themeInstruction(theme);
+
   if (phone) {
     return (
       <View style={[play.phoneCard, styles.ideaCard]}>
         <Text style={[text.muted, text.mutedPhone]} numberOfLines={2}>
-          {unprompted ? 'Find any safe move — no threat highlight.' : themeInstruction(theme)}
+          {unprompted ? unpromptedCopy : timeUp ? "Time's up — check their threats, then play." : themeInstruction(theme)}
         </Text>
-        <Button compact label="Show the idea" variant="secondary" onPress={onReveal} style={styles.trayButton} />
+        <View style={styles.phoneHintRow}>
+          {unprompted && hintStep < 2 ? (
+            <Button
+              compact
+              label={hintLabel}
+              variant="secondary"
+              testID="progressive-hint"
+              onPress={onHint}
+              style={[styles.trayButton, styles.actionFlex]}
+            />
+          ) : null}
+          <Button
+            compact
+            label="Show the idea"
+            variant="secondary"
+            onPress={onReveal}
+            style={[styles.trayButton, unprompted && hintStep < 2 ? styles.actionFlex : undefined]}
+          />
+        </View>
       </View>
     );
   }
   return (
     <View style={play.guide}>
       <Text style={text.body}>
-        {unprompted ? 'Scan the board yourself and play any safe move.' : themeInstruction(theme)}
+        {unprompted ? unpromptedCopy : timeUp ? "Time's up — spot the threat, then play." : themeInstruction(theme)}
       </Text>
       <Text style={text.muted}>
         {unprompted
-          ? 'Club mode hides the amber danger highlight. Right-click to draw calculation arrows.'
+          ? hintStep === 0
+            ? 'Unprompted mode hides the danger highlight. Tap Hint for a step-by-step nudge, or right-click to draw arrows.'
+            : hintStep === 1
+              ? 'Step 1 of 3: threatened piece highlighted. Tap Hint again for the attacker arrow.'
+              : 'Step 2 of 3: threat arrow shown. Tap Show the idea to see a safe move.'
           : 'The amber square is the piece under fire. Right-click to draw calculation arrows.'}
       </Text>
-      <Button label="Show the idea" variant="secondary" onPress={onReveal} />
+      {unprompted && hintStep < 2 ? (
+        <Button label={hintLabel} variant="secondary" testID="progressive-hint" onPress={onHint} />
+      ) : null}
+      <Button label="Show the idea" variant={unprompted && hintStep < 2 ? 'ghost' : 'secondary'} onPress={onReveal} />
     </View>
   );
 }
@@ -387,6 +472,56 @@ const styles = themedStyleSheet((colors) => ({
     alignItems: 'center',
     gap: spacing[6],
   },
+  tierPill: {
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[3],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+  },
+  tierText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.text,
+  },
+  clockPill: {
+    paddingHorizontal: spacing[10],
+    paddingVertical: spacing[3],
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+  },
+  clockWarn: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warningSoft,
+  },
+  clockDanger: {
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
+  },
+  clockText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  clockPhone: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[12],
+    lineHeight: lineHeights[16],
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
+  clockWarnText: {
+    color: colors.warning,
+  },
+  clockDangerText: {
+    color: colors.danger,
+  },
   sourcePill: {
     paddingHorizontal: spacing[10],
     paddingVertical: spacing[3],
@@ -436,6 +571,15 @@ const styles = themedStyleSheet((colors) => ({
   ideaCard: {
     paddingVertical: spacing[4],
     gap: spacing[2],
+  },
+  phoneHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+  },
+  actionFlex: {
+    flex: 1,
+    minWidth: 0,
   },
   trayButton: {
     minHeight: 40,

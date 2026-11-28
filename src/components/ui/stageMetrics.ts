@@ -14,6 +14,8 @@ export type StageMetrics = {
   topNav: boolean;
   split: boolean;
   phone: boolean;
+  /** Portrait tablet (600–899px): stacked full-width board with desktop-scale typography & inline controls. */
+  tablet: boolean;
   /** Portrait phone with little room beside a full-width board. */
   tight: boolean;
   /** Inset for text, lists, controls, and footers. */
@@ -66,17 +68,20 @@ export function stageMetrics(
 
   if (!split) {
     const contentW = Math.min(rawW, layout.stageMax);
+    const isPhone = !topNav && (width < 600 || height < 500);
+    const isTablet = !topNav && !isPhone;
     // Keep the square full width on standard phones, while yielding on very short
     // viewports (such as Mobile Safari on compact phones) so the header and tray never clip.
-    const reserve = narrow ? PHONE_LEAD + PHONE_FOOT_MIN : 96;
+    const reserve = isPhone ? PHONE_LEAD + PHONE_FOOT_MIN : 96;
     const heightCap = Math.max(220, contentHeight - turnRow - reserve);
     const boardWidth = Math.round(Math.min(contentW, heightCap));
     const chromeBudget = contentHeight - boardWidth - turnRow;
     return {
       topNav,
       split: false,
-      phone: !topNav,
-      tight: !topNav && chromeBudget < 260,
+      phone: isPhone,
+      tablet: isTablet,
+      tight: isPhone && chromeBudget < 260,
       padX,
       boardInset,
       chromePad,
@@ -84,7 +89,7 @@ export function stageMetrics(
       padBottom,
       contentW,
       contentHeight,
-      gap: spacing[6],
+      gap: isTablet ? spacing[12] : spacing[6],
       boardWidth,
       asideWidth: contentW,
       turnRow,
@@ -112,6 +117,7 @@ export function stageMetrics(
     topNav,
     split: true,
     phone: false,
+    tablet: false,
     tight: false,
     padX,
     boardInset,

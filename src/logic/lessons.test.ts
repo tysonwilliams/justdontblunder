@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { isAbsolutePin, isLiveForkOn } from '@/src/logic/danger';
 import { isCorrectDrillMove } from '@/src/logic/drills';
 import {
+  CLUB_LESSONS,
   LESSONS,
   learnCard,
   lessonById,
   nextLessonId,
+  parseLessonId,
   practiceHref,
   resolveBeats,
   withLessonComplete,
@@ -202,5 +204,56 @@ describe('lesson completion', () => {
     expect(practiceHref(lessonById('blunder'))).toBe('/drills');
     expect(practiceHref(lessonById('fork'))).toBe('/drills?theme=fork');
     expect(practiceHref(lessonById('mate'))).toBe('/drills?theme=missed_mate');
+  });
+});
+
+describe('club lessons (900-1600)', () => {
+  it('resolves all four club lessons and verifies every card and guided try', () => {
+    expect(CLUB_LESSONS.map((lesson) => lesson.id)).toEqual([
+      'counting',
+      'overloaded',
+      'discovered',
+      'quiet_trap',
+    ]);
+    for (const lesson of CLUB_LESSONS) {
+      expect(parseLessonId(lesson.id)).toBe(lesson.id);
+      expect(lessonById(lesson.id)).toBe(lesson);
+      expect(lesson.cards.length).toBeGreaterThanOrEqual(2);
+      expect(lesson.tries.length).toBeGreaterThanOrEqual(2);
+
+      for (const card of lesson.cards) {
+        expect(materialIsReachable(card.fen), card.id).toBe(true);
+        const start = new Chess(card.fen);
+        expect(start.isCheck(), card.id).toBe(Boolean(card.inCheck));
+        const beats = resolveBeats(card.fen, card.beats);
+        expect(beats.map((beat) => beat.tone), card.id).toEqual(card.beats.map((beat) => beat.tone));
+        card.beats.forEach((beat, index) => {
+          const score = outcomeAt(card, index, beat);
+          if (beat.tone === 'blunder') expect(score, `${card.id} blunder`).toBeLessThan(0);
+          if (beat.tone === 'ok') expect(score, `${card.id} ok`).toBeGreaterThanOrEqual(0);
+          if (beat.tone === 'punishment') {
+            const shown = beats[index];
+            expect(shown?.captured || shown?.mate, `${card.id} punishment`).toBe(true);
+          }
+        });
+      }
+
+      for (const task of lesson.tries) {
+        const { drill } = task;
+        expect(materialIsReachable(drill.fen), drill.id).toBe(true);
+        expect(new Chess(drill.fen).turn(), drill.id).toBe(drill.sideToMove);
+        for (const uci of drill.solution) {
+          expect(
+            isCorrectDrillMove(drill, uci.slice(0, 2) as Square, uci.slice(2, 4) as Square),
+            `${drill.id} ${uci}`,
+          ).toBe(true);
+        }
+        expect(
+          isCorrectDrillMove(drill, task.blunder.slice(0, 2) as Square, task.blunder.slice(2, 4) as Square),
+          `${drill.id} blunder`,
+        ).toBe(false);
+        expect(hangingGain(drill.fen, drill.atRiskSquare, drill.sideToMove), `${drill.id} threat`).toBeGreaterThan(0);
+      }
+    }
   });
 });

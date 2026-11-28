@@ -1,7 +1,9 @@
-export type { ColorScheme, Palette, Theme } from '@/src/theme/tokens';
+export type { BoardTheme, BoardThemeSwatch, ColorScheme, Palette, Theme } from '@/src/theme/tokens';
 export type { ThemePreference } from '@/src/theme/preference';
 export type { MarkRole } from '@/src/theme/marks';
 export {
+  BOARD_THEMES,
+  boardThemeSwatches,
   colors,
   fontSizes,
   fontWeight,

@@ -3,6 +3,7 @@ import type { Square } from 'chess.js';
 
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
+import { useTriggerAnimation } from '@/src/components/drills/useTriggerAnimation';
 import { useTrainerRound } from '@/src/components/trainer/useTrainerRound';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
@@ -13,6 +14,7 @@ import {
   upcomingReviewCount,
   type ThemeFilter,
 } from '@/src/logic/drillLink';
+import { difficultyLabel, drillDifficulty, threatAttackerArrow } from '@/src/logic/difficulty';
 import {
   isCorrectDrillMove,
   personalSourceLabel,
@@ -21,6 +23,7 @@ import {
 } from '@/src/logic/drills';
 import { createGame, tryMove } from '@/src/logic/game';
 import { punishmentLine } from '@/src/logic/punishment';
+import { clubTacticalWarning } from '@/src/logic/safety';
 import { missFeedback, roundSpeech } from '@/src/logic/saveFeedback';
 import { buildPoolForTheme } from '@/src/logic/puzzlePool';
 import { formatReviewGap, nextReviewGapDays } from '@/src/logic/reviewSchedule';
@@ -33,6 +36,7 @@ import { markColor } from '@/src/theme';
 import { useTheme } from '@/src/theme/useTheme';
 
 export type DrillPlayMode = 'play' | 'review';
+export const BLITZ_SECONDS = 15;
 
 export type DrillRunSummary = {
   saved: number;
@@ -73,7 +77,12 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const { colors, scheme } = useTheme();
   const experience = useProgressStore((s) => s.experience);
   const sudden = mode === 'play' && streak;
-  const unprompted = experience === 'intermediate';
+  const [unpromptedOverride, setUnpromptedOverride] = useState<boolean | null>(null);
+  const [blitzTimer, setBlitzTimer] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(BLITZ_SECONDS);
+  const [hintStep, setHintStep] = useState(0);
+
+  const unprompted = unpromptedOverride ?? experience === 'intermediate';
   const guided = !sudden && !unprompted;
   const reviewing = mode === 'review';
   const { state, dispatch } = useTrainerRound();
@@ -115,6 +124,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     [reviewing, drill, reviewEntries],
   );
   const sourceLabel = useMemo(() => (drill ? personalSourceLabel(drill) : null), [drill]);
+  const difficulty = useMemo(() => (drill ? difficultyLabel(drillDifficulty(drill)) : null), [drill]);
 
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
@@ -126,6 +136,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     requeuedIds.current = new Set();
     setPracticingAhead(ahead);
     setNextGapLabel(null);
+    setHintStep(0);
+    setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'begin' });
     setRunSummary(null);
     setSession(nextSession);
@@ -165,8 +177,19 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   useEffect(() => {
     if (!puzzleId || !puzzleFen) return;
     setNextGapLabel(null);
+    setHintStep(0);
+    setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'loadPuzzle', fen: puzzleFen });
   }, [puzzleId, puzzleFen, dispatch]);
+
+  useEffect(() => {
+    if (!blitzTimer || done || round !== 'playing') return;
+    setSecondsLeft(BLITZ_SECONDS);
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [blitzTimer, done, round, puzzleId, index]);
 
   useEffect(() => {
     if (!sudden || !done) return;
@@ -199,6 +222,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const next = () => {
     started.current = true;
     setNextGapLabel(null);
+    setHintStep(0);
+    setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'advance', length: session.positions.length, wrap: false });
   };
 
@@ -206,6 +231,7 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     const current = latest.current.drill;
     if (!current) return;
     setNextGapLabel(null);
+    setSecondsLeft(BLITZ_SECONDS);
     dispatch({ type: 'tryAgain', fen: current.fen });
   };
 
@@ -220,6 +246,15 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     if (!result.accepted) return;
     started.current = true;
     applyRoundEffects(result.effects, current, latest.current.reviewing && !latest.current.practicingAhead);
+  };
+
+  const stepHint = () => {
+    if (sudden || round !== 'playing') return;
+    if (hintStep >= 2) {
+      revealIdea();
+      return;
+    }
+    setHintStep((step) => step + 1);
   };
 
   const onMove = useCallback(
@@ -260,6 +295,13 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
   const replayActive = runSummary == null && (round === 'retry' || round === 'streakEnd');
   const playback = usePunishmentPlayback(replayActive, state.replayLine);
   const board = trainerBoard(playback, state, drill?.fen ?? '', replayActive);
+  const trigger = useTriggerAnimation(
+    `${puzzleId ?? ''}-${index}`,
+    board.fen,
+    drill?.source?.setupFen,
+    drill?.source?.lastMove,
+    round === 'playing',
+  );
 
   const showRunSummary = () => {
     const current = drill;
@@ -293,28 +335,53 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     [drill, round, state.lastMove],
   );
   const baseSpeech = drill ? roundSpeech(round, drill, state.shownIdea ? null : state.lastMove) : '';
+  const clubRadar = useMemo(() => {
+    if (!unprompted || round !== 'correct' || !drill || !state.lastMove || state.shownIdea) return null;
+    if (/Watch /i.test(baseSpeech)) return null;
+    return clubTacticalWarning(drill.fen, state.lastMove.from, state.lastMove.to, drill.sideToMove);
+  }, [baseSpeech, drill, round, state.lastMove, state.shownIdea, unprompted]);
   const gameMoveNote =
     round !== 'playing' && drill?.source?.move && !baseSpeech.includes(drill.source.move)
       ? `In your game you played ${drill.source.move}.`
       : null;
-  const parts = [baseSpeech, gameMoveNote, round === 'correct' ? nextGapLabel : null].filter(
+  const parts = [baseSpeech, clubRadar, gameMoveNote, round === 'correct' ? nextGapLabel : null].filter(
     (part): part is string => Boolean(part && part.length > 0),
   );
   const roundCopy = parts.join(' ');
+
+  const hintArrow = useMemo(
+    () => (round === 'playing' && !sudden && hintStep >= 2 && drill ? threatAttackerArrow(drill) : null),
+    [drill, hintStep, round, sudden],
+  );
   const threatFrom = !state.shownIdea ? playback.arrow?.from : undefined;
   const threatTo = !state.shownIdea ? playback.arrow?.to : undefined;
   const threatArrow = useMemo<BoardArrow[]>(() => {
-    if (!threatFrom || !threatTo) return [];
-    return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
-  }, [colors, scheme, threatFrom, threatTo]);
+    if (threatFrom && threatTo) {
+      return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
+    }
+    if (hintArrow) {
+      return [{ from: hintArrow.from, to: hintArrow.to, color: markColor('warning', scheme, colors) }];
+    }
+    return [];
+  }, [colors, hintArrow, scheme, threatFrom, threatTo]);
+  const showAttention = (guided || (!sudden && hintStep >= 1)) && round === 'playing' && !trigger.animating;
   const attentionSquares = useMemo(
-    () => (guided && round === 'playing' && drill ? [drill.atRiskSquare] : []),
-    [guided, round, drill],
+    () => (showAttention && drill ? [drill.atRiskSquare] : []),
+    [showAttention, drill],
   );
+  const promptVisible = guided || (!sudden && hintStep >= 2);
 
   return {
     guided,
+    promptVisible,
     unprompted,
+    setUnprompted: setUnpromptedOverride,
+    blitzTimer,
+    setBlitzTimer,
+    secondsLeft,
+    hintStep,
+    stepHint,
+    difficulty,
     streak: sudden,
     reviewing,
     practicingAhead,
@@ -330,8 +397,8 @@ export function useDrillSession(mode: DrillPlayMode, theme: ThemeFilter, streak:
     round,
     score: state.score,
     orientation,
-    boardFen: board.fen,
-    boardLastMove: board.lastMove,
+    boardFen: round === 'playing' ? trigger.fen : board.fen,
+    boardLastMove: round === 'playing' ? trigger.lastMove : board.lastMove,
     progress,
     marks,
     roundCopy,

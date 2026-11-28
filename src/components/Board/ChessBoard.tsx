@@ -1,7 +1,7 @@
 import { type ComponentRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
 import type { Color, Square } from 'chess.js';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, PointerType } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   runOnJS,
@@ -133,6 +133,7 @@ function ChessBoardView({
 
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
+  const touchOffsetY = useSharedValue(0);
   const lift = useSharedValue(0);
   const shake = useSharedValue(0);
   const tracking = useSharedValue(0);
@@ -616,16 +617,20 @@ function ChessBoardView({
           if (boardSize <= 0) return;
           const square = pointToSquare(point.x, point.y, boardSize, orientSV.value);
           if (!square) return;
-          runOnJS(startDragJS)(square, point.x, point.y);
+          const isTouch = event.pointerType === PointerType.TOUCH;
+          const offset = isTouch ? Math.min(34, boardSize * 0.58) : 0;
+          touchOffsetY.value = offset;
+          runOnJS(startDragJS)(square, point.x, Math.max(0, point.y - offset));
         })
         .onUpdate((event) => {
           'worklet';
           if (tracking.value !== 1) return;
           const point = pointerToBoard(event.x, event.y);
+          const liftedY = point.y - touchOffsetY.value;
           dragX.value = point.x;
-          dragY.value = point.y;
+          dragY.value = liftedY;
           const boardSize = sizeSV.value;
-          const square = boardSize > 0 ? pointToSquare(point.x, point.y, boardSize, orientSV.value) : null;
+          const square = boardSize > 0 ? pointToSquare(point.x, liftedY, boardSize, orientSV.value) : null;
           if (square !== hoverSV.value) {
             hoverSV.value = square;
             runOnJS(hoverJS)(square);
@@ -636,10 +641,13 @@ function ChessBoardView({
           if (dragSettled.value === 1) return;
           dragSettled.value = 1;
           const point = pointerToBoard(event.x, event.y);
-          runOnJS(endDragJS)(point.x, point.y);
+          const liftedY = point.y - touchOffsetY.value;
+          touchOffsetY.value = 0;
+          runOnJS(endDragJS)(point.x, liftedY);
         })
         .onFinalize((_event, success) => {
           'worklet';
+          touchOffsetY.value = 0;
           if (success || dragSettled.value === 1) return;
           dragSettled.value = 1;
           runOnJS(cancelDragJS)();
@@ -657,6 +665,7 @@ function ChessBoardView({
       previewSelectionJS,
       sizeSV,
       startDragJS,
+      touchOffsetY,
       tracking,
     ],
   );
@@ -758,6 +767,7 @@ function ChessBoardView({
     hiddenSquares.join(','),
     squareSize,
     scheme,
+    colors.boardDark,
   ].join('|');
   const rows = useMemo(
     () =>
@@ -788,6 +798,10 @@ function ChessBoardView({
   const arrowDraw = useMemo(() => (mergedArrows.length ? mergedArrows : EMPTY_ARROWS), [arrowKey]);
 
   const dragPiece = dragSquare ? pieceAt(game, dragSquare) : null;
+  const dropOrigin =
+    dragSquare && hoverSquare && hoverSquare !== dragSquare && squareSize > 0
+      ? squareOrigin(hoverSquare, orientation, squareSize)
+      : null;
   const turnLine = boardStatusLine({
     turn: snap.turn,
     inCheck: snap.isCheck,
@@ -834,6 +848,21 @@ function ChessBoardView({
                 ))}
               </View>
             ))}
+            {dropOrigin ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.dropHalo,
+                  {
+                    left: dropOrigin.x - squareSize * 0.14,
+                    top: dropOrigin.y - squareSize * 0.14,
+                    width: squareSize * 1.28,
+                    height: squareSize * 1.28,
+                    borderRadius: squareSize * 0.64,
+                  },
+                ]}
+              />
+            ) : null}
             {userMarks.length > 0 && squareSize > 0 ? (
               <View pointerEvents="none" style={styles.userMarkLayer}>
                 {userMarks.map((sq) => {
@@ -1045,5 +1074,12 @@ const styles = themedStyleSheet((colors) => ({
     borderWidth: 3,
     borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
+  },
+  dropHalo: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: colors.boardSelected,
+    backgroundColor: colors.accentSoft,
+    zIndex: 7,
   },
 }));

@@ -252,3 +252,69 @@ export function moveOutcome(
   }
   return gained - punishment;
 }
+
+const FILES_LIST = 'abcdefgh';
+const RANKS_LIST = '87654321';
+
+function attackedFriendlyTargets(game: Chess, bySquare: Square, victimSide: Color): { square: Square; type: PieceSymbol }[] {
+  const targets: { square: Square; type: PieceSymbol }[] = [];
+  const opp = opposite(victimSide);
+  const board = game.board();
+  for (let rank = 0; rank < 8; rank += 1) {
+    for (let file = 0; file < 8; file += 1) {
+      const piece = board[rank]?.[file];
+      if (!piece || piece.color !== victimSide) continue;
+      if (piece.type !== 'k' && VAL[piece.type] < 3) continue;
+      const sq = `${FILES_LIST[file]}${RANKS_LIST[rank]}` as Square;
+      if (game.attackers(sq, opp).includes(bySquare)) {
+        targets.push({ square: sq, type: piece.type });
+      }
+    }
+  }
+  return targets;
+}
+
+/**
+ * Club-level (900–1600) 2-ply radar: after a move that passes the 1-move rule,
+ * checks if the opponent has a safe reply that forks the king and a major/minor piece
+ * (or two valuable pieces) where the forking piece cannot be captured for free.
+ * Advisory coaching note only — never fails a 1-move-safe drill move.
+ */
+export function clubTacticalWarning(
+  beforeFen: string,
+  from: Square,
+  to: Square,
+  side: Color,
+  promotion: 'q' | 'r' | 'b' | 'n' = 'q',
+): string | null {
+  const after = new Chess(beforeFen);
+  let played;
+  try {
+    played = after.move({ from, to, promotion });
+  } catch {
+    return null;
+  }
+  if (!played || after.isGameOver()) return null;
+  const opp = opposite(side);
+  const replies = after.moves({ verbose: true });
+  for (const reply of replies) {
+    if (reply.captured) continue;
+    if (reply.piece !== 'n' && reply.piece !== 'q' && reply.piece !== 'p') continue;
+    const next = new Chess(after.fen());
+    const moved = next.move(reply);
+    if (!moved) continue;
+    // Skip if the forking piece simply hangs to capture right away.
+    if (see(next.fen(), moved.to, side) > 0) continue;
+    const targets = attackedFriendlyTargets(next, moved.to, side);
+    if (targets.length < 2) continue;
+    const hasKing = targets.some((t) => t.type === 'k');
+    const heavyCount = targets.filter((t) => t.type === 'q' || t.type === 'r').length;
+    if (!hasKing && heavyCount < 2) continue;
+    const sorted = [...targets].sort((a, b) => VAL[b.type] - VAL[a.type]);
+    const first = pieceName(sorted[0]!.type);
+    const second = pieceName(sorted[1]!.type);
+    const who = opp === 'w' ? 'White' : 'Black';
+    return `Watch ${who}'s ${moved.san} — it forks your ${first} and ${second}.`;
+  }
+  return null;
+}

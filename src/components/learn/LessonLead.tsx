@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { MenuButton } from '@/src/components/SettingsMenu';
-import { LESSON_INDEX } from '@/src/components/learn/lessonPhase';
+import { LESSON_INDEX, lessonTrack } from '@/src/components/learn/lessonPhase';
 import { lessonStyles } from '@/src/components/learn/lessonStyles';
 import { controlA11y } from '@/src/components/ui/a11y';
 import { BoardLead } from '@/src/components/ui/BoardLead';
@@ -28,11 +28,12 @@ export function LessonLead({
 }) {
   const { phone, topNav } = useLayout();
   const place = LESSON_INDEX[lesson.id];
+  const track = lessonTrack(lesson.id);
   return (
     <BoardLead gap={phone ? spacing[6] : spacing[10]}>
       <View style={[play.metaRow, phone && lessonStyles.metaPhone]}>
         <Text style={[text.eyebrow, phone && lessonStyles.eyebrowPhone, lessonStyles.kicker]} numberOfLines={1}>
-          Lesson {place} of 6 · {kicker}
+          {track.label} {place} of {track.total} · {kicker}
         </Text>
         <View style={lessonStyles.metaActions}>
           <Pressable

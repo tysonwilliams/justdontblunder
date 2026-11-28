@@ -1,8 +1,20 @@
+import { BOARD_THEMES, type BoardTheme } from '@/src/theme/tokens';
+
 export const THEME_STORAGE_KEY = 'jdb-theme-v1';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 export type ResolvedScheme = 'light' | 'dark';
+
+export const DEFAULT_BOARD_THEME: BoardTheme = 'classic';
+
+export function isBoardTheme(value: unknown): value is BoardTheme {
+  return typeof value === 'string' && (BOARD_THEMES as readonly string[]).includes(value);
+}
+
+export function boardThemeFromUnknown(value: unknown): BoardTheme | null {
+  return isBoardTheme(value) ? value : null;
+}
 
 export function isThemePreference(value: unknown): value is ThemePreference {
   return value === 'system' || value === 'light' || value === 'dark';
@@ -43,6 +55,10 @@ export function initialThemePreference(
   return stored ?? DEFAULT_THEME_PREFERENCE;
 }
 
+export function initialBoardTheme(stored: BoardTheme | null = readStoredBoardTheme()): BoardTheme {
+  return stored ?? DEFAULT_BOARD_THEME;
+}
+
 /** Synchronous read for the first web paint. Native storage is async. */
 export function readStoredThemePreference(): ThemePreference | null {
   try {
@@ -51,6 +67,18 @@ export function readStoredThemePreference(): ThemePreference | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { state?: { preference?: unknown } };
     return preferenceFromUnknown(parsed?.state?.preference);
+  } catch {
+    return null;
+  }
+}
+
+export function readStoredBoardTheme(): BoardTheme | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(THEME_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { state?: { boardTheme?: unknown } };
+    return boardThemeFromUnknown(parsed?.state?.boardTheme);
   } catch {
     return null;
   }

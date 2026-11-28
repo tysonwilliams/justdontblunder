@@ -22,7 +22,16 @@ import { useThemePreference } from '@/src/store/themePreference';
 import type { ThemePreference } from '@/src/theme/preference';
 import { useTheme } from '@/src/theme/useTheme';
 import { themedStyleSheet } from '@/src/theme/themed';
-import { fonts, fontSizes, letterSpacing, lineHeights, radii, spacing } from '@/src/theme';
+import {
+  BOARD_THEMES,
+  boardThemeSwatches,
+  fonts,
+  fontSizes,
+  letterSpacing,
+  lineHeights,
+  radii,
+  spacing,
+} from '@/src/theme';
 
 const APPEARANCE: readonly { id: ThemePreference; label: string; testID: string }[] = [
   { id: 'system', label: 'System', testID: 'theme-system' },
@@ -68,6 +77,8 @@ export function SettingsMenu() {
   const closeMenu = useMenuStore((state) => state.closeMenu);
   const preference = useThemePreference((state) => state.preference);
   const setPreference = useThemePreference((state) => state.setPreference);
+  const boardTheme = useThemePreference((state) => state.boardTheme);
+  const setBoardTheme = useThemePreference((state) => state.setBoardTheme);
   const sound = useFeedbackSettings((state) => state.sound);
   const setSound = useFeedbackSettings((state) => state.setSound);
   const haptics = useFeedbackSettings((state) => state.haptics);
@@ -136,6 +147,41 @@ export function SettingsMenu() {
             value={preference}
             onChange={setPreference}
           />
+          <View style={styles.boardRow}>
+            {BOARD_THEMES.map((id) => {
+              const swatch = boardThemeSwatches[id];
+              const active = boardTheme === id;
+              return (
+                <Pressable
+                  key={id}
+                  {...controlA11y('button', `${swatch.label} board theme`, active)}
+                  testID={`board-theme-${id}`}
+                  onPress={() => setBoardTheme(id)}
+                  style={(state) => {
+                    const hovered = 'hovered' in state && Boolean(state.hovered);
+                    return [
+                      styles.boardTile,
+                      active && styles.boardTileOn,
+                      (hovered || state.pressed) && !active && styles.boardTileHover,
+                    ];
+                  }}>
+                  <View style={styles.swatchGrid}>
+                    <View style={styles.swatchRow}>
+                      <View style={[styles.swatchSq, { backgroundColor: swatch.light }]} />
+                      <View style={[styles.swatchSq, { backgroundColor: swatch.dark }]} />
+                    </View>
+                    <View style={styles.swatchRow}>
+                      <View style={[styles.swatchSq, { backgroundColor: swatch.dark }]} />
+                      <View style={[styles.swatchSq, { backgroundColor: swatch.light }]} />
+                    </View>
+                  </View>
+                  <Text style={[styles.boardLabel, active && styles.boardLabelOn]} numberOfLines={1}>
+                    {swatch.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <View style={styles.list}>
             <SettingSwitch
               plain
@@ -286,6 +332,54 @@ const styles = themedStyleSheet((colors) => ({
   },
   section: {
     gap: spacing[10],
+  },
+  boardRow: {
+    flexDirection: 'row',
+    gap: spacing[8],
+  },
+  boardTile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing[5],
+    paddingVertical: spacing[8],
+    paddingHorizontal: spacing[4],
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    cursor: 'pointer',
+  },
+  boardTileOn: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  boardTileHover: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+  },
+  swatchGrid: {
+    width: 28,
+    height: 28,
+    borderRadius: radii.swatch,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  swatchSq: {
+    flex: 1,
+  },
+  boardLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes[11],
+    lineHeight: lineHeights[14],
+    color: colors.textMuted,
+  },
+  boardLabelOn: {
+    color: colors.accent,
   },
   accountBox: {
     gap: spacing.sm,

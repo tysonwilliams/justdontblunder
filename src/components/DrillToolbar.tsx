@@ -30,9 +30,15 @@ export type DrillToolbarProps = {
   theme: ThemeFilter;
   /** Sudden-death rules. Only shown while Play is selected. */
   streak?: boolean;
+  /** Hide theme spoiler and pre-highlighted amber danger square until Hint is tapped. */
+  unprompted?: boolean;
+  /** Optional 15-second Blitz Check countdown per puzzle. */
+  blitzTimer?: boolean;
   onMode: (mode: DrillMode) => void;
   onTheme: (theme: ThemeFilter) => void;
   onStreak?: (streak: boolean) => void;
+  onUnprompted?: (unprompted: boolean) => void;
+  onBlitzTimer?: (blitzTimer: boolean) => void;
 };
 
 const MODE_LABEL: Record<DrillMode, string> = {
@@ -47,7 +53,18 @@ const MODE_DETAIL: Record<DrillMode, string> = {
   review: 'Replay positions due for spaced review.',
 };
 
-export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onStreak }: DrillToolbarProps) {
+export function DrillToolbar({
+  mode,
+  theme,
+  streak = false,
+  unprompted = false,
+  blitzTimer = false,
+  onMode,
+  onTheme,
+  onStreak,
+  onUnprompted,
+  onBlitzTimer,
+}: DrillToolbarProps) {
   const { colors } = useTheme();
   const { phone, topNav } = useLayout();
   const [open, setOpen] = useState(false);
@@ -102,12 +119,29 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
             );
           })}
         </View>
-        {mode === 'play' && onStreak ? (
+        {mode !== 'pick' && (onStreak || onUnprompted || onBlitzTimer) ? (
           <View style={styles.deskStreakRow}>
-            <SettingSwitch compact label="Streak" value={streak} onChange={onStreak} testID="streak-toggle" />
-            <Text style={styles.deskStreakNote} numberOfLines={1}>
-              {streak ? 'Sudden death · no hints' : 'Guided saves'}
-            </Text>
+            {mode === 'play' && onStreak ? (
+              <SettingSwitch compact label="Streak" value={streak} onChange={onStreak} testID="streak-toggle" />
+            ) : null}
+            {!streak && onUnprompted ? (
+              <SettingSwitch
+                compact
+                label="No hints"
+                value={unprompted}
+                onChange={onUnprompted}
+                testID="unprompted-toggle"
+              />
+            ) : null}
+            {onBlitzTimer ? (
+              <SettingSwitch
+                compact
+                label="15s"
+                value={blitzTimer}
+                onChange={onBlitzTimer}
+                testID="blitz-timer-toggle"
+              />
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -195,6 +229,36 @@ export function DrillToolbar({ mode, theme, streak = false, onMode, onTheme, onS
             <View style={styles.divider} />
             <SettingSwitch plain label="Streak (sudden death)" value={streak} onChange={onStreak} />
             <Text style={styles.helper}>No hints. One blunder ends the run.</Text>
+          </View>
+        ) : null}
+
+        {mode !== 'pick' && (onUnprompted || onBlitzTimer) ? (
+          <View style={styles.section}>
+            <View style={styles.divider} />
+            {!streak && onUnprompted ? (
+              <>
+                <SettingSwitch
+                  plain
+                  label="Unprompted scanning"
+                  value={unprompted}
+                  onChange={onUnprompted}
+                  testID="unprompted-toggle"
+                />
+                <Text style={styles.helper}>Hide the amber highlight and theme spoiler until you ask for a hint.</Text>
+              </>
+            ) : null}
+            {onBlitzTimer ? (
+              <>
+                <SettingSwitch
+                  plain
+                  label="Blitz check (15s)"
+                  value={blitzTimer}
+                  onChange={onBlitzTimer}
+                  testID="blitz-timer-toggle"
+                />
+                <Text style={styles.helper}>Practice spotting threats under a 15-second clock.</Text>
+              </>
+            ) : null}
           </View>
         ) : null}
 

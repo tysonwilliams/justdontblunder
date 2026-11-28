@@ -3,6 +3,7 @@ import type { Square } from 'chess.js';
 
 import type { BoardArrow, BoardMoveEvent } from '@/src/components/Board/boardTypes';
 import { highlightsForRound } from '@/src/components/Board/highlight';
+import { useTriggerAnimation } from '@/src/components/drills/useTriggerAnimation';
 import { useTrainerRound } from '@/src/components/trainer/useTrainerRound';
 import { usePunishmentPlayback } from '@/src/components/usePunishmentPlayback';
 import { usePuzzleGrowth } from '@/src/components/usePuzzleGrowth';
@@ -187,6 +188,13 @@ export function useHomeTrainer() {
   const replayActive = round === 'retry';
   const playback = usePunishmentPlayback(replayActive, state.replayLine);
   const board = trainerBoard(playback, state, drill?.fen ?? '', replayActive);
+  const trigger = useTriggerAnimation(
+    `${drill?.id ?? ''}-${index}`,
+    board.fen,
+    drill?.source?.setupFen,
+    drill?.source?.lastMove,
+    round === 'playing',
+  );
   const orientation = useMemo(
     () => (drill?.sideToMove === 'b' ? 'black' : 'white') as 'white' | 'black',
     [drill?.sideToMove],
@@ -213,8 +221,8 @@ export function useHomeTrainer() {
     return [{ from: threatFrom, to: threatTo, color: markColor('danger', scheme, colors) }];
   }, [colors, scheme, threatFrom, threatTo]);
   const attentionSquares = useMemo(
-    () => (!unprompted && round === 'playing' && drill ? [drill.atRiskSquare] : []),
-    [unprompted, round, drill],
+    () => (!unprompted && round === 'playing' && !trigger.animating && drill ? [drill.atRiskSquare] : []),
+    [unprompted, round, trigger.animating, drill],
   );
   const headline = drill ? themeHeadline(drill.theme) : 'Stop hanging pieces.';
   const prompt = drill ? (unprompted ? `${drill.sideToMove === 'w' ? 'White' : 'Black'} to move. Find a safe move.` : homePlayPrompt(drill)) : '';
@@ -236,8 +244,8 @@ export function useHomeTrainer() {
     headline,
     sourceLabel,
     orientation,
-    boardFen: board.fen,
-    boardLastMove: board.lastMove,
+    boardFen: round === 'playing' ? trigger.fen : board.fen,
+    boardLastMove: round === 'playing' ? trigger.lastMove : board.lastMove,
     progress,
     marks,
     card,

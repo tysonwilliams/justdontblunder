@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { markColor } from '@/src/theme/marks';
-import { fontWeight, marks, palettes, spacing, themeFor, typeRole } from '@/src/theme/tokens';
+import { boardThemeFromUnknown } from '@/src/theme/preference';
+import { BOARD_THEMES, fontWeight, marks, palettes, spacing, themeFor, typeRole } from '@/src/theme/tokens';
 
 describe('themeFor', () => {
-  it('returns a stable theme for each scheme and fills both palettes', () => {
+  it('returns a stable theme for each scheme and board theme and fills both palettes', () => {
     expect(themeFor('dark')).toBe(themeFor('dark'));
     expect(themeFor('light')).toBe(themeFor('light'));
     expect(themeFor('dark').scheme).toBe('dark');
@@ -12,6 +13,19 @@ describe('themeFor', () => {
     expect(themeFor('dark').colors).toBe(palettes.dark);
     expect(themeFor('light').colors).toBe(palettes.light);
     expect(Object.keys(palettes.light).sort()).toEqual(Object.keys(palettes.dark).sort());
+
+    const darkSquares = new Set<string>();
+    for (const board of BOARD_THEMES) {
+      expect(themeFor('dark', board)).toBe(themeFor('dark', board));
+      expect(themeFor('light', board)).toBe(themeFor('light', board));
+      const { colors } = themeFor('dark', board);
+      darkSquares.add(colors.boardDark);
+      expect(contrast(colors.boardCoordOnLight, colors.boardLight), `${board} coord light`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(colors.boardCoordOnDark, colors.boardDark), `${board} coord dark`).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(darkSquares.size).toBe(BOARD_THEMES.length);
+    expect(boardThemeFromUnknown('walnut')).toBe('walnut');
+    expect(boardThemeFromUnknown('unknown')).toBeNull();
   });
 
   it('keeps the dark colors that were on screen before the token move', () => {

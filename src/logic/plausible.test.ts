@@ -2,7 +2,7 @@ import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 
 import { getAllDrills } from '@/src/logic/drills';
-import { LESSONS, resolveBeats } from '@/src/logic/lessons';
+import { ALL_LESSONS, resolveBeats } from '@/src/logic/lessons';
 import { plausibilityIssues } from '@/src/logic/plausible';
 
 const SEALED_ROOK = 'rnbqkb1r/pppppppp/5n2/7R/4P3/8/PPPP1PPP/RNBQKBN1 w Qkq - 0 3';
@@ -10,7 +10,7 @@ const SEALED_ROOK = 'rnbqkb1r/pppppppp/5n2/7R/4P3/8/PPPP1PPP/RNBQKBN1 w Qkq - 0 
 function bundled(): { id: string; fen: string }[] {
   const found: { id: string; fen: string }[] = [];
   for (const drill of getAllDrills()) found.push({ id: drill.id, fen: drill.fen });
-  for (const lesson of LESSONS) {
+  for (const lesson of ALL_LESSONS) {
     for (const card of lesson.cards) {
       found.push({ id: card.id, fen: card.fen });
       for (const beat of resolveBeats(card.fen, card.beats)) {

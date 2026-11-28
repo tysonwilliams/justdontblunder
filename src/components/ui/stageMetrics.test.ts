@@ -11,6 +11,8 @@ describe('stageMetrics', () => {
       [430, 932],
     ] as const) {
       const metrics = stageMetrics(width, height);
+      expect(metrics.phone).toBe(true);
+      expect(metrics.tablet).toBe(false);
       expect(metrics.split).toBe(false);
       expect(metrics.topNav).toBe(false);
       expect(metrics.boardWidth).toBe(metrics.contentW);
@@ -32,6 +34,8 @@ describe('stageMetrics', () => {
 
   it('stacks a tall tablet so the board is not stuck in the top half', () => {
     const metrics = stageMetrics(834, 1112);
+    expect(metrics.tablet).toBe(true);
+    expect(metrics.phone).toBe(false);
     expect(metrics.split).toBe(false);
     expect(metrics.topNav).toBe(false);
     expect(metrics.boardWidth).toBe(metrics.contentW);

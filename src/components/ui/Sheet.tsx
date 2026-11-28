@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState, type ReactNode } from 'react';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 
 import { controlA11y } from '@/src/components/ui/a11y';
 import { IconX } from '@/src/components/ui/icons';
@@ -25,7 +25,28 @@ export function Sheet({ visible, onClose, title, subtitle, variant = 'sheet', te
   const { colors } = useTheme();
   const { phone } = useLayout();
   const insets = useScreenInsets();
+  const [dragY, setDragY] = useState(0);
+  const dragStartY = useRef<number | null>(null);
+  const dragLastY = useRef(0);
   useKeyboardShortcuts({ Escape: onClose }, visible);
+
+  const onDragGrant = (event: GestureResponderEvent) => {
+    dragStartY.current = event.nativeEvent.pageY;
+    dragLastY.current = 0;
+  };
+  const onDragMove = (event: GestureResponderEvent) => {
+    if (dragStartY.current == null) return;
+    const dy = Math.max(0, event.nativeEvent.pageY - dragStartY.current);
+    dragLastY.current = dy;
+    setDragY(dy);
+  };
+  const onDragEnd = () => {
+    const dy = dragLastY.current;
+    dragStartY.current = null;
+    dragLastY.current = 0;
+    setDragY(0);
+    if (dy > 72) onClose();
+  };
 
   if (!visible) return null;
 
@@ -35,7 +56,7 @@ export function Sheet({ visible, onClose, title, subtitle, variant = 'sheet', te
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={phone && Platform.OS !== 'web' ? 'slide' : 'fade'}
       statusBarTranslucent
       onRequestClose={onClose}>
       <View
@@ -54,38 +75,50 @@ export function Sheet({ visible, onClose, title, subtitle, variant = 'sheet', te
           style={[
             styles.panel,
             phone
-              ? [styles.panelPhone, { paddingBottom: Math.max(spacing.lg, insets.bottom + spacing.md) }]
+              ? [
+                  styles.panelPhone,
+                  { paddingBottom: Math.max(spacing.lg, insets.bottom + spacing.md) },
+                  dragY > 0 && { transform: [{ translateY: dragY }] },
+                ]
               : isDrawer
                 ? [styles.panelDrawer, { paddingTop: Math.max(spacing.lg, insets.top + spacing.md) }]
                 : styles.panelCenter,
           ]}>
-          {phone ? (
-            <View style={styles.handleRow}>
-              <View style={styles.handle} />
-            </View>
-          ) : null}
-          <View style={styles.header}>
-            <View style={styles.headerCopy}>
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-              {subtitle ? (
-                <Text style={styles.subtitle} numberOfLines={1}>
-                  {subtitle}
+          <View
+            onStartShouldSetResponder={() => false}
+            onMoveShouldSetResponder={() => phone}
+            onResponderGrant={phone ? onDragGrant : undefined}
+            onResponderMove={phone ? onDragMove : undefined}
+            onResponderRelease={phone ? onDragEnd : undefined}
+            onResponderTerminate={phone ? onDragEnd : undefined}>
+            {phone ? (
+              <View style={styles.handleRow}>
+                <View style={styles.handle} />
+              </View>
+            ) : null}
+            <View style={styles.header}>
+              <View style={styles.headerCopy}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {title}
                 </Text>
-              ) : null}
+                {subtitle ? (
+                  <Text style={styles.subtitle} numberOfLines={1}>
+                    {subtitle}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                {...controlA11y('button', 'Close')}
+                testID="sheet-close"
+                onPress={onClose}
+                hitSlop={spacing.sm}
+                style={(state) => {
+                  const hovered = 'hovered' in state && Boolean(state.hovered);
+                  return [styles.close, (hovered || state.pressed) && styles.closeHover];
+                }}>
+                <IconX color={colors.textMuted} size={18} />
+              </Pressable>
             </View>
-            <Pressable
-              {...controlA11y('button', 'Close')}
-              testID="sheet-close"
-              onPress={onClose}
-              hitSlop={spacing.sm}
-              style={(state) => {
-                const hovered = 'hovered' in state && Boolean(state.hovered);
-                return [styles.close, (hovered || state.pressed) && styles.closeHover];
-              }}>
-              <IconX color={colors.textMuted} size={18} />
-            </Pressable>
           </View>
           <ScrollView
             style={styles.scroll}
